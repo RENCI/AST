@@ -1,0 +1,18 @@
+##
+## Examples of invoking the mains within the AST proceesing suite
+##
+
+## 
+## Compute Errors
+##
+
+    ../config/main.yml
+    ../testing_data/adc_wl_detailed.pkl 
+    ../testing_data/obs_wl_smoothed.pkl
+    ../testing_data/obs_wl_metadata.pkl
+
+python compute_error_field.py --adcdata testing_data/adc_wl_detailed.pkl --obsdata /projects/sequence_analysis/vol1/prediction_work/ADCIRCSupportTools-v2/get_obs_stations/JUNK/ADDA/obspkl/obs_wl_smoothed.pkl --obsmeta /projects/sequence_analysis/vol1/prediction_work/ADCIRCSupportTools-v2/get_obs_stations/JUNK/ADDA/obspkl/obs_wl_metadata.pkl
+
+
+
+
