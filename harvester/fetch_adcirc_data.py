@@ -12,7 +12,7 @@ import pandas as pd
 import datetime as dt
 import math
 
-from fetch_station_data import adcirc_fetch_data
+from harvester.fetch_station_data import adcirc_fetch_data
 from utilities.utilities import utilities as utilities
 
 # Currently supported sources

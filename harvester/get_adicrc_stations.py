@@ -19,8 +19,8 @@ import pandas as pd
 import datetime as dt
 import netCDF4 as nc4
 
-import fetch_adcirc_data as fetch_adcirc_data
-import generate_urls_from_times as genurls # generate_urls_from_times
+import harvester.fetch_adcirc_data as fetch_adcirc_data
+import harvester.generate_urls_from_times as genurls # generate_urls_from_times
 
 from utilities.utilities import utilities as utilities
 from argparse import ArgumentParser

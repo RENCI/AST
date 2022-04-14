@@ -13,7 +13,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 
-import fetch_data as fetch_data
+import harvester.fetch_data as fetch_data
 
 from utilities.utilities import utilities as utilities
 from argparse import ArgumentParser
