@@ -88,8 +88,8 @@ def stations_interpolate(df)->pd.DataFrame:
 
 class fetch_station_data(object):
     """
-    We expect upon entry to this class a list of station ids. The cpntent of this list can
-    vary depending o0n data source. But uysually this is simply a list of (str) station ids. If
+    We expect upon entry to this class a list of station ids. The content of this list can
+    vary depending o0n data source. But usually this is simply a list of (str) station ids. If
     an ADCIRC Fort63_style lookup is requested, THEN the elements of this list are TUPLES (stations,node)
 
     A list of times (periods) is required. The list contents can vary with data source. Generally, this is
