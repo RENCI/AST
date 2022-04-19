@@ -308,10 +308,11 @@ def main(args):
     if data_source.upper()=='ASGS':
         excludedStations=list()
         # Use default station list
+        fname_stations = args.station_list if args.station_list is not None else '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv'
         if args.fort63_style:
-            adcirc_stations=get_adcirc_stations_fort63_style(fname='../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv')
+            adcirc_stations=get_adcirc_stations_fort63_style(fname=fname_stations)
         else:
-            adcirc_stations=get_adcirc_stations_fort61_style(fname='../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv')
+            adcirc_stations=get_adcirc_stations_fort61_style(fname=fname_stations)
 
         adcirc_metadata='_'+ensemble+'_'+gridname.upper()+'_'+runtime.replace(' ','T')
         data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, adcirc_metadata, data_product, resample_mins=0, fort63_style=args.fort63_style)
@@ -345,5 +346,7 @@ if __name__ == '__main__':
                         help='Attempts to force input URL into a nowcast url assuming normal ASGS conventions')
     parser.add_argument('--fort63_style', action='store_true', 
                         help='Boolean: Will inform Harvester to use fort.63.methods to get station nodesids')
+    parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
+                        help='Choose a non-default location/filename for a stationlist')
     args = parser.parse_args()
     sys.exit(main(args))
