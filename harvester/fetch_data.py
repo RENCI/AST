@@ -160,9 +160,14 @@ def main(args):
         data, meta = process_noaa_stations(time_range, noaa_stations, noaa_metadata, data_product)
         df_noaa_data = format_data_frames(data) # Melt the data :s Harvester default format
         # Output
+        # If choosing non-default locations BOTH variables must be specified
         try:
-            dataf=f'./noaa_stationdata%s.csv'%noaa_metadata
-            metaf=f'./noaa_stationdata_meta%s.csv'%noaa_metadata
+            if args.ofile is not None:
+                dataf=f'%s/noaa_stationdata%s.csv'% (args.ofile,noaa_metadata)
+                metaf=f'%s/noaa_stationdata_meta%s.csv'% (args.ometafile,noaa_metadata)
+            else:
+                dataf=f'./noaa_stationdata%s.csv'%noaa_metadata
+                metaf=f'./noaa_stationdata_meta%s.csv'%noaa_metadata
             df_noaa_data.to_csv(dataf)
             meta.to_csv(metaf)
             utilities.log.info('NOAA data has been stored {},{}'.format(dataf,metaf))
@@ -195,9 +200,14 @@ def main(args):
         except Exception as ex:
             utilities.log.error('CONTRAILS error {}, {}'.format(template.format(type(ex).__name__, ex.args)))
             sys.exit(1)
+        # If choosing non-default locations BOTH variables must be specified
         try:
-            dataf=f'./contrails_stationdata%s.csv'%contrails_metadata
-            metaf=f'./contrails_stationdata_meta%s.csv'%contrails_metadata
+            if args.ofile is not None:
+                dataf=f'%s/contrails_stationdata%s.csv'% (args.ofile,contrails_metadata)
+                metaf=f'%s/contrails_stationdata_meta%s.csv'% (args.ometafile,contrails_metadata)
+            else:
+                dataf=f'./contrails_stationdata%s.csv'%contrails_metadata
+                metaf=f'./contrails_stationdata_meta%s.csv'%contrails_metadata
             df_contrails_data.to_csv(dataf)
             meta.to_csv(metaf)
             utilities.log.info('CONTRAILS data has been stored {},{}'.format(dataf,metaf))
@@ -225,5 +235,9 @@ if __name__ == '__main__':
                         help='Choose a non-default location/filename for a stationlist')
     parser.add_argument('--config_name', action='store', dest='config_name', default=None, type=str,
                         help='Choose a non-default contrails auth config_name')
+    parser.add_argument('--ofile', action='store', dest='ofile', default=None, type=str,
+                        help='Choose a non-default data product output directory')
+    parser.add_argument('--ometafile', action='store', dest='ometafile', default=None, type=str,
+                        help='Choose a non-default metadata output directory')
     args = parser.parse_args()
     sys.exit(main(args))
