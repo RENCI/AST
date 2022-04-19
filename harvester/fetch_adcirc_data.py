@@ -319,8 +319,12 @@ def main(args):
         df_adcirc_data = format_data_frames(data)
         # Output 
         try:
-            dataf=f'./adcirc_stationdata%s.csv'%adcirc_metadata
-            metaf=f'./adcirc_stationdata_meta%s.csv'%adcirc_metadata
+            if args.ofile is not None:
+                dataf=f'%s/adcirc_stationdata%s.csv'% (args.ofile,adcirc_metadata)
+                metaf=f'%s/adcirc_stationdata_meta%s.csv'% (args.ometafile,adcirc_metadata)
+            else:
+                dataf=f'./adcirc_stationdata%s.csv'%adcirc_metadata
+                metaf=f'./adcirc_stationdata_meta%s.csv'%adcirc_metadata
             df_adcirc_data.to_csv(dataf)
             meta.to_csv(metaf)
             utilities.log.info('ADCIRC data has been stored {},{}'.format(dataf,metaf))
@@ -348,5 +352,9 @@ if __name__ == '__main__':
                         help='Boolean: Will inform Harvester to use fort.63.methods to get station nodesids')
     parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
                         help='Choose a non-default location/filename for a stationlist')
+    parser.add_argument('--ofile', action='store', dest='ofile', default=None, type=str,
+                        help='Choose a non-default data product output directory')
+    parser.add_argument('--ometafile', action='store', dest='ometafile', default=None, type=str,
+                        help='Choose a non-default metadata output directory')
     args = parser.parse_args()
     sys.exit(main(args))
