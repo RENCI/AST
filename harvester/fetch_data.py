@@ -155,7 +155,7 @@ def main(args):
         excludedStations=list()
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
-        noaa_stations=get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
+        noaa_stations=args.station_list if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
         noaa_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
         data, meta = process_noaa_stations(time_range, noaa_stations, noaa_metadata, data_product)
         df_noaa_data = format_data_frames(data) # Melt the data :s Harvester default format
@@ -173,7 +173,8 @@ def main(args):
     #Contrails
     if data_source.upper()=='CONTRAILS':
         # Load contrails secrets
-        contrails_config = utilities.load_config(os.path.join(os.path.dirname(__file__),'../secrets','contrails.yml'))['DEFAULT']
+        conf_name = args.config_name if args.config_name is not None else os.path.join(os.path.dirname(__file__),'../secrets','contrails.yml')
+        contrails_config = utilities.load_config(conf_name)['DEFAULT']
         utilities.log.info('Got Contrails access information')
         template = "An exception of type {0} occurred."
         excludedStations=list()
@@ -187,7 +188,7 @@ def main(args):
             # Build ranges for contrails ( and noaa/nos if you like)
             time_range=(starttime,endtime) 
             # Get default station list
-            contrails_stations=get_contrails_stations(fname)
+            contrails_stations=args.station_list if args.station_list is not None else get_contrails_stations(fname)
             contrails_metadata=meta+'_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
             data, meta = process_contrails_stations(time_range, contrails_stations, contrails_metadata, contrails_config, data_product )
             df_contrails_data = format_data_frames(data) # Melt: Harvester default format
@@ -220,6 +221,9 @@ if __name__ == '__main__':
                         help='choose supported data source (case independant) eg NOAA or CONTRAILS')
     parser.add_argument('--data_product', action='store', dest='data_product', default=None, type=str,
                         help='choose supported data product eg river_water_level: Only required for Contrails')
-
+    parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
+                        help='Choose a non-default location/filename for a stationlist')
+    parser.add_argument('--config_name', action='store', dest='config_name', default=None, type=str,
+                        help='Choose a non-default contrails auth config_name')
     args = parser.parse_args()
     sys.exit(main(args))
