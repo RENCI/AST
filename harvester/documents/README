@@ -14,6 +14,9 @@ c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 # Get tidal predictions
 d) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'predictions'
 
+# Specify non-default locations for the output data and metadata files
+e) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --ofile "." --ometafile "."
+
 These will create output files such as the following. Note the filename metadata is tied to the input time selections:
 
     1) ./noaa_stationdata_2022-02-20T00:00:00.csv
