@@ -8,9 +8,11 @@
 
 a) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' 
 b) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'water_level'
+# Specify a custom station_list
+c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --station_list '../supporting_data/noaa_stations.csv'
 
 # Get tidal predictions
-c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'predictions'
+d) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'predictions'
 
 These will create output files such as the following. Note the filename metadata is tied to the input time selections:
 
@@ -24,6 +26,8 @@ These will create output files such as the following. Note the filename metadata
 
 a) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' 
 b) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
+# Run while specifying non-default stationlist and auth yml files
+c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' --config_name '../secrets/contrails.yml' --station_list '../supporting_data/contrails_stations_rivers.csv'
 
 #Testing output datafiles
     1) ./contrails_stationdata_RIVERS_2022-02-20T00:00:00.csv
@@ -43,11 +47,13 @@ b) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 # b) Grab station indexing from input datafile and apply to fort.63.nc
 # c) Demonstrate grabbing a hurricane - fort61 style
 # d) Take Hurricane url and request associated nowcasts - fort63 style
+# e) Specify a custiom non-default stationfile location: This doesn't change the classes at all. But does better support the data_harvesting procedure for APSVIZ2
 
 a) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' 
 b) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc" --fort63_style --data_source 'ASGS'
 c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS'
 d) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.63.nc" --fort63_style --data_source 'ASGS' --convertToNowcast
+e) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' 
 
 # Output datafiles
 
