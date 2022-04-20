@@ -260,6 +260,8 @@ def main(args):
     # Set up IO env
     utilities.log.info("Product Level Working in {}.".format(os.getcwd()))
 
+    interval = args.interval if args.interval is 'None' else None
+
     # Set up time ranges
     if args.starttime is None and args.stoptime is None:
         starttime='2022-02-12 00:00:00' # '%Y-%m-%d %H:%M:%S'
@@ -289,7 +291,7 @@ def main(args):
                     knockout_file=None, station_list_file=contrails_stations)
 
     # Fetch best resolution and no resampling
-    data,meta=rpl.fetch_station_product((starttime,endtime), return_sample_min=0, interval=args.interval )
+    data,meta=rpl.fetch_station_product((starttime,endtime), return_sample_min=0, interval=interval )
 
     # Revert Harvester filling of nans to -99999 back to nans
     data.replace('-99999',np.nan,inplace=True)

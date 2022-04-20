@@ -88,9 +88,9 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
     # Fetch the data
     try:
         if data_product != 'water_level' and data_product != 'predictions' and data_product != 'hourly_height':
-            utilities.log.error('NOAA data product can only be: water_level')
+            utilities.log.error('NOAA data product can only be: water_level, predictions, or hourly_height')
             sys.exit(1)
-        noaanos = noaanos_fetch_data(noaa_stations, time_range, data_product, interval=interval, resample_mins=resample_mins)
+        noaanos = noaanos_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
         df_noaa_data = noaanos.aggregate_station_data()
         df_noaa_meta = noaanos.aggregate_station_metadata()
         df_noaa_meta.index.name='STATION'
@@ -132,7 +132,7 @@ def main(args):
         utilities.log.error('Invalid data source {}'.format(data_source))
         sys.exit(1)
 
-    utilities.log.info('Input product {}'.format(args.data_product))
+    utilities.log.info('Input product {}'.format(data_product))
 
     # Setup times and ranges
     if args.stoptime is not None:
@@ -157,7 +157,7 @@ def main(args):
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
         noaa_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
-        data, meta = process_noaa_stations(time_range, noaa_stations, data_product)
+        data, meta = process_noaa_stations(time_range, noaa_stations, data_product = data_product)
         df_noaa_data = format_data_frames(data) # Melt the data :s Harvester default format
         # Output
         # If choosing non-default locations BOTH variables must be specified
@@ -195,7 +195,7 @@ def main(args):
             # Get default station list
             contrails_stations=get_contrails_stations(args.station_list) if args.station_list is not None else get_contrails_stations(fname)
             contrails_metadata=meta+'_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
-            data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product )
+            data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product = data_product )
             df_contrails_data = format_data_frames(data) # Melt: Harvester default format
         except Exception as ex:
             utilities.log.error('CONTRAILS error {}, {}'.format(template.format(type(ex).__name__, ex.args)))
@@ -229,7 +229,7 @@ if __name__ == '__main__':
                         help='List currently supported data sources')
     parser.add_argument('--data_source', action='store', dest='data_source', default=None, type=str,
                         help='choose supported data source (case independant) eg NOAA or CONTRAILS')
-    parser.add_argument('--data_product', action='store', dest='data_product', default=None, type=str,
+    parser.add_argument('--data_product', action='store', dest='data_product', default='water_level', type=str,
                         help='choose supported data product eg river_water_level: Only required for Contrails')
     parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
                         help='Choose a non-default location/filename for a stationlist')

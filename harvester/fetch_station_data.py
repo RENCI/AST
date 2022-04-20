@@ -505,6 +505,8 @@ class noaanos_fetch_data(fetch_station_data):
     """
     # dict( persistant tag: source specific tag )
     # products defines current products (as keys) and uses the value as a column header in the returned data set
+
+    # NOTE: This dict maps the input data type (key) to the column name that gets returned by noaa-coops
     products={ 'water_level':'water_level',  # 6 min
                'predictions': 'predicted_wl', # 6 min
                'air_pressure': 'air_press',
@@ -517,7 +519,7 @@ class noaanos_fetch_data(fetch_station_data):
         An interval value of None default to 6 mins. If choosing Tidal or Hourhy Height specify interval as h
         """
         try:
-            self._product=self.products[product] # product
+            self._product=product # product
             utilities.log.info('NOAA Fetching product {}'.format(self._product))
         except KeyError:
             utilities.log.error('NOAA/NOS No such product key. Input {}, Available {}'.format(product, self.products.keys()))
