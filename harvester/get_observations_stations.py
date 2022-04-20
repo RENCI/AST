@@ -36,7 +36,7 @@ class get_obs_stations(object):
 
     # Default to assuming a NOAA/NOS WL run
 
-    def __init__(self, source='NOAA',product='water_level', station_file=None, 
+    def __init__(self, source='NOAA',product='water_level', 
                 contrails_yamlname=None,knockout_file=None, station_list_file=None):
         """
         get_obs_stations constructor
@@ -279,13 +279,13 @@ def main(args):
     if args.data_source.upper() == 'NOAA':
         noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
-                    station_file=None, contrails_yamlname=None,
+                    contrails_yamlname=None,
                     knockout_file=None, station_list_file=noaa_stations)
     else:
         contrails_stations=os.path.join(os.path.dirname(__file__), '../supporting_data','contrails_stations.csv')
         contrails_yamlname=os.path.join(os.path.dirname(__file__),'../secrets','contrails.yml')
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
-                    station_file=None, contrails_yamlname=contrails_yamlname,
+                    contrails_yamlname=contrails_yamlname,
                     knockout_file=None, station_list_file=contrails_stations)
 
     # Fetch best resolution and no resampling
