@@ -181,7 +181,7 @@ class get_obs_stations(object):
             # Use default station list
             noaa_stations=self.station_list
             noaa_metadata='_'+endtime.replace(' ','T') 
-            data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, noaa_metadata, data_product=self.product, interval=interval, resample_mins=return_sample_min)
+            data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
 
         if self.source.upper()=='CONTRAILS':
             contrails_config = utilities.load_config(self.contrails_yamlname)['DEFAULT']
@@ -192,7 +192,7 @@ class get_obs_stations(object):
             try:
                 # Get default station list
                 contrails_metadata=meta+'_'+endtime.replace(' ','T') 
-                data, meta = fetch_data.process_contrails_stations(time_range, contrails_stations, contrails_metadata, contrails_config, data_product=self.product, resample_mins=return_sample_min)
+                data, meta = fetch_data.process_contrails_stations(time_range, contrails_stations, contrails_config, data_product=self.product, resample_mins=return_sample_min)
             except Exception as ex:
                 utilities.log.error('CONTRAILS error {}, {}'.format(template.format(type(ex).__name__, ex.args)))
                 sys.exit(1)

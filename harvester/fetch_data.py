@@ -84,7 +84,7 @@ PRODUCT='water_level' # Used by all sources regardless of specifiici data produc
 ## Run stations
 ##
 
-def process_noaa_stations(time_range, noaa_stations, metadata, interval=None, data_product='water_level', resample_mins=15 ):
+def process_noaa_stations(time_range, noaa_stations, interval=None, data_product='water_level', resample_mins=15 ):
     # Fetch the data
     try:
         if data_product != 'water_level' and data_product != 'predictions' and data_product != 'hourly_height':
@@ -98,7 +98,7 @@ def process_noaa_stations(time_range, noaa_stations, metadata, interval=None, da
         utilities.log.error('Error: NOAA: {}'.format(e))
     return df_noaa_data, df_noaa_meta
 
-def process_contrails_stations(time_range, contrails_stations, metadata, authentication_config, data_product='river_water_level', resample_mins=15 ):
+def process_contrails_stations(time_range, contrails_stations, authentication_config, data_product='river_water_level', resample_mins=15 ):
     # Fetch the data
     dproduct=['river_water_level','coastal_water_level']
     if data_product not in dproduct:
@@ -157,7 +157,7 @@ def main(args):
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
         noaa_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
-        data, meta = process_noaa_stations(time_range, noaa_stations, noaa_metadata, data_product)
+        data, meta = process_noaa_stations(time_range, noaa_stations, data_product)
         df_noaa_data = format_data_frames(data) # Melt the data :s Harvester default format
         # Output
         # If choosing non-default locations BOTH variables must be specified
@@ -195,7 +195,7 @@ def main(args):
             # Get default station list
             contrails_stations=get_contrails_stations(args.station_list) if args.station_list is not None else get_contrails_stations(fname)
             contrails_metadata=meta+'_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
-            data, meta = process_contrails_stations(time_range, contrails_stations, contrails_metadata, contrails_config, data_product )
+            data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product )
             df_contrails_data = format_data_frames(data) # Melt: Harvester default format
         except Exception as ex:
             utilities.log.error('CONTRAILS error {}, {}'.format(template.format(type(ex).__name__, ex.args)))

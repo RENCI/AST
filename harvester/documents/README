@@ -90,7 +90,7 @@ b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stopt
 
 # 2) Required Contrails input files
 
-    ../secrets/contrails.yml. TO provided authentication information
+    ../secrets/contrails.yml. provides authentication information
     ../supporting_data/contrails_stations_coastal.csv or ../supporting_data/contrails_stations_rivers.csv. To provide a list of stations ids
 
 a) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level'
@@ -111,17 +111,17 @@ b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stopt
 ## Getting ADCIRC data from the ASGS
 ##
 
-#  In ths case, "times" have little meaning since the underlying methods require a list of URLs that span the desired time range. The construction of the URLs is peerformed using the
+#  In ths case, "times" have little meaning since the underlying methods require a list of URLs that span the desired time range. The construction of the URLs is performed using the
 #  methods in generate_urls_from_times.py. Testing generate_urls_from_times.py is further down in this document. 
-#  Also, times also have little meaning for Hurricane ASGS data. In this case "times" are replaced with Advisories.aExamples follow.
+#  Also, times also have little meaning for Hurricane ASGS data. In this case "times" are replaced with Advisories. Examples follow.
 #
 #  Secondly fetching water levels requires knowing the station ids. However, the specific ADCIRC nodes best corresponding to a station id depends on the selected GRID. So two options are provided:
-#  1) The default (fort61_style) uses only a list of station ids and used the fort.61.nc file to elucidate the proper GRID index and fetch the water levels. These are inteprolated water levels.
+#  1) The default (fort61_style) uses only a list of station ids and uses the fort.61.nc file to elucidate the proper indexes and fetch the water levels. These are inteprolated water levels.
 #     You cannot override the resulting urls using or --gridnamem --instance variables. (ensemble can be overridden)
-#  2) The alternative fort63_style will simply read the water lvels directly form a fort.63.nc file. However this requires the caller to provide the actual node lists. 
+#  2) The alternative fort63_style will simply read the water levels directly form a fort.63.nc file. However this requires the caller to provide the actual node lists. 
 #
-#  One can have the code generate URL lists in multiple. 
-#  a) Provide a "template" url from whiuch the instance,grid,ensemble will be scraped.
+#  One can have the code generate URL lists in multiple scenarios. 
+#  a) Provide a "template" url from which the instance,grid,ensemble will be scraped.
 #  b) Provide a yml with an appropriate url_format for your local site, then also provide, the instrance, grid
 #
 # --ndays defaults to -2
