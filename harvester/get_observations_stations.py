@@ -175,6 +175,9 @@ class get_obs_stations(object):
         endtime=time_range[1]
         utilities.log.debug('Attempt a product fetch for the time range {}-{}'.format(starttime,endtime))
 
+        if interval is 'None':
+            interval = None # Just double checking
+
         time_range=(starttime,endtime)
         if self.source.upper()=='NOAA':
             excludedStations=list()
