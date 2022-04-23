@@ -63,14 +63,14 @@ def format_data_frames(df):
     return df_out
 
 # The hurricane methods are for the future
-def check_advisory(value):
+def check_advisory(value, dformat='%Y%m%d%H'):
     """
     Try to ensure if an advisory number was passed
     """
     state_hurricane=False
     utilities.log.debug('Check advisory {}'.format(value))
     try:
-        test=dt.datetime.strptime(value,'%Y%m%d%H')
+        test=dt.datetime.strptime(value,dformat) # '%Y%m%d%H')
         utilities.log.info('A timestamp data was found: Not a Hurricane URL ? {}'.format(test))
     except ValueError:
         try:
