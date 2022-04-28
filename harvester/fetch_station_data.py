@@ -268,19 +268,22 @@ class adcirc_fetch_data(fetch_station_data):
 
 #TODO change name periods to urls
     def __init__(self, station_id_list, periods=None, product='water_level',
-                datum='MSL', gridname='None', castType='None', resample_mins=15,
+                datum='MSL', sitename=None, gridname=None, castType=None, resample_mins=15,
                 fort63_style=False):
         self._product=product
         #self._interval=interval 
         self._units='metric'
         self._datum=datum
         periods=periods
-        if castType.upper()=='None':
+        if castType.upper()==None:
             utilities.log.info('ADCIRC: castType not set. Will result in poor metadata NAME value')
         self._castType=castType 
-        if gridname=='None':
+        if gridname==None:
             utilities.log.info('ADCIRC: gridname not specified. Will result in poor metadata NAME value') 
         self._gridname=gridname
+        if sitename==None:
+            utilities.log.info('ADCIRC: sitename not specified. Will result in poor metadata NAME value')
+        self._sitename=sitename
 
         if fort63_style:
             utilities.log.info('Fetch station ids using fort.63 style')
@@ -480,6 +483,7 @@ class adcirc_fetch_data(fetch_station_data):
         meta['OWNER'] = nc.source
         meta['STATE'] = np.nan 
         meta['COUNTY'] = np.nan 
+        meta['SITE'] = self._sitename
         df_meta=pd.DataFrame.from_dict(meta, orient='index')
         df_meta.columns = [str(station)]
         return df_meta

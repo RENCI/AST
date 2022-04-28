@@ -136,13 +136,13 @@ PRODUCT='water_level'
 ## Run stations
 ##
 
-def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, metadata, data_product='water_level', resample_mins=0, fort63_style=False):
+def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, metadata, data_product='water_level', resample_mins=0, fort63_style=False):
     # Fetch the data
     try:
         if data_product != 'water_level':
             utilities.log.error('ADCIRC data product can only be: water_level')
             sys.exit(1)
-        adcirc = adcirc_fetch_data(adcirc_stations, urls, data_product, gridname=gridname, castType=ensemble.rstrip(), resample_mins=resample_mins, fort63_style=fort63_style)
+        adcirc = adcirc_fetch_data(adcirc_stations, urls, data_product, sitename=sitename, gridname=gridname, castType=ensemble.rstrip(), resample_mins=resample_mins, fort63_style=fort63_style)
         df_adcirc_data = adcirc.aggregate_station_data()
         df_adcirc_meta = adcirc.aggregate_station_metadata()
     except Exception as e:
@@ -204,10 +204,32 @@ def strip_instance_from_url(urls):
     url = grab_first_url_from_urllist(urls)
     try:
         words = url.split('/')
-        instance=words[-3] # Usually nowcast,forecast, etc 
+        instance=words[-3] 
     except IndexError as e:
         utilities.log.error('strip_instance_from_url Uexpected failure try next:{}'.format(e))
     return instance 
+
+def strip_sitename_from_url(urls, fill='NoSite'):
+    """
+    Here we attempt to find which site the url was computed at. We read the
+    machine name from the url and lookup in the dict for the canonical site
+    name. If no such name use the fill
+    The "machine name" information will be in position .split('/')[-4]. It may consist of multiple words.
+    eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
+    
+    Return
+        canonical site name: (str) eg RENCI,PSC
+    """
+    known_sites= {'hatteras.renci.org':'RENCI', 
+                  'bridges2.psc.edu': 'PSC'}
+    url = grab_first_url_from_urllist(urls)
+    try:
+        words = url.split('/')
+        machine=words[-4] 
+    except IndexError as e:
+        utilities.log.error('strip_sitename_from_url Uexpected failure try next:{}'.format(e))
+    site = known_sites[machine] if machine in known_sites.keys() else fill
+    return site
 
 def grab_gridname_from_url(urls):
     """
@@ -295,6 +317,7 @@ def main(args):
 
     ensemble = strip_ensemble_from_url(urls)  # Only need to check on of them
     gridname = grab_gridname_from_url(urls)   # ditto
+    sitename = strip_sitename_from_url(urls)
 
     ##
     ## Start the processing
@@ -315,7 +338,7 @@ def main(args):
             adcirc_stations=get_adcirc_stations_fort61_style(fname=fname_stations)
 
         adcirc_metadata='_'+ensemble+'_'+gridname.upper()+'_'+runtime.replace(' ','T')
-        data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, adcirc_metadata, data_product, resample_mins=0, fort63_style=args.fort63_style)
+        data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, adcirc_metadata, data_product, resample_mins=0, fort63_style=args.fort63_style)
         df_adcirc_data = format_data_frames(data)
         # Output 
         try:

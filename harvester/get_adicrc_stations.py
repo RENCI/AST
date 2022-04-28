@@ -229,13 +229,14 @@ class get_adcirc_stations(object):
         self.instance = fetch_adcirc_data.strip_instance_from_url(urls)
         self.gridname = fetch_adcirc_data.grab_gridname_from_url(urls) 
         self.ensemble = fetch_adcirc_data.strip_ensemble_from_url(urls)
+        self.sitename = fetch_adcirc_data.strip_sitename_from_url(urls, fill='NoSite')
 
         if self.source.upper()=='ASGS':
             adc_stations=self.station_list
             #adc_metadata='_'+endtime.replace(' ','T') 
             adc_metadata = '_TEST_';
             #data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.instance,adc_metadata,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style)
-            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,adc_metadata,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style)
+            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,adc_metadata,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style)
 
         time_index=data.index.tolist()
         self.Tmin = min(time_index).strftime('%Y%m%d%H')
