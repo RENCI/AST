@@ -99,7 +99,7 @@ def generate_six_hour_time_advisories_from_range(advisory_range)->list:
     list_of_advisories=list()
     for inc in range(startadv, stopadv):
         list_of_advisories.append("{:02d}".format(inc))
-    list_of_advisories=[i for i in list_of_advisories if int(i) >= 0]
+    list_of_advisories=[i for i in list_of_advisories if int(i) > 0]
     # Should we retain the input value ?
     list_of_advisories.append("{:02d}".format(stopadv))
     # A last ditch sort to to be sure
