@@ -222,6 +222,7 @@ def strip_sitename_from_url(urls, fill='NoSite'):
     """
     known_sites= {'hatteras.renci.org':'RENCI', 
                   'bridges2.psc.edu': 'PSC'}
+
     url = grab_first_url_from_urllist(urls)
     try:
         words = url.split('/')
@@ -278,7 +279,6 @@ def main(args):
     else:
         utilities.log.error('Invalid data source {}'.format(data_source))
         sys.exit(1)
-
 
     urls = args.urls
     if urls==None:
