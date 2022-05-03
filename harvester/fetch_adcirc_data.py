@@ -145,6 +145,7 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         adcirc = adcirc_fetch_data(adcirc_stations, urls, data_product, sitename=sitename, gridname=gridname, castType=ensemble.rstrip(), resample_mins=resample_mins, fort63_style=fort63_style)
         df_adcirc_data = adcirc.aggregate_station_data()
         df_adcirc_meta = adcirc.aggregate_station_metadata()
+        df_adcirc_meta.index.name='STATION'
     except Exception as e:
         utilities.log.error('Error: ADCIRC: {}'.format(e))
     return df_adcirc_data, df_adcirc_meta 
