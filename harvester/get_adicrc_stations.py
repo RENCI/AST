@@ -247,9 +247,9 @@ class get_adcirc_stations(object):
 ## Example invocation of the main test code
 ## 
 
-# python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc" --instance_name 'hsofs-nam-bob-2021' --data_source 'ASGS' --gridname 'hsofs' --fort63_style
+# python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc" --instance_name 'hsofs-nam-bob-2021' --data_source 'ASGS' --gridname 'hsofs' --fort63_style
 
-# python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --instance_name 'hsofs-al09-bob' --data_source 'ASGS' --gridname 'hsofs' --fort63_style
+# python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --instance_name 'hsofs-al09-bob' --data_source 'ASGS' --gridname 'hsofs' --fort63_style
 
 ##
 ## Several scenarios may be used for this example main. For now we choose the ADDA style execution
