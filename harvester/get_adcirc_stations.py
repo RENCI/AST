@@ -351,8 +351,8 @@ def main(args):
 
     metajson = f'./obs_wl_metadata%s.json'%iometadata
     detailedjson = f'./obs_wl_detailed%s.json'%iometadata
-    meta.to_json(metapkl)
-    data.to_json(detailedpkl)
+    meta.to_json(metajson)
+    data.to_json(detailedjson)
 
     # Write out the coords 
     ADCfilecoords = f'./adc_coord%s.json'%iometadata
