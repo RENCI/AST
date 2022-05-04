@@ -268,6 +268,8 @@ def main(args):
     annotate final .csv files with _TIME_ corresponding to the reported url starttime.
     """
 
+    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+
     if args.sources:
          print('Return list of sources')
          return SOURCES
