@@ -157,18 +157,18 @@ b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stopt
     ../secrets/url_framework.yml
 
 ## Case: Provide a template url type examples
-python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' 
-python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --ndays -4
-python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --timeout '2022-02-26 00:00:00'
-python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --fort63_style
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' 
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --ndays -4
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --timeout '2022-02-26 00:00:00'
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --fort63_style
 
 # Try a hurricane
-python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS'
-python get_adicrc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS' --timeout 8  --fort63_style
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS'
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS' --timeout 8  --fort63_style
 
 ## Case: Provide a YML formatting For the given stations lists noty all grids can use fort63_style in this example
-python get_adicrc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'ASGS'
-python get_adicrc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'ASGS' --fort63_style
+python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'ASGS'
+python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'ASGS' --fort63_style
 
 # Output datafiles - representative
     1) ./adc_wl_metadata_2022033112.pkl
