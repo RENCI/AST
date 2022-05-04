@@ -312,6 +312,9 @@ class compute_error_field(object):
 ##
 
 def main(args):
+
+    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+
     meta = args.obsmeta
     obsf = args.obsdata
     adcf = args.adcdata

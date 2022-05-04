@@ -359,6 +359,9 @@ def main(args):
     This reads pre-generated files containing station errors, land controls and water clamps. The land controls
     have not been processed usng KNN.
     """
+
+    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+
     try:
         df_source = pd.read_pickle(args.source_file)
         df_land_controls = pd.read_pickle(args.land_control_file)
