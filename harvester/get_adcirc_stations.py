@@ -262,6 +262,8 @@ def main(args):
     """
     import fetch_adcirc_data as fetch_adcirc_data
 
+    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+
     # Basic checks
     if args.config_name is None:
         config_name =os.path.join(os.path.dirname(__file__), '../secrets', 'url_framework.yml')
