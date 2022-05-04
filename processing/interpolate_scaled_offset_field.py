@@ -86,7 +86,7 @@ def get_station_values(fname=None, header_data='mean')->pd.DataFrame:
 def randomly_select_dataframe_rows(df, frac=1)->pd.DataFrame:
     """
     Intended for, but not restricted to, station (averaging) data
-    This is primarily used if the user wants to perform statisticval tesating on the
+    This is primarily used if the user wants to perform statistical testing on the
     resulting interpolated fields. Setting frac==1 (default) returns the entire data set 
     with roiws shuffled (potentiually removes some order biases)
     Setting to < 1, returns a subset of the data randomly selected.
