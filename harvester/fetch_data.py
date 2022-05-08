@@ -106,11 +106,11 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
 
 def process_contrails_stations(time_range, contrails_stations, authentication_config, data_product='river_water_level', resample_mins=15 ):
     # Fetch the data
-    dproduct=['river_water_level','coastal_water_level']
-    if data_product not in dproduct:
-        utilities.log.error('Contrails data product can only be: {} was {}'.format(dproduct,data_product))
-        sys.exit(1)
+    contrails_product=['river_water_level','coastal_water_level', 'air_pressure']
     try:
+        if data_product not in contrails_product:
+            utilities.log.error('Contrails data product can only be: {} was {}'.format(dproduct,data_product))
+            #sys.exit(1)
         contrails = contrails_fetch_data(contrails_stations, time_range, authentication_config, product=data_product, owner='NCEM', resample_mins=resample_mins)
         df_contrails_data = contrails.aggregate_station_data()
         df_contrails_meta = contrails.aggregate_station_metadata()

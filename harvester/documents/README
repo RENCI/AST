@@ -22,6 +22,14 @@ These will create output files such as the following. Note the filename metadata
     1) ./noaa_stationdata_2022-02-20T00:00:00.csv
     2) ./noaa_stationdata_meta_2022-02-20T00:00:00.csv 
 
+# Examples of using different product levels
+
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'water_level'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'predictions'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'air_pressure'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'hourly_height'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'wind_speed'
+
 # 2) CONTRAILS. Required input files
     ../config/main.yml. To fetch the value of rootdir
     ../secrets/contrails.yml. TO provided authentication information
@@ -31,6 +39,11 @@ a) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 b) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
 # Run while specifying non-default stationlist and auth yml files
 c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' --config_name '../secrets/contrails.yml' --station_list '../supporting_data/contrails_stations_rivers.csv'
+
+# Examples of using different product levels
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'air_pressure'
 
 #Testing output datafiles
     1) ./contrails_stationdata_RIVERS_2022-02-20T00:00:00.csv
@@ -273,5 +286,22 @@ python generate_urls_from_times.py --ndays -4 --timeout 11 --config_name '../sec
 python grid_to_station_maps.py --gridname 'hsofs'
 
 # Will list grid choices, and specific file pointers for the given map yml.
+
+##
+## Tested products
+##
+
+These INPUT product names (keys) ARE NOT the actual names used by NOAA but, rather, are the common names used by harvester
+the values are the actual names passed to the NOAA system
+
+## NOAA/NOS
+
+products={ 'water_level':'water_level',  # 6 min
+           'predictions': 'predicted_wl', # 6 min
+           'air_pressure': 'air_press',
+           'hourly_height':'water_level', # hourly
+           'wind_speed':'spd'}
+
+All values are returned in metric units
 
 

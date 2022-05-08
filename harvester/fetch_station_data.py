@@ -517,6 +517,8 @@ class noaanos_fetch_data(fetch_station_data):
         to the specific product names in NOAA/NOS, The second (noaa_data_column_names) is used here internally to properly select 
         the column name of the data
 
+        UNITS listed as: https://api.tidesandcurrents.noaa.gov/api/prod/#units. Note this implies a hybrid MKS/CGS system and not MKS.
+
         Currently tested input products:
         water_level (default)
         predictions (Tidal predictions) 
@@ -689,13 +691,29 @@ class contrails_fetch_data(fetch_station_data):
             USFWS,Morrisville,NCEM,USGS,NOAA,Currituck County,Duke Energy
         config: a dict containing values for domain <str>, method <str>, systemkey <str>
         a valid PRODUCT id <str>: See CLASSDICT definitions for specifics
+
+        NOTE: Default to using imperial units. Because the metadata that gets returned only reports
+        the units for how the data were stored not fetched. So it wouid be easay for the calling program to get confused.
+        Let the caller choose to update units and modify the df_meta structure prior to DB uploads
+
+        Two dicts are used to manage jobs. The first (products) maps generic product names used by high level codes
+        to the specific product names in NOAA/NOS, The second (CLASSDICT) is used here internally map names to
+        the data index used by Contrails
+
+        Moreover, river guages and coastal guages get treated differently
+
+        Currently tested input products:
+        river_water_level 
+        coastal_water_level
+
     """
     # dict( persistant tag: source speciific tag )
 
 # See Tom's email Regarding coastal versus river class values
-
-    products={ 'river_water_level':'Stage', 'coastal_water_level':'Water Elevation'
-            }
+    products={ 'river_water_level':'Stage', 
+               'coastal_water_level':'Water Elevation',
+               'air_pressure':'Barometric Pressure' 
+             }
 
     CLASSDICT = {
         'Rain Increment':10,
@@ -730,7 +748,6 @@ class contrails_fetch_data(fetch_station_data):
         self._owner=owner
         try:
             self._product=self.products[product] # product
-            #self.product_class=str(CLASSDICT[self._product]) # For now should eval to only 20 or 94.
         except KeyError:
             utilities.log.error('Contrails No such product key. Input {}, Available {}'.format(product, self.products.keys()))
             sys.exit(1)
@@ -809,6 +826,34 @@ class contrails_fetch_data(fetch_station_data):
         full_url = url +'?' +url_values
         return full_url
 
+##TODO confirm Contrails pressure units are bars
+    def convert_to_metric(self, df)-> pd.DataFrame:
+        """
+        Contrails returns moost (all?) data in imperial units
+        Here we convert valid productsa to metric
+        The product selection is based on the native Contrails product names
+        which is carried by self.product
+      
+        Dataframe is updated inplace
+
+        Parameters
+            df: Data of tmes x product for a specific station
+        Return:
+            df: Data of times x product in metric units
+        """ 
+        # 
+        product = self._product
+        if product == 'Stage' or product == 'Water Elevation':
+            utilities.log.info('Contrails. Converting to meters')
+            df=df.astype(float) * 0.3048 # Convert feet to meters
+            return df
+        if product == 'Barometric Pressure':
+            utilities.log.info('Contrails. Converting bars (atm) to hPa')
+            df=df.astype(float) * 1013.25 # Converting bars (atm) to hPa
+            return df
+        utilities.log.error('convert_to_metric: Dropped out the bottom. Unexpected product of {}: Abort'.format(product))
+        sys.exit(1)
+
 # We do a station at a time because the max number of rows returned is 5,000
 # And the data for some stations is 6min
 #
@@ -856,7 +901,8 @@ class contrails_fetch_data(fetch_station_data):
             # Manually convert all values to meters
             df_data = pd.concat(datalist)
             utilities.log.info('Contrails. Converting to meters')
-            df_data=df_data.astype(float) * 0.3048 # Convert to meters
+            #df_data=df_data.astype(float) * 0.3048 # Convert to meters
+            df_data = self.convert_to_metric(df_data)
         except Exception as e:
             utilities.log.error('Contrails failed concat: error: {}'.format(e))
             df_data=np.nan
