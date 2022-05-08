@@ -814,7 +814,6 @@ class contrails_fetch_data(fetch_station_data):
             init_hour, init_min, init_sec = 23,59,59
         return periods
 
-
     def build_url_for_contrails_station(self, domain, systemkey, indict)->str:
         """
         Build a simple query for a single gauge and the product level values
@@ -833,6 +832,8 @@ class contrails_fetch_data(fetch_station_data):
         Here we convert valid productsa to metric
         The product selection is based on the native Contrails product names
         which is carried by self.product
+
+        arbitrary_min = 600. Contrails can return pressures in mb OR inHg with little warning.
       
         Dataframe is updated inplace
 
@@ -842,14 +843,18 @@ class contrails_fetch_data(fetch_station_data):
             df: Data of times x product in metric units
         """ 
         # 
+        arbitrary_min = 600 
         product = self._product
         if product == 'Stage' or product == 'Water Elevation':
             utilities.log.info('Contrails. Converting to meters')
             df=df.astype(float) * 0.3048 # Convert feet to meters
             return df
         if product == 'Barometric Pressure':
-            utilities.log.info('Contrails. Converting bars (atm) to hPa')
-            df=df.astype(float) * 1013.25 # Converting bars (atm) to hPa
+            test_val = max(df.values)
+            df=df.astype(float)
+            if test_val < arbitrary_min:
+                utilities.log.info('Contrails. Converting inHg to millibars (atm)')
+                df=df * 1000.0 / 29.52998 
             return df
         utilities.log.error('convert_to_metric: Dropped out the bottom. Unexpected product of {}: Abort'.format(product))
         sys.exit(1)
@@ -901,7 +906,6 @@ class contrails_fetch_data(fetch_station_data):
             # Manually convert all values to meters
             df_data = pd.concat(datalist)
             utilities.log.info('Contrails. Converting to meters')
-            #df_data=df_data.astype(float) * 0.3048 # Convert to meters
             df_data = self.convert_to_metric(df_data)
         except Exception as e:
             utilities.log.error('Contrails failed concat: error: {}'.format(e))

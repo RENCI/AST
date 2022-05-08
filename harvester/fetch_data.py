@@ -57,14 +57,43 @@ def get_contrails_stations(fname=None):
     contrails_stations=[word.rstrip() for word in contrails_stations_list] 
     return contrails_stations
 
-def format_data_frames(df) -> pd.DataFrame:
+def choose_common_header_name(product):
+    """
+    For harvesting, we only want three common data names in the final data time series
+    This is complicated by the fact that different sources use different product names. So here
+    we manually construct a dictionary of current harvester supported data products
+
+    Parameters
+        product: (str) input product name
+
+    Results
+        name: (str) selected common name
+    """
+    product_name_maps={
+        'water_level': 'water_level_m',
+        'predictions': 'water_level_m', 
+        'hourly_height': 'water_level_m',
+        'river_water_level': 'water_level_m',
+        'coastal_water_level': 'water_level_m',
+        'air_pressure':'air_pressure_mb',
+        'wind_speed':'wind_speed_mps'
+        }
+
+    if product in product_name_maps.keys():
+        name = product_name_maps[product]
+        return name.upper()
+    else:
+        utilities.log.error('choose_common_header_name. No such product name {}'.format(product))
+        sys.exit(1)
+
+def format_data_frames(df, product) -> pd.DataFrame:
     """
     A Common formatting used by all sources
     """
     df.index = df.index.strftime('%Y-%m-%dT%H:%M:%S')
     df.reset_index(inplace=True)
     df_out=pd.melt(df, id_vars=['TIME'])
-    df_out.columns=('TIME','STATION',PRODUCT.upper())
+    df_out.columns=('TIME','STATION',choose_common_header_name(product))
     df_out.set_index('TIME',inplace=True)
     return df_out
 
@@ -80,7 +109,7 @@ dformat='%Y-%m-%d %H:%M:%S'
 GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in the zone
 
 #TODO abstract this
-PRODUCT='water_level' # Used by all sources regardless of specifiici data product selected
+#PRODUCT='water_level' # Used by all sources regardless of specifici data product selected
 # wave_height
 # pressure"
 # wind speed"
@@ -166,7 +195,7 @@ def main(args):
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
         noaa_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
         data, meta = process_noaa_stations(time_range, noaa_stations, data_product = data_product)
-        df_noaa_data = format_data_frames(data) # Melt the data :s Harvester default format
+        df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
         # If choosing non-default locations BOTH variables must be specified
         try:
@@ -204,7 +233,7 @@ def main(args):
             contrails_stations=get_contrails_stations(args.station_list) if args.station_list is not None else get_contrails_stations(fname)
             contrails_metadata=meta+'_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
             data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product = data_product )
-            df_contrails_data = format_data_frames(data) # Melt: Harvester default format
+            df_contrails_data = format_data_frames(data, data_product) # Melt: Harvester default format
         except Exception as ex:
             utilities.log.error('CONTRAILS error {}, {}'.format(template.format(type(ex).__name__, ex.args)))
             sys.exit(1)
