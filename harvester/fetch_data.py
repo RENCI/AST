@@ -78,7 +78,12 @@ def format_data_frames(df) -> pd.DataFrame:
 
 dformat='%Y-%m-%d %H:%M:%S'
 GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in the zone
+
+#TODO abstract this
 PRODUCT='water_level' # Used by all sources regardless of specifiici data product selected
+# wave_height
+# pressure"
+# wind speed"
 
 ##
 ## Run stations
@@ -86,10 +91,11 @@ PRODUCT='water_level' # Used by all sources regardless of specifiici data produc
 
 def process_noaa_stations(time_range, noaa_stations, interval=None, data_product='water_level', resample_mins=15 ):
     # Fetch the data
+    noaa_products=['water_level', 'predictions', 'hourly_height', 'air_pressure', 'wind_speed']
     try:
-        if data_product != 'water_level' and data_product != 'predictions' and data_product != 'hourly_height':
-            utilities.log.error('NOAA data product can only be: water_level, predictions, or hourly_height')
-            sys.exit(1)
+        if not data_product in noaa_products:
+            utilities.log.error('NOAA: data product can only be {}'.format(noaa_products))
+            #sys.exit(1)
         noaanos = noaanos_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
         df_noaa_data = noaanos.aggregate_station_data()
         df_noaa_meta = noaanos.aggregate_station_metadata()

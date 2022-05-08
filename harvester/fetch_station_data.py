@@ -214,6 +214,12 @@ class adcirc_fetch_data(fetch_station_data):
     informative inputy list of stations that is a dataframe with columns stationid and nodeid where nodeid is the pre-established
     grid-specific ADCIRC nodeid corresponding to the station.. Required minimum column headers: (stationid, Node)
 
+    NOTE: Default to using metric units. Because the metadata that gets returned only reports
+
+
+    Currently available products:
+    water_level (default)
+
     Input:
         station_id_list: list of station_ids to pass to ADCIRC
         periods: list of valid ADCIRC urls tuples (*63.nc,*.61.nc) for aggregation 
@@ -270,7 +276,7 @@ class adcirc_fetch_data(fetch_station_data):
     def __init__(self, station_id_list, periods=None, product='water_level',
                 datum='MSL', sitename=None, gridname=None, castType=None, resample_mins=15,
                 fort63_style=False):
-        self._product=product
+        self._product=self.products[product]
         #self._interval=interval 
         self._units='metric'
         self._datum=datum
@@ -506,12 +512,32 @@ class noaanos_fetch_data(fetch_station_data):
         NOTE: Default to using imperial units. Because the metadata that gets returned only reports
         the units for how the data were stored not fetched. So it wouid be easay for the calling program to get confused.
         Let the caller choose to update units and modify the df_meta structure prior to DB uploads
+
+        Two dicts are used to manage jobs. The first (products) maps generic product names used by high level codes
+        to the specific product names in NOAA/NOS, The second (noaa_data_column_names) is used here internally to properly select 
+        the column name of the data
+
+        Currently tested input products:
+        water_level (default)
+        predictions (Tidal predictions) 
+        air_pressure
+        hourly_height
+        wind_speed
+        
     """
     # dict( persistant tag: source specific tag )
     # products defines current products (as keys) and uses the value as a column header in the returned data set
 
-    # NOTE: This dict maps the input data type (key) to the column name that gets returned by noaa-coops
+    # NOTE: This dict maps the generic input data type (key) to the actual product name used by noaa-coops
     products={ 'water_level':'water_level',  # 6 min
+               'predictions': 'predictions', # 6 min
+               'air_pressure': 'air_pressure',
+               'hourly_height':'hourly_height', # hourly
+               'wind_speed':'wind'}
+
+    # NOTE: This dict maps the input data type (key) to the column name that gets returned by noaa-coops
+    # Unfortunately, this value is not always the product name
+    noaa_data_column_names={ 'water_level':'water_level',  # 6 min
                'predictions': 'predicted_wl', # 6 min
                'air_pressure': 'air_press',
                'hourly_height':'water_level', # hourly
@@ -523,7 +549,7 @@ class noaanos_fetch_data(fetch_station_data):
         An interval value of None default to 6 mins. If choosing Tidal or Hourhy Height specify interval as h
         """
         try:
-            self._product=product # product
+            self._product=self.products[product] # self.products[product] # product
             utilities.log.info('NOAA Fetching product {}'.format(self._product))
         except KeyError:
             utilities.log.error('NOAA/NOS No such product key. Input {}, Available {}'.format(product, self.products.keys()))
@@ -587,7 +613,7 @@ class noaanos_fetch_data(fetch_station_data):
                                             datum=self._datum,
                                             units=self._units,
                                             interval=self._interval, # If none defaults to 6min
-                                            time_zone=GLOBAL_TIMEZONE)[self.products[self._product]].to_frame()
+                                            time_zone=GLOBAL_TIMEZONE)[self.noaa_data_column_names[self._product]].to_frame()
             df_data, multivalue = self.check_duplicate_time_entries(station, dx)
             # Put checks in here in case we want to exclude these stations with multiple values
             df_data.reset_index(inplace=True)
