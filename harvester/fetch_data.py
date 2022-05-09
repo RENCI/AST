@@ -70,13 +70,13 @@ def choose_common_header_name(product):
         name: (str) selected common name
     """
     product_name_maps={
-        'water_level': 'water_level_m',
-        'predictions': 'water_level_m', 
-        'hourly_height': 'water_level_m',
-        'river_water_level': 'water_level_m',
-        'coastal_water_level': 'water_level_m',
-        'air_pressure':'air_pressure_mb',
-        'wind_speed':'wind_speed_mps'
+        'water_level': 'water_level',
+        'predictions': 'water_level', 
+        'hourly_height': 'water_level',
+        'river_water_level': 'water_level',
+        'coastal_water_level': 'water_level',
+        'air_pressure':'air_pressure',
+        'wind_speed':'wind_speed'
         }
 
     if product in product_name_maps.keys():

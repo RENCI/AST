@@ -288,20 +288,42 @@ python grid_to_station_maps.py --gridname 'hsofs'
 # Will list grid choices, and specific file pointers for the given map yml.
 
 ##
-## Tested products
+## UNITS and Tested products
 ##
 
 These INPUT product names (keys) ARE NOT the actual names used by NOAA but, rather, are the common names used by harvester
-the values are the actual names passed to the NOAA system
+The code makes the required translations
 
 ## NOAA/NOS
+#
+# For a random station on May 10, 2002: We have: The correct Product values are air_gap, air_pressure, air_temperature, conductivity, currents, currents_survey, currents_predictions, daily_mean, datums, high_low, hourly_height, humidity, monthly_mean, one_minute_water_level, predictions, salinity, visibility, water_level, water_temperature, and wind 
 
-products={ 'water_level':'water_level',  # 6 min
-           'predictions': 'predicted_wl', # 6 min
-           'air_pressure': 'air_press',
-           'hourly_height':'water_level', # hourly
-           'wind_speed':'spd'}
+#The native storage units for NOAA COOPS is:
+#    height in FEET
+#    pressure in MB (MilliBar) 
+#    wind speed in KNOTS
+#    Temp in F
 
-All values are returned in metric units
+# When requested to return data in metric these become:
+#    height in METERS
+#    pressure in MB (milliBar)
+#    wind speed in m/s
+#    Temp in C
+
+# Supported NOAA Data products and return values (Relative to Datum MSL)
+#    water_level (m)
+#    predictions (m)
+#    hourly_height (m)
+#    air_pressure (mb)
+#    wind_speed (m/s)
+
+##
+## Contrails
+## The below infomration is really only specifiic to the FIMAN guages.
+## https://contrail.nc.gov
 
 
+#  height (Stage) FEET
+#  flow volume: CFS
+#  https://contrail.nc.gov/map/?view=www_fiman
+#  barometric pressure: mbar OR inHg depending on the sensor

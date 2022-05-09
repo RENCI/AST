@@ -37,7 +37,28 @@ from collections import OrderedDict
 GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in this zone
 
 GLOBAL_FILL_VALUE='-99999'  # Always replaces final np.nans with this.
-UNITS='meters' # Now the code only applies to WL
+
+#UNITS='meters' # Now the code only applies to WL
+def map_product_to_harvester_units(product):
+    """
+    The harvester dataset should be returning consistent metric units 
+    for all sources. This dictionary performs ther translation from supported 
+    data products to known units
+    """
+    product_unit_maps={
+        'water_level': 'm',
+        'predictions': 'm',
+        'hourly_height': 'm',
+        'river_water_level': 'm',
+        'coastal_water_level': 'm',
+        'air_pressure':'mb',
+        'wind_speed':'mps'
+        }
+    if product in product_unit_maps.keys():
+        unit = product_unit_maps[product]
+    else: 
+        unit='NA'
+    return unit
 
 def replace_and_fill(df):
     """
@@ -56,7 +77,7 @@ def stations_resample(df, sample_mins=15)->pd.DataFrame:
 
     Input:
         df: A time series x stations data frame
-        sample_min. (Dafaut=15mins) A numerical value for th enumber of mins to resample
+        sample_min. (Dafaut=15mins) A numerical value for the number of mins to resample
             setting to 0 disables any resampling and returns the raw data
 
     Output:
@@ -484,7 +505,7 @@ class adcirc_fetch_data(fetch_station_data):
         # meta['NAME']= nc.agrid # Long form of grid name description # Or possible use nc.version
         meta['NAME']='_'.join([self._gridname.upper(),self._typeCast.upper()]) # These values come from the calling routine and should be usually nowcast, forecast
         #meta['VERSION'] = nc.version
-        meta['UNITS'] ='meters'
+        meta['UNITS'] ='m'
         meta['TZ'] = GLOBAL_TIMEZONE # Can look in nc.comments
         meta['OWNER'] = nc.source
         meta['STATE'] = np.nan 
@@ -550,6 +571,7 @@ class noaanos_fetch_data(fetch_station_data):
         """
         An interval value of None default to 6 mins. If choosing Tidal or Hourhy Height specify interval as h
         """
+        self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.info('NOAA Fetching product {}'.format(self._product))
@@ -663,7 +685,7 @@ class noaanos_fetch_data(fetch_station_data):
         meta['LAT'] = location.metadata['lat'] if location.metadata['lat']!='' else np.nan
         meta['LON'] = location.metadata['lng'] if location.metadata['lng']!='' else np.nan
         meta['NAME'] =  location.metadata['name'] if location.metadata['name']!='' else np.nan
-        meta['UNITS'] = UNITS # Manual override bcs -> location.sensors['units'] # This can DIFFER from the actual data. For data you can specify a transform to metric.
+        meta['UNITS'] = self._data_unit # UNITS # Manual override bcs -> location.sensors['units'] # This can DIFFER from the actual data. For data you can specify a transform to metric.
         #meta['ELEVATION'] = location['elevation']
         meta['TZ'] = GLOBAL_TIMEZONE
         meta['OWNER'] = 'NOAA/NOS'
@@ -746,6 +768,7 @@ class contrails_fetch_data(fetch_station_data):
 
     def __init__(self, station_id_list, periods, config, product='river_water_level', owner='NCEM', resample_mins=15):
         self._owner=owner
+        self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # product
         except KeyError:
@@ -972,7 +995,7 @@ class contrails_fetch_data(fetch_station_data):
         meta['LAT'] = data2['latitude_dec'] if data2['latitude_dec'] !='' else np.nan
         meta['LON'] = data2['longitude_dec'] if data2['longitude_dec'] !='' else np.nan
         meta['NAME'] = data['location'] if data2['location'] !='' else np.nan
-        meta['UNITS'] = UNITS # Manual override bcs -> data['units'].replace('.','') # I have seen . in some labels
+        meta['UNITS'] = self._data_unit # UNITS # Manual override bcs -> data['units'].replace('.','') # I have seen . in some labels
         meta['TZ'] = GLOBAL_TIMEZONE # data['utc_offset']
         ###meta['ELEVATION'] = data['elevation']
         meta['OWNER'] = self._owner # data2 always returns the value=DEPRECATED data2['owner']
