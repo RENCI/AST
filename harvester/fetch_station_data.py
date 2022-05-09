@@ -705,7 +705,7 @@ class contrails_fetch_data(fetch_station_data):
         Currently tested input products:
         river_water_level 
         coastal_water_level
-
+        air_pressure
     """
     # dict( persistant tag: source speciific tag )
 
@@ -845,13 +845,13 @@ class contrails_fetch_data(fetch_station_data):
         # 
         arbitrary_min = 600 
         product = self._product
+        df=df.astype(float)
         if product == 'Stage' or product == 'Water Elevation':
             utilities.log.info('Contrails. Converting to meters')
-            df=df.astype(float) * 0.3048 # Convert feet to meters
+            df=df * 0.3048 # Convert feet to meters
             return df
         if product == 'Barometric Pressure':
             test_val = max(df.values)
-            df=df.astype(float)
             if test_val < arbitrary_min:
                 utilities.log.info('Contrails. Converting inHg to millibars (atm)')
                 df=df * 1000.0 / 29.52998 
