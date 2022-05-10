@@ -45,20 +45,24 @@ python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source '
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'air_pressure'
 
-
-# 3) NDBC. Required input files
-    ../supporting_data/ndbc_buoys.csv. To provide a list of buoy ids, names and states
-
-a) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NDBC' --data_product 'wave_height'
-
-
-
 #Testing output datafiles
     1) ./contrails_stationdata_RIVERS_2022-02-20T00:00:00.csv
     2) ./contrails_stationdata_meta_RIVERS_2022-02-20T00:00:00.csv
  or
     1) ./contrails_stationdata_COASTAL_2022-02-20T00:00:00.csv
     2) ./contrails_stationdata_meta_COASTAL_2022-02-20T00:00:00.csv
+
+# 3) NDBC. Required input files
+    ../supporting_data/ndbc_buoys.csv. To provide a list of buoy ids, names and states
+
+# NOTE: data only exist for the past 45 days. SO reset your timeout accordingly
+a) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'wave_height'
+b) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'pressure'
+c) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'wind_speed'
+
+#Testing output datafiles
+    1) ./ndbc_stationdata_2022-02-20T00:00:00.csv
+    2) ./ndbc_stationdata_meta_2022-02-20T00:00:00.csv
 
 #
 # Examples of running main for ASGS/ADCIRC data
