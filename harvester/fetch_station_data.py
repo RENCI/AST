@@ -26,6 +26,9 @@ import xmltodict
 # NOAA/NOS
 import noaa_coops as coops
 
+# NDBC
+from siphon.simplewebservice.ndbc import NDBC
+
 # THREDDS (ADCIRC model)
 import netCDF4 as nc4
 import numpy as np
@@ -49,6 +52,7 @@ def map_product_to_harvester_units(product):
         'water_level': 'm',
         'predictions': 'm',
         'hourly_height': 'm',
+        'wave_height': 'm',
         'river_water_level': 'm',
         'coastal_water_level': 'm',
         'air_pressure':'mb',
@@ -1004,4 +1008,132 @@ class contrails_fetch_data(fetch_station_data):
         #
         df_meta=pd.DataFrame.from_dict(meta, orient='index')
         df_meta.columns = [str(station)] 
+        return df_meta
+
+## Must MANUALLY convert to metric here
+
+class ndbc_fetch_data(fetch_station_data):
+    """
+    Input:
+        station_id_list: list of NDBC buoy ids <str>
+        a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
+        a valid PRODUCT id <str>: wave_height,pressure, wind_speed
+
+        One dict is used to manage jobs. The products dict maps generic product names used by high level codes
+        (keys) to the specific product names in NDBC 
+
+        UNITS: Based on an examinination of the data and comparison to plots on the NDBC website, it appears that
+        at least for the tested stations:
+            wave_height: meters
+            pressure: mbars 
+            wind_speed: m/s
+ 
+        Currently tested input products:
+            wave_heigh
+            pressure
+            wind_speed
+    """
+    # dict( persistant tag: source specific tag )
+    # products defines current products (as keys) and uses the value as a column header in the returned data set
+
+    # NOTE: This dict maps the generic input data type (key) to the actual product name used by noaa-coops
+
+    products={ 'wave_height':'wave_height', 
+               'pressure': 'pressure',
+               'wind_speed':'wind_speed'}
+
+    def __init__(self, station_id_list, periods, product='wave_height', units='metric',
+                resample_mins=15):
+        """
+        NDBC: National Data Buoy Center
+        Read buoy product data.
+
+        Parameters
+            station_id_list: :List of triplets [(id,name,state)...]
+            periods: A tuple of time range (timein,timeend).format %Y-%m-%d %H:%M:%S
+       
+        """
+        self._data_unit=map_product_to_harvester_units(product)
+        try:
+            self._product=self.products[product] # self.products[product] # product
+            utilities.log.info('NDBC Fetching product {}'.format(self._product))
+        except KeyError:
+            utilities.log.error('NDBC No such product key. Input {}, Available {}'.format(product, self.products.keys()))
+            sys.exit(1)
+        else:
+            self._units='metric' # Redundant cleanup TODO
+        if units !='metric':
+            utilities.log.info('NDBC: units must be metric: {}: Abort'.format(units))
+            sys.exit(1)
+        super().__init__(station_id_list, periods, resample_mins=resample_mins)
+
+#TODO metric con versions
+    def fetch_single_product(self, buoy, time_range) -> pd.DataFrame:
+        """
+        For a single NDBC site_id, process the tuple from the input period.
+        Aggregate them into a dataframe with index pd.timestamps and a single column
+        containing the desired product values. Rename the column to station id
+        
+        Input:
+            station <str>. A valid NDBC buoy id
+            time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
+
+        Return:
+            dataframe of time (timestamps) vs values for the requested station
+        """
+        tstart,tend=time_range
+
+        utilities.log.info('NDBC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
+        try:
+            df = NDBC.realtime_observations(buoy[0])
+            df_data = df[['time',self.products[self._product]]]
+            newtimes =  [ d.replace(tzinfo=None) for d in df_data['time']]
+            df_data['time']=newtimes
+            df_data.columns=['TIME',self.products[self._product].upper()]
+            df_data.set_index('TIME',inplace=True)
+            df_data.columns=[str(buoy[0])]
+            df_data.sort_index(inplace=True) # From lowest to highest
+            df_data = df_data.loc[time_range[0]:time_range[1]]
+        except ConnectionError:
+            utilities.log.error('Hard fail: Could not connect to NDBC for products {}'.format(bouy[0]))
+        except HTTPError:
+            utilities.log.error('Hard fail: HTTP error to NDBC for products')
+        except Timeout:
+            utilities.log.error('Hard fail NDBC: Timeout')
+        except Exception as e:
+            utilities.log.error('NDBC data error: {} was {}'.format(e, self._product))
+        try:
+            df_data=df_data.astype(float)
+        except Exception as e:
+            utilities.log.error('NDBC concat error: {}'.format(e))
+            df_data = np.nan
+        return df_data
+
+    def fetch_single_metadata(self, buoy) -> pd.DataFrame:
+        """
+        For a single NDBC site_id fetch the associated metadata.
+        The choice of data is highly subjective at this time.
+
+        Input:
+             A valid buoy id <str>
+        Return:
+             dataframe of preselected metadata for a single station in the (keys,values) orientation
+
+             This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+             to our preferred orientation with stations as index
+        """
+        meta=dict()
+        df_latest = NDBC.latest_observations().set_index('station')
+        lat, lon = df_latest.loc[buoy[0]][['latitude','latitude']]
+        lat,lon = convert_lat_lon_to_deg_east(lat,lon)
+        meta['LAT'] = lat
+        meta['LON'] = lon
+        meta['NAME'] =  buoy[1]
+        meta['UNITS'] = self._data_unit 
+        meta['TZ'] = GLOBAL_TIMEZONE
+        meta['OWNER'] = 'NONE'
+        meta['STATE'] = buoy[2]
+        meta['COUNTY'] = np.nan # None
+        df_meta=pd.DataFrame.from_dict(meta, orient='index')
+        df_meta.columns = [str(buoy[0])]
         return df_meta

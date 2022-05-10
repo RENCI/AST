@@ -18,7 +18,7 @@ import pandas as pd
 import datetime as dt
 import math
 
-from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_data
+from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data
 from utilities.utilities import utilities as utilities
 
 ##
@@ -26,12 +26,15 @@ from utilities.utilities import utilities as utilities
 ##
 
 # Currently supported sources
-SOURCES = ['NOAA','CONTRAILS']
+SOURCES = ['NOAA','CONTRAILS','NDBC']
 
 #def get_noaa_stations(fname='./config/noaa_stations.txt'):
 def get_noaa_stations(fname=None):
     """
     Simply read a CSV file containing stations under the header stationid
+
+    Expected format is
+        serial_nr, stationid
     """
     if fname is None:
         utilities.log.error('No NOAA station file assigned: Abort')
@@ -47,6 +50,9 @@ def get_contrails_stations(fname=None):
     Simply read a CSV file containing stations under the header stationid
     A convenience method to fetch river guage lists. 
     Contrails data
+
+    Expected format is
+        serial_nr, stationid
     """
     if fname is None:
         utilities.log.error('No Contrails station file assigned: Abort')
@@ -56,6 +62,32 @@ def get_contrails_stations(fname=None):
     contrails_stations_list = df["stationid"].to_list()
     contrails_stations=[word.rstrip() for word in contrails_stations_list] 
     return contrails_stations
+
+def get_ndbc_buoys(fname=None):
+    """
+    Read a list of buo data stations. These data are more complicated because
+    the NDBC reader doesnt easily provide the location and state information. Thus
+    we expect this input file to carry that infomration.
+    
+    Expected format is
+        serial_nr, stationid, location, state
+    
+    Return a list of tuples:
+    [ (station,location,state), (station, location, state), etc]
+
+    """
+    if fname is None:
+        utilities.log.error('No NDBC station file assigned: Abort')
+        sys.exit(1)
+    df_buoys = pd.read_csv(fname,index_col=0, header=0, skiprows=[1])
+    df_buoys["stationid"] = df_buoys["stationid"].astype(str)
+    # Many buoys have NO STATE affiliation to replace nans with NONE
+    df_buoys['state']=df_buoys['state'].fillna('NONE')
+    list_stations = df_buoys["stationid"].tolist()
+    list_locations = df_buoys["location"].tolist()
+    list_states = df_buoys["state"].tolist()
+    station_tuples = tuple(zip(list_stations, list_locations, list_states))
+    return station_tuples
 
 def choose_common_header_name(product):
     """
@@ -71,11 +103,13 @@ def choose_common_header_name(product):
     """
     product_name_maps={
         'water_level': 'water_level',
+        'wave_height': 'wave_height',
         'predictions': 'water_level', 
         'hourly_height': 'water_level',
         'river_water_level': 'water_level',
         'coastal_water_level': 'water_level',
         'air_pressure':'air_pressure',
+        'pressure':'pressure',
         'wind_speed':'wind_speed'
         }
 
@@ -147,6 +181,22 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
     except Exception as e:
         utilities.log.error('Error: CONTRAILS: {}'.format(e))
     return df_contrails_data, df_contrails_meta
+
+def process_ndbc_buoys(time_range, ndbc_buoys, data_product='water_level', resample_mins=15 ):
+    # Fetch the data
+    ndbc_products=['wave_height', 'air_pressure']
+    try:
+        if not data_product in ndbc_products:
+            utilities.log.error('NDBC: data product can only be {}'.format(ndbc_products))
+            #sys.exit(1)
+        ##print(ndbc_buoys)
+        ndbc = ndbc_fetch_data(ndbc_buoys, time_range, product=data_product, resample_mins=resample_mins)
+        df_ndbc_data = ndbc.aggregate_station_data()
+        df_ndbc_meta = ndbc.aggregate_station_metadata()
+        df_ndbc_meta.index.name='STATION'
+    except Exception as e:
+        utilities.log.error('Error: NEW NDBC: {}'.format(e))
+    return df_ndbc_data, df_ndbc_meta
 
 def main(args):
     """
@@ -251,6 +301,31 @@ def main(args):
         except Exception as e:
             utilities.log.error('Error: CONTRAILS: Failed Write {}'.format(e))
             sys.exit(1)
+
+    #NDBC
+    if data_source.upper()=='NDBC':
+        time_range=(starttime,endtime) # Can be directly used by NDBC
+        # Use default station list
+        ndbc_stations=get_ndbc_buoys(args.station_list) if args.station_list is not None else get_ndbc_buoys(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','ndbc_buoys.csv'))
+        ndbc_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
+        data, meta  = process_ndbc_buoys(time_range, ndbc_stations, data_product = data_product)
+        df_ndbc_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
+        # Output
+        # If choosing non-default locations BOTH variables must be specified
+        try:
+            if args.ofile is not None:
+                dataf=f'%s/ndbc_stationdata%s.csv'% (args.ofile,ndbc_metadata)
+                metaf=f'%s/ndbc_stationdata_meta%s.csv'% (args.ometafile,ndbc_metadata)
+            else:
+                dataf=f'./ndbc_stationdata%s.csv'%ndbc_metadata
+                metaf=f'./ndbc_stationdata_meta%s.csv'%ndbc_metadata
+            df_ndbc_data.to_csv(dataf)
+            meta.to_csv(metaf)
+            utilities.log.info('NDBC data has been stored {},{}'.format(dataf,metaf))
+        except Exception as e:
+            utilities.log.error('Error: NDBC: Failed Write {}'.format(e))
+            sys.exit(1)
+
 
     utilities.log.info('Finished with data source {}'.format(data_source))
     utilities.log.info('Finished')
