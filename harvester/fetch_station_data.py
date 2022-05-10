@@ -1124,8 +1124,7 @@ class ndbc_fetch_data(fetch_station_data):
         """
         meta=dict()
         df_latest = NDBC.latest_observations().set_index('station')
-        lat, lon = df_latest.loc[buoy[0]][['latitude','latitude']]
-        lat,lon = convert_lat_lon_to_deg_east(lat,lon)
+        lat, lon = df_latest.loc[buoy[0]][['latitude','longitude']]
         meta['LAT'] = lat
         meta['LON'] = lon
         meta['NAME'] =  buoy[1]
