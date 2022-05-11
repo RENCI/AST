@@ -132,6 +132,13 @@ b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stopt
     5) ./obs_wl_detailed_202201010000_202201031200.json
     6) ./obs_wl_smoothed_202201010000_202201031200.json
 
+# 3) Required NDBC input files are: Notew since NDBC only keeps about 45 days of data, you'll need to adjust the times for this example to return data
+     ../supporting_data/ndbc_buoys.csv
+
+a) python get_observations_stations.py --starttime '2022-05-01 00:00:00' --stoptime '2022-05-10 12:00:00' --data_source 'NDBC' --data_product 'wave_height' 
+b) python get_observations_stations.py --starttime '2022-05-01 00:00:00' --stoptime '2022-05-10 12:00:00' --data_source 'NDBC' --data_product 'air_pressure'
+c) python get_observations_stations.py --starttime '2022-05-01 00:00:00' --stoptime '2022-05-10 12:00:00' --data_source 'NDBC' --data_product 'wind_speed'
+
 ##
 ## Getting ADCIRC data from the ASGS
 ##

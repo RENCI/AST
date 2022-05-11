@@ -33,7 +33,7 @@ class get_obs_stations(object):
     SOURCES = ['NOAA','CONTRAILS','NDBC']
     NOAA_PRODUCTS = ['water_level','hourly_height','predictions','air_pressure','wind_speed']
     CONTRAILS_PRODUCTS = ['river_water_level','coastal_water_level','air_pressure']
-    NDBC_PRODUCTS=['wave_height','pressure','wind_speed']
+    NDBC_PRODUCTS=['wave_height','air_pressure','wind_speed']
 
     # Default to assuming a NOAA/NOS WL run
 

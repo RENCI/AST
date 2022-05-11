@@ -1038,7 +1038,7 @@ class ndbc_fetch_data(fetch_station_data):
     # NOTE: This dict maps the generic input data type (key) to the actual product name used by noaa-coops
 
     products={ 'wave_height':'wave_height', 
-               'pressure': 'pressure',
+               'air_pressure': 'pressure',
                'wind_speed':'wind_speed'}
 
     def __init__(self, station_id_list, periods, product='wave_height', units='metric',
