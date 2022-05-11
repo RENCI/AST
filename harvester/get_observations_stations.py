@@ -30,9 +30,10 @@ class get_obs_stations(object):
 
     # Currently supported sources and products
 
-    SOURCES = ['NOAA','CONTRAILS']
-    NOAA_PRODUCTS = ['water_level','hourly_height','predictions']
-    CONTRAILS_PRODUCTS = ['river_water_level','coastal_water_level']
+    SOURCES = ['NOAA','CONTRAILS','NDBC']
+    NOAA_PRODUCTS = ['water_level','hourly_height','predictions','air_pressure','wind_speed']
+    CONTRAILS_PRODUCTS = ['river_water_level','coastal_water_level','air_pressure']
+    NDBC_PRODUCTS=['wave_height','pressure','wind_speed']
 
     # Default to assuming a NOAA/NOS WL run
 
@@ -60,6 +61,8 @@ class get_obs_stations(object):
                 utilities.log.error('For Contrails work an authentication yaml is required. It was missing: Abort')
                 sys.exit(1)
             selected_products = self.CONTRAILS_PRODUCTS
+        elif self.source=='NDBC':
+            selected_products = self.NDBC_PRODUCTS
         else:
             utilities.log.error('No valid source specified {}'.format(self.source))
             sys.exit(1)
@@ -70,6 +73,9 @@ class get_obs_stations(object):
 
         if self.source=='CONTRAILS':
             self.station_list=fetch_data.get_contrails_stations(station_list_file)
+
+        if self.source=='NDBC':
+            self.station_list = fetch_data.get_ndbc_buoys(station_list_file)
        
         utilities.log.info('Fetched station list from {}'.format(self.station_list))
 
@@ -184,7 +190,11 @@ class get_obs_stations(object):
             # Use default station list
             noaa_stations=self.station_list
             noaa_metadata='_'+endtime.replace(' ','T') 
-            data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
+            try:
+                data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
+            except Exception as ex:
+                utilities.log.error('NOAA error {}'.format(template.format(type(ex).__name__, ex.args)))
+                sys.exit(1)
 
         if self.source.upper()=='CONTRAILS':
             contrails_config = utilities.load_config(self.contrails_yamlname)['DEFAULT']
@@ -197,9 +207,21 @@ class get_obs_stations(object):
                 contrails_metadata=meta+'_'+endtime.replace(' ','T') 
                 data, meta = fetch_data.process_contrails_stations(time_range, contrails_stations, contrails_config, data_product=self.product, resample_mins=return_sample_min)
             except Exception as ex:
-                utilities.log.error('CONTRAILS error {}, {}'.format(template.format(type(ex).__name__, ex.args)))
+                utilities.log.error('CONTRAILS error {}'.format(template.format(type(ex).__name__, ex.args)))
                 sys.exit(1)
 
+        if self.source.upper()=='NDBC':
+            template = "An exception of type {0} occurred."
+            excludedStations=list()
+            # Use default station list
+            ndbc_stations=self.station_list
+            ndbc_metadata='_'+endtime.replace(' ','T')
+            try:
+                data, meta = fetch_data.process_ndbc_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
+                utilities.log.info('NDBC data {}'.format(data))
+            except Exception as ex:
+                utilities.log.error('NDBC process error {}'.format(template.format(type(ex).__name__, ex.args)))
+                sys.exit(1)
         utilities.log.info('Finished with data source {}'.format(self.source))
         utilities.log.info('Data file {}, meta file {}'.format(data,meta))
         utilities.log.info('Finished')
@@ -288,12 +310,20 @@ def main(args):
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=None,
                     knockout_file=None, station_list_file=noaa_stations)
-    else:
+    elif args.data_source.upper() == 'CONTRAILS':
         contrails_stations=os.path.join(os.path.dirname(__file__), '../supporting_data','contrails_stations.csv')
         contrails_yamlname=os.path.join(os.path.dirname(__file__),'../secrets','contrails.yml')
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=contrails_yamlname,
                     knockout_file=None, station_list_file=contrails_stations)
+    elif args.data_source.upper() == 'NDBC':
+        ndbc_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'ndbc_buoys.csv')
+        rpl = get_obs_stations(source=args.data_source, product=args.data_product,
+                    contrails_yamlname=None,
+                    knockout_file=None, station_list_file=ndbc_stations)
+    else:
+        print('No source specified')
+        sys.exit(1)
 
     # Fetch best resolution and no resampling
     data,meta=rpl.fetch_station_product((starttime,endtime), return_sample_min=0, interval=interval )

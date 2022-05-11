@@ -189,7 +189,6 @@ def process_ndbc_buoys(time_range, ndbc_buoys, data_product='water_level', resam
         if not data_product in ndbc_products:
             utilities.log.error('NDBC: data product can only be {}'.format(ndbc_products))
             #sys.exit(1)
-        ##print(ndbc_buoys)
         ndbc = ndbc_fetch_data(ndbc_buoys, time_range, product=data_product, resample_mins=resample_mins)
         df_ndbc_data = ndbc.aggregate_station_data()
         df_ndbc_meta = ndbc.aggregate_station_metadata()

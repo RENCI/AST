@@ -180,7 +180,6 @@ class fetch_station_data(object):
         except Exception as e:
             utilities.log.error('Aggregate: error: {}'.format(e))
             ##df_data=np.nan
-        print(df_data)
         df_data = df_data.sort_index()
         return df_data
 
