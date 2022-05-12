@@ -57,7 +57,7 @@ python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source '
 
 # NOTE: data only exist for the past 45 days. SO reset your timeout accordingly
 a) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'wave_height'
-b) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'pressure'
+b) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'air_pressure'
 c) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'wind_speed'
 
 #Testing output datafiles

@@ -182,9 +182,9 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
         utilities.log.error('Error: CONTRAILS: {}'.format(e))
     return df_contrails_data, df_contrails_meta
 
-def process_ndbc_buoys(time_range, ndbc_buoys, data_product='water_level', resample_mins=15 ):
+def process_ndbc_buoys(time_range, ndbc_buoys, data_product='wave_height', resample_mins=15 ):
     # Fetch the data
-    ndbc_products=['wave_height', 'air_pressure']
+    ndbc_products=['wave_height', 'air_pressure', 'wind_speed']
     try:
         if not data_product in ndbc_products:
             utilities.log.error('NDBC: data product can only be {}'.format(ndbc_products))

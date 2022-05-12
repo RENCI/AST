@@ -1038,7 +1038,7 @@ class ndbc_fetch_data(fetch_station_data):
     # NOTE: This dict maps the generic input data type (key) to the actual product name used by noaa-coops
 
     products={ 'wave_height':'wave_height', 
-               'air_pressure': 'pressure',
+               'air_pressure':'pressure',
                'wind_speed':'wind_speed'}
 
     def __init__(self, station_id_list, periods, product='wave_height', units='metric',
@@ -1085,10 +1085,10 @@ class ndbc_fetch_data(fetch_station_data):
         utilities.log.info('NDBC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
         try:
             df = NDBC.realtime_observations(buoy[0])
-            df_data = df[['time',self.products[self._product]]]
+            df_data = df[['time',self._product]]
             newtimes =  [ d.replace(tzinfo=None) for d in df_data['time']]
             df_data['time']=newtimes
-            df_data.columns=['TIME',self.products[self._product].upper()]
+            df_data.columns=['TIME',self._product.upper()]
             df_data.set_index('TIME',inplace=True)
             df_data.columns=[str(buoy[0])]
             df_data.sort_index(inplace=True) # From lowest to highest
