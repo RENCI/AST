@@ -353,7 +353,8 @@ def main(args):
 
         data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, adcirc_metadata, data_product, resample_mins=0, fort63_style=args.fort63_style)
         ## df_adcirc_data = format_data_frames(data)
-        ## Skip the melt
+
+        ## Skip the melt: Note this is only for the written file
         df_adcirc_data = data
         # Output 
         try:
