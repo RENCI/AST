@@ -303,31 +303,37 @@ def main(args):
     else:
         utilities.log.info('Chosen data source {}'.format(data_source))
 
-    # Check if this is a Hurricane
-    if not check_if_hurricane(urls):
-        utilities.log.info('URL is not a Hurricane advisory')
-        #sys.exit(1)
-        urltimeStr = strip_time_from_url(urls)
-        urltime = dt.datetime.strptime(urltimeStr,'%Y%m%d%H')
-        runtime=dt.datetime.strftime(urltime, dformat)
+    # If reading in a LOCAL url then we must skip the following steps
+    if not args.raw_local_url:
+        # Check if this is a Hurricane
+        if not check_if_hurricane(urls):
+            utilities.log.info('URL is not a Hurricane advisory')
+            #sys.exit(1)
+            urltimeStr = strip_time_from_url(urls)
+            urltime = dt.datetime.strptime(urltimeStr,'%Y%m%d%H')
+            runtime=dt.datetime.strftime(urltime, dformat)
+        else:
+            utilities.log.info('URL is a Hurricane')
+            urladvisory = strip_time_from_url(urls)
+            runtime=urladvisory
+        ensemble = strip_ensemble_from_url(urls)  # Only need to check on of them
+        gridname = grab_gridname_from_url(urls)   # ditto
+        sitename = strip_sitename_from_url(urls)
+        #starttime='2021-12-08 12:00:00'
+        utilities.log.info('Selected run time/Advisory range is {}'.format(runtime))
     else:
-        utilities.log.info('URL is a Hurricane')
-        urladvisory = strip_time_from_url(urls)
-        runtime=urladvisory
+        print('Raw url data structure specified')
+        utilities.log.info('Running a RAW url type')
+        ensemble = 'NONE'
+        gridname = 'NONE'
+        sitename = 'NONE'
 
     if args.fort63_style:
         utilities.log.info('Fort_63 style station inputs specified')
 
-    ensemble = strip_ensemble_from_url(urls)  # Only need to check on of them
-    gridname = grab_gridname_from_url(urls)   # ditto
-    sitename = strip_sitename_from_url(urls)
-
     ##
     ## Start the processing
     ##
-
-    #starttime='2021-12-08 12:00:00'
-    utilities.log.info('Selected run time/Advisory range is {}'.format(runtime))
 
     # metadata are used to augment filename
     #ASGS
@@ -339,8 +345,12 @@ def main(args):
             adcirc_stations=get_adcirc_stations_fort63_style(fname=fname_stations)
         else:
             adcirc_stations=get_adcirc_stations_fort61_style(fname=fname_stations)
+        # Need to specify something for the metadata 
+        if not args.raw_local_url:
+            adcirc_metadata='_'+ensemble+'_'+gridname.upper()+'_'+runtime.replace(' ','T')
+        else:
+            adcirc_metadata='Raw_data'
 
-        adcirc_metadata='_'+ensemble+'_'+gridname.upper()+'_'+runtime.replace(' ','T')
         data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, adcirc_metadata, data_product, resample_mins=0, fort63_style=args.fort63_style)
         df_adcirc_data = format_data_frames(data)
         # Output 
@@ -382,5 +392,7 @@ if __name__ == '__main__':
                         help='Choose a non-default data product output directory')
     parser.add_argument('--ometafile', action='store', dest='ometafile', default=None, type=str,
                         help='Choose a non-default metadata output directory')
+    parser.add_argument('--raw_local_url', action='store_true',
+                        help='Specify input url is locally stored')
     args = parser.parse_args()
     sys.exit(main(args))
