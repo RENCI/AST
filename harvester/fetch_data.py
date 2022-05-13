@@ -226,7 +226,11 @@ def main(args):
     else:
         time_stop=dt.datetime.now()
 
-    time_start=time_stop+dt.timedelta(days=args.ndays) # How many days BACK
+    # Do we want a hard starttime?
+    if args.starttime is None:
+        time_start=time_stop+dt.timedelta(days=args.ndays) # How many days BACK
+    else:
+        time_start=dt.datetime.strptime(args.starttime,dformat)
 
     starttime=dt.datetime.strftime(time_start, dformat)
     endtime=dt.datetime.strftime(time_stop, dformat)
@@ -336,6 +340,8 @@ if __name__ == '__main__':
                         help='Number of look-back days from stoptime (or now): default -2')
     parser.add_argument('--stoptime', action='store', dest='stoptime', default=None, type=str,
                         help='Desired stoptime YYYY-mm-dd HH:MM:SS. Default=now')
+    parser.add_argument('--starttime', action='store', dest='starttime', default=None, type=str,
+                        help='Desired starttime YYYY-mm-dd HH:MM:SS. Default=None')
     parser.add_argument('--sources', action='store_true',
                         help='List currently supported data sources')
     parser.add_argument('--data_source', action='store', dest='data_source', default=None, type=str,
