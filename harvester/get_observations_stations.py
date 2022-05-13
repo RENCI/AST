@@ -303,21 +303,32 @@ def main(args):
     iometadata = '_'+timein.strftime('%Y%m%d%H%M')+'_'+timeout.strftime('%Y%m%d%H%M')
     #iometadata=''
 
+    station_list = args.station_list
+
     # Invoke the class
     # No longer use the obs.yml file inside the class. keep for future considerations
     if args.data_source.upper() == 'NOAA':
-        noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
+        if station_list is None:
+            noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
+        else:
+            noaa_stations=station_list
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=None,
                     knockout_file=None, station_list_file=noaa_stations)
     elif args.data_source.upper() == 'CONTRAILS':
-        contrails_stations=os.path.join(os.path.dirname(__file__), '../supporting_data','contrails_stations.csv')
+        if station_list is None: 
+            contrails_stations=os.path.join(os.path.dirname(__file__), '../supporting_data','contrails_stations.csv')
+        else:
+            contrails_stations=station_list
         contrails_yamlname=os.path.join(os.path.dirname(__file__),'../secrets','contrails.yml')
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=contrails_yamlname,
                     knockout_file=None, station_list_file=contrails_stations)
     elif args.data_source.upper() == 'NDBC':
-        ndbc_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'ndbc_buoys.csv')
+        if station_list is None:
+            ndbc_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'ndbc_buoys.csv')
+        else:
+            ndbc_stations=station_list
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=None,
                     knockout_file=None, station_list_file=ndbc_stations)
@@ -382,6 +393,7 @@ if __name__ == '__main__':
                         help='choose supported data product eg water_level')
     parser.add_argument('--interval', action='store', dest='interval', default=None, type=str,
                         help='Interval request to the fetcher (h or None): Only used by NOAA')
-
+    parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
+                        help='Choose a non-default location/filename for a stationlist')
     args = parser.parse_args()
     sys.exit(main(args))
