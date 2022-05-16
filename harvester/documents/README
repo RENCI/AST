@@ -84,7 +84,7 @@ d) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2021/al
 e) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' 
 f)  python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --ofile "." --ometafile "."
 
-# Can also specify a LOCAL url datafile. In this case, tho, no scrapingh of the url is possible and so th efinal metadata object will not be very informative
+# Can also specify a LOCAL url datafile. In this case, tho, no scraping of the url for useful information is possible. So the final metadata object will not be very informative
 python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/Projects/NOAA.Reanalysis/fr3/2018/fort.63.nc" --data_source 'ASGS' --station_list '/projects/sequence_analysis/vol1/prediction_work/FR3_UNASSIMILATED_REANALYSIS_2018/supporting_data/unassimilated_stations.csv' --fort63_style --raw_local_url
 
 # Output datafiles
