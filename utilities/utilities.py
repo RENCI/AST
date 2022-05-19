@@ -17,6 +17,7 @@ import logging
 import json
 
 LOGGER = None
+LOGFILE = None
 
 class utilities:
     """
@@ -29,11 +30,14 @@ class utilities:
         Initialize the Utilities class, set up logging
         """
         global LOGGER
+        global LOGFILE
         config_data = utilities.load_config(yaml_file=config_file)
         if LOGGER is None:
-            log = utilities.initialize_logging(subdir=subdir, config=config_data)
+            log,logfile = utilities.initialize_logging(subdir=subdir, config=config_data)
             LOGGER = log
+            LOGFILE = logfile
         utilities.log = LOGGER
+        utilities.LogFile = LOGFILE
         return config_data
 
     def initialize_logging(subdir=None, config=None):
@@ -60,7 +64,6 @@ class utilities:
         #LogName =os.getenv('LOG_NAME','logs')
         LogName='AdcircSupportTools.log'
         LogFile='/'.join([Logdir,LogName])
-        self.LogFile = LogFile
 
         formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(funcName)s : %(module)s : %(name)s : %(message)s ')
         dirname = os.path.dirname(LogFile)
@@ -69,7 +72,7 @@ class utilities:
         file_handler = logging.FileHandler(LogFile, mode='w')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
-        return logger
+        return logger, LogFile
 # YAML
     def load_config(yaml_file=None):
         if yaml_file is None:
