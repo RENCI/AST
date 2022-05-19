@@ -203,7 +203,7 @@ def main(args):
     Then the STARTTIME is ndays on the past
     """
 
-    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
 
     if args.sources:
          print('Return list of sources')

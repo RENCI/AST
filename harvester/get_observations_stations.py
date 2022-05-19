@@ -282,7 +282,7 @@ def main(args):
     It assumes the existance of a proper contrails.yml (if needed) for accessing contrails
     """
 
-    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
 
     # Set up IO env
     utilities.log.info("Product Level Working in {}.".format(os.getcwd()))

@@ -29,11 +29,12 @@ class utilities:
         Initialize the Utilities class, set up logging
         """
         global LOGGER
+        config_data = utilities.load_config(yaml_file=config_file)
         if LOGGER is None:
-            config_data = utilities.load_config(yaml_file=config_file)
             log = utilities.initialize_logging(subdir=subdir, config=config_data)
             LOGGER = log
         utilities.log = LOGGER
+        return config_data
 
     def initialize_logging(subdir=None, config=None):
         """

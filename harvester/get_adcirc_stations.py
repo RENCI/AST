@@ -262,7 +262,7 @@ def main(args):
     """
     import fetch_adcirc_data as fetch_adcirc_data
 
-    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
 
     # Basic checks
     if args.config_name is None:

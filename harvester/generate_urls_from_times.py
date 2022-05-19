@@ -518,7 +518,7 @@ def main(args):
     A simple main method to demonstrate the use of this class
     """
 
-    utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
 
     config_name=os.path.join(os.path.dirname(__file__), '../config', 'url_framework.yml')
 
