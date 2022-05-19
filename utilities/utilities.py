@@ -60,6 +60,7 @@ class utilities:
         #LogName =os.getenv('LOG_NAME','logs')
         LogName='AdcircSupportTools.log'
         LogFile='/'.join([Logdir,LogName])
+        self.LogFile = LogFile
 
         formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(funcName)s : %(module)s : %(name)s : %(message)s ')
         dirname = os.path.dirname(LogFile)
