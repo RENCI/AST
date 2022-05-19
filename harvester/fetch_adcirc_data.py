@@ -168,7 +168,8 @@ def strip_time_from_url(urls):
     We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "time" information will be in position .split('/')[-6]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return time string in either ASGS formatted '%Y%m%d%H' or possibly as a hurricane advisory string (to be checked later)
+    Return:
+         time string in either ASGS formatted '%Y%m%d%H' or possibly as a hurricane advisory string (to be checked later)
     """
     url = grab_first_url_from_urllist(urls)
     try:
@@ -218,7 +219,7 @@ def strip_sitename_from_url(urls, fill='NoSite'):
     The "machine name" information will be in position .split('/')[-4]. It may consist of multiple words.
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return
+    Return:
         canonical site name: (str) eg RENCI,PSC
     """
     known_sites= {'hatteras.renci.org':'RENCI', 

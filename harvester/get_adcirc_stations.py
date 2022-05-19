@@ -54,7 +54,7 @@ def first_available_netCDF4(urls):
     This method seeks to find the tested netCDF4 in a list of netCDF4 urls.
     So we loop over all and simply test for the exitance of the x variable
 
-    Parameters:
+    Input:
         urls. List of urls to netCDF4 files
 
     Return:
@@ -83,7 +83,7 @@ def extract_adcirc_grid_coords( urls_63 )->pd.DataFrame:
     The input URLs is a list. But we only check one of them
     You MUST pass in URLs that point to fort.63.nc
 
-    Parameters:
+    Input:
        urls_63. list(str). THe current list if fort63_style urls from which to get the grid coordinates
     Return:
        adc_coords: Dictionary with the keys ['LON','LAT'] 
@@ -110,7 +110,7 @@ class get_adcirc_stations(object):
     Input station IDs must be stationids or tuples of statiods/nodeids) depending on the
     callers choice of fort63_style.
 
-    Parameters: 
+    Input: 
 
     Returns:
         product: ('water_level').
@@ -127,7 +127,7 @@ class get_adcirc_stations(object):
         """
         get_adcirc_stations constructor
 
-        Parameters: 
+        Input: 
             source: str Named source. For now only ASGS
             product: str, product type desired. For now only water_level
             knockout: A dict used to remove ranges of time(s) for a given station
@@ -194,7 +194,7 @@ class get_adcirc_stations(object):
         This method allows the user to override the current list of stations to process
         They will be subject to the usual validity testing. We overwrite any station data fetched in the class
     
-        Parameters:
+        Input:
             stationlist: list (str) of stationIDs. Overrides any existing list.
         """
         if isinstance(station_list, list):
@@ -214,10 +214,10 @@ class get_adcirc_stations(object):
         to sample the data. The harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn't pad nans), and then
         resample the data at the desired freq (in minutes)
 
-        Parameters:
+        Input:
             urls: List (str). ASGS format. 
             return_sample_min: (int) sampling frequency of the returned, interpolated, data set
-        Results:
+        Return:
             data: Sampled data of dims (time x stations)
             meta: associated metadata
         """

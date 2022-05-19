@@ -95,10 +95,10 @@ def choose_common_header_name(product):
     This is complicated by the fact that different sources use different product names. So here
     we manually construct a dictionary of current harvester supported data products
 
-    Parameters
+    Input:
         product: (str) input product name
 
-    Results
+    Return:
         name: (str) selected common name
     """
     product_name_maps={
