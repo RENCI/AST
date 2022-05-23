@@ -203,7 +203,7 @@ class compute_error_field(object):
         n_pad = self.n_pad
 
         if n_hours_per_period != 12:
-            sys.exit('Interpolation code currently only tested for n_hours_per_period=12')
+            sys.warning('Interpolation code currently only tested for n_hours_per_period=12')
 
         time_step =  int(3600*n_hours_per_tide/n_hours_per_period) # Always scale to an hour (3600s)
         diurnal_range = pd.date_range(timein, timeout+np.timedelta64(n_pad,'h'), freq=str(time_step)+'S').to_list()
