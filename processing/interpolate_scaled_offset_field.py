@@ -14,18 +14,18 @@ from scipy import interpolate as sci
 
 def get_lon_lat_control_values(fname=None, header_data='val')->pd.DataFrame:
     """
-    Simply read a CSV file 
+    Simply read the CSV file 
     Ensure the columns are all have the names: LON,LAT,VALUE
 
     land/water control data are always lon,lat,val. 
 
     Parameters:
-        fname: Filename of the desired land/water control points
+        fname: (str) Filename of the desired land/water control points
         header_data: (str) Alternative name for the clamp/control node data header if not the default
             Will be changed to VAL on exit
 
     Returns:
-        df: In the format LON,LAT,VAL 
+        df: DataFrame witjh tghe headers: LON,LAT,VAL 
 
     """
     if fname is None:
@@ -47,17 +47,17 @@ def get_lon_lat_control_values(fname=None, header_data='val')->pd.DataFrame:
 
 def get_station_values(fname=None, header_data='mean')->pd.DataFrame:
     """
-    Simply read a CSV file 
+    Simply read a proper CSV file 
 
     station (averaging) files can be more complicated than control point files
-    but we assume stationsids are on the index and that each has lon,lat,mean (or header_data)
+    but we assume stationids are on the index and that each has lon,lat,mean (or header_data)
 
     The INPUT headers are very specific to ASTv2 usage
     examples of typical header_data could be 'mean','std'
 
     Parameters:
-        fname: Filename of the desired station (averaging) file
-        header_data: (str) Alternative name for the desired valkue. Eg if not mean it might be "Period_-0"
+        fname: (str) Filename of the desired station (averaging) file
+        header_data: (str) Alternative name for the input desired values. Eg if not mean it might be "Period_-0"
             which by default is the mean of the most last period
             Will be changed to VAL on exit
 
@@ -88,10 +88,10 @@ def randomly_select_dataframe_rows(df, frac=1)->pd.DataFrame:
     Intended for, but not restricted to, station (averaging) data
     This is primarily used if the user wants to perform statistical testing on the
     resulting interpolated fields. Setting frac==1 (default) returns the entire data set 
-    with roiws shuffled (potentiually removes some order biases)
+    with rows shuffled (potentially removing some order biases)
     Setting to < 1, returns a subset of the data randomly selected.
 
-    This method is a place holder for more sophisticated splitting/subsampling
+    This method is a placeholder for more sophisticated splitting/subsampling
     
     Parameters:
         df: DataFrame to reshuffle/resample
@@ -105,14 +105,12 @@ def randomly_select_dataframe_rows(df, frac=1)->pd.DataFrame:
 def knn_fit_control_points(df_source, df_controls, nearest_neighbors=3)->pd.DataFrame:
     """
     Fit the values of input control_points based on the KNN(k) of the input df_source DataFrame
-    knn fit the indata errors,, then apply that model to predict the control point values
+    indata errors. Then apply that model to predict the control point values
 
     This is setup to use a kd_tree method with uniform weights. The default metric is minkowski
          with a default of using manhattan_distance (l1),
 
-    This is anticipating being used within a CV procedure where the actual number iof source/station nodes can vary
-
-    The input df_source data are double checked for missingness. If any, then remove them
+    The input df_source data are double checked for missingness which must be removed
 
     Parameters:
         df_controls: DataFrame with the headers ('LON','LAT','VAL')
@@ -153,7 +151,7 @@ def combine_datasets_for_interpolation(list_dfs) ->pd.DataFrame:
     """
     This method simply combines the provided list of DataFrames into a single DataFrame for passage to
     the interpolation method. We use a list here, since, the caller may vary what data actually gets included
-    for interpolation. The list is unbound. Each dataframe elementr MUST contain the headers:
+    for interpolation. The list is unbound. Each dataframe MUST contain the headers:
     ('LON','LAT','VAL')
     
     Parameters:
@@ -176,7 +174,7 @@ def combine_datasets_for_interpolation(list_dfs) ->pd.DataFrame:
 
 def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='LinearNDInterpolator'):
     """
-    Method to manage building interpolations of guage (ADCIRC-Observational) errors (residuals)
+    Method to manage building interpolations of gauge (ADCIRC-Observational) errors (residuals)
     The model is constructed by interpolation of the input error points
     usually constrained with both zero-nodes positioned offcoast and land control points to better control
     fluctuations at the coast. 
@@ -185,9 +183,10 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
         LinearNDInterpolator (default)
         CloughTocher2DInterpolator
 
-    df_combined is the DataFrame with columns: LON,LAT,VAL that contains all 
-    source and clamp points. It is expected the caller has already KNN processed the 
-    land_control points and concatenated the water_control points
+    Parameters:
+        df_combined (DatraFrame) is the DataFrame with columns: LON,LAT,VAL that contains all 
+        source and clamp points. (DataFrame) It is expected the caller has already KNN processed the 
+        land_control points and concatenated the water_control points
 
     Results:
         model: The actual model use for subsequent extrapolations
@@ -232,6 +231,9 @@ def interpolation_model_transform(adc_combined, model=None, input_grid_type='poi
         adc_combined: dict with keys 'LON':list,'LAT':list
         input_grid_type: (str) either points or grid.
         model: Resuting from a prior 'fit'
+
+    Returns:
+        DataFrame: inteprolated grid
     """
     if model is None:
         utilities.log.error('interpolation_model_transform: No model was supplied: Abort')
@@ -293,6 +295,17 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
     The MEAN Squared Error computation is only performed using the test set of stations. If we included the water_controls
     that would down-bias the statistics (they are always zero and always correct). The land_controls are also leftout but 
     tested separately
+
+    Parameters:
+        df_source (DataFrame) stationds x errors
+        df_land_controls: (DataFrame) stationsids x values(==0). Will be updated using KNN
+        df_water_controls: (DataFrame) stationsids x values(==0) 
+        cv_splits: (int) Type of Cross-validation splitting
+        nearest_neighbors: (int) How many gauges should be applied to KNN compute land_control nodes 
+
+    Returns:
+        kf_dict: (dict) Statistical values for the full data set. Returns aveMSE, for each CV fold and overall best_cnt
+        kf_cntr_dict: (dict) Statistical values for the only the land control nodes. Returns aveCnrlMSE, for each CV fold and overall best_cnt
     """
 
     utilities.log.info('Initiating the CV testing: Using station drop outs to check overfitting. cv_splits {}, knn {}'.format(cv_splits, nearest_neighbors))

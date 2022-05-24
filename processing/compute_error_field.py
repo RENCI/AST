@@ -16,7 +16,7 @@ import json
 
 def interpolate_and_sample( diurnal_range, df_in )-> pd.DataFrame:
     """
-    This function take an input DataFrame (nominally on the hour) and transforms it to a semidiurnal 
+    This function take an input DataFrame (usually sampled on the hour) and transforms it to a semidiurnal 
     time series based on the desired indexes assembled in durnal_range. The new diurnal_range entries are
     combined with the given DataFrame entries and assigned a NaN value.  Data are sorted and duplicates removed.
     The data are then interpolated using a default model of Linear. The desired diurnal_range of values are
@@ -26,8 +26,8 @@ def interpolate_and_sample( diurnal_range, df_in )-> pd.DataFrame:
         df_in: A DataFrame times (datetime64) x stations
         diurnal_range:  list of datetime64
        
-    Return:
-        df_out: DataFrame. datetime64 x station) on a semidiurnal time sequence
+    Returns:
+        df_out: DataFrame. (datetime64 x station) on a semidiurnal time sequence
 
     """
     df_x = pd.DataFrame(diurnal_range, columns=['TIME'])
@@ -47,10 +47,10 @@ def combine_data_to_dict(in_adc,in_obs,in_err, product='WL')->dict:
     executing data pipelines
 
     Parameters:
-        in_adc,in_obs,in_diff:  DataFrames times (datetime64) x station
-        product: (str) A user selected product name to add to final dict object
+        in_adc,in_obs,in_diff:  DataFrames (datetime64 x station)
+        product: (str) A user selected product header name to add to final dict object
 
-    Return:
+    Returns:
         df_merged_dict: A Dict of the merged 3 data source DataFrame suitable for JSON storage  
     """
     adc,obs,err = in_adc.copy(), in_obs.copy(), in_err.copy()
@@ -110,27 +110,27 @@ def generate_merged_dict_data(df_merged, product='WL')->dict:
 
 class compute_error_field(object):
     """ 
-    This class supports computing station errors between, nominally, observations and adcirc results.
+    This class supports computing station errors between observations and adcirc results.
     Some facility for alignment of times, station exclusins, transformation to a semidiurnal time are supported.
     The final results (errors) are packaged up for passage to an interpolator to build adcirc offset scaler felds.
 
-    Explain the bound_lo,bound_hi values. If no bounds are supplied, then the intersection of values between adcirc
+    Additional time-range seldction may be performed with bound_lo,bound_hi values. If no bounds are supplied, then the intersection of values between adcirc
     and observations will be selected
 
-    The input data structures are generally expected to arise from, using the Harvester codes
+    The input data structures are generally expected to arise from using the AST/Harvester codes
     
     Parameters:
-        obs: A dataframe of index (datetime) x stations from observations (get_obs_stations)
+        obs: A dataframe of index (datetime x stations) from observations (get_obs_stations)
        meta: A dataframe of meta data for the stations generally from calling the harvesterr code (get_obs_stations)
-        adc: A dataframe of index (datetime) x stations from, ASGS/ADCIRC (get_adc_stations)
+        adc: A dataframe of index (datetime x stations) from, ASGS/ADCIRC (get_adc_stations)
 
-        All time series data are expected to come in as hourly sampling
+        All time series data are expected to come in as hourly sampling, though other sampling is supported
 
         Case uses: Generally for ADDA or APSVIZ2, researchers want to assemble data into 12-hour periods and
-            examine the average error over each period. In this case one would sety parameters as n_hours_per_periods=12, 
-            n_n_averging_periods=4. 
+            examine the average error over each period. In this case one would set parameters as n_hours_per_periods=12, 
+            n_averging_periods=4. 
         For example, if you want to take a years worth of hourly data and return the daily averages for all data
-        one would: set n_hours_per_periods = 24, and n_n_averging_periods = n_yearly_length(hours) // 24 
+        one would: set n_hours_per_periods = 24, and n_averging_periods = n_yearly_length(hours) // 24 
     """
 
     def __init__(self, obs, adc, meta, n_hours_per_period=12, n_hours_per_tide=12.42, n_pad=1, zthresh=3, exclude_outlier=False):
@@ -143,8 +143,8 @@ class compute_error_field(object):
             adc: DataFrame time series of ADC station.
             meta: DataFrame meta data of OBS station. (names, lat/lon/etc)
             n_hours_per_period: (int). The number of hours (entries) defining a period
-            n_hours_per_tide: . The semidiurnal period (if needed)
-            n_pad: If requestring diurnal tidals, then this adds n_pad of flanking entries to the time series
+            n_hours_per_tide: (int) The semidiurnal period (if needed)
+            n_pad: (int) If requestring diurnal tidals, then this adds n_pad of flanking entries to the time series
             z_thresh: (int) If exclusion stations based on Z-scoring, this is the threshold
             exclude_outlier: (bool). Exclude (or not) stations based on Z-score
         """
@@ -165,8 +165,7 @@ class compute_error_field(object):
 
     def _intersection_stations(self):
         """ 
-        Often times the stations included in the ADCIRC data and the provided observations data 
-        can diverge abit. Here we remove not shared stations and update, inplace, the provided DataFrame 
+        Here we remove stations not shared. Update inplace
         """
         common_stations = self.obs.columns & self.adc.columns
         self.obs = self.obs[common_stations]
@@ -188,7 +187,7 @@ class compute_error_field(object):
     def _tidal_transform_data(self):
         """
         For ADC and OBS. transform data (inplace). Interpolate on a diurnal time of period n_hours_per_tide = 12.42
-        hours (3726 secs). Once done remove the input hourly data keeping only the newly interpolated 
+        hours (3726 secs). Once done, remove the input hourly data keeping only the newly interpolated 
         results
         Expects intersection of times and bounds to have been applied. No checks are performed
         NOTE timein, timeout are interpolation ranges and not actual data fetches. So extending timeout
@@ -225,7 +224,7 @@ class compute_error_field(object):
         Parameters:
             time_range: Tuple of (str,str) ('%Y-%m-%d %H:%M:%S'): DataFrame time series of OBS station.
 
-        Return:
+        Returns:
              Update OBS,ADC (inplace)
         """
         dformat='%Y-%m-%d %H:%M:%S'
@@ -252,6 +251,7 @@ class compute_error_field(object):
         Process the Summary error data and look for stations with 
         outlier status. This may imply an outside forcing function 
         and warrents removal of the station. 
+        Use self.z_thresh to remove stations based on Z-score.
 
         Removal of station from the summary data are performed inplace
 
@@ -263,30 +263,16 @@ class compute_error_field(object):
         self.df_final.drop(droplist,axis=0)
         utilities.log.info('Requested check for station error outlier status. {} stations removed using a zthresh of {}.'.format(len(droplist),self.z_thresh))
 
-    #def _constructMetaData(self):
-    #    """Build metadata dictionary fir caller to storage to disk
-    #    """
-    #    Meta = { 'OBS_filename': self.obs_filename,
-    #             'ADC_filename':self.adc_filename,
-    #             'Tide padding': self.n_pad,
-    #             'Ave periods': self.n_cycles,
-    #             'Bounds lo': self.bound_lo,
-    #             'Bounds hi': self.bound_hi,
-    #             'Time steps per period': self.n_hours_per_period,
-    #             'Tidal period ':self.n_hours_per_tide}
-    #    return Meta
-
     def _compute_and_average_errors(self):
         """
-        We expect that time bounds have been set so we can average over periods in multiples of n_hours_per_period steps
+        Average over periods in multiples of n_hours_per_period steps
         This method does not require a semidiurnal treansformation to have been perfrormed
+
+        We expect that time bounds have been set
         """
         # Get the raw diffs, NaNs and all. Some applications want this
 
         self.diff = self.adc - self.obs
-
-        ## Why keep this ?
-        ## merged = self._combine_data_multiindex(self.adc, self.obs, self.diff)
 
         ## Prep diff for some averaging
         self.diff.reset_index(inplace=True)
