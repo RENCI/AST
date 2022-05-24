@@ -16,7 +16,7 @@ from argparse import ArgumentParser
 def is_hurricane(test_val)->bool:
     """
     Determine of the input test val is a Date, an Int or something else
-    Input: 
+    Parameters: 
         test_val: For a valid time enter a str with dformat %Y-%m-%d %H:%M:%S or %Y%m%d%H
                   For a valid hurricane enter an int
     """
@@ -40,10 +40,10 @@ def generate_six_hour_time_steps_from_range(time_range)->list:
     Given the input time tuple, return the inclusive set of times that occur on
     the daily 6 hour mark. So on output we would have 00Z,06Z,12Z,18Z times only 
 
-    Input: 
+    Parameters: 
         time_range: Tuple (datetime,datetime) of the start and end times (datetime objects)
 
-    Return:
+    Returns:
         list_of_times: list of (str) times in the format: %Y%m%d%H
 
     """
@@ -59,7 +59,7 @@ def generate_six_hour_time_castings_from_range(time_range)->list:
     A non-hurricane
     Advisory. We need to distinguish between the two. Note, we can be promiscuous here 
     with the URLs, since urls that do not exist will get trapped by Harvester
-    Input: 
+    Parameters: 
         time_range: tuple (datetime,datetime)
     Returns:
         list_of_times: list of times/advisories in the a string format to build new urls
@@ -85,7 +85,7 @@ def generate_six_hour_time_advisories_from_range(advisory_range)->list:
 
     Save Advisories in a leading zero format: "{:02d}".format(adv)
 
-    Input: 
+    Parameters: 
         advisory_range: tuple (int,int)
     Returns:
         list_of_advisories: list of times/advisories in the a string format to build new urls
@@ -112,7 +112,7 @@ def generate_six_hour_time_steps_from_offset(time_value, offset)->list:
     For an arbitrary URL, we could have a conventional now/forecast OR a Hurricane
     Advisory. We need to distinguish between the two. Note, we can be promiscuous here 
     with the URLs, since urls that do not exist will get trapped by Harvester
-    Input: 
+    Parameters: 
         time_val: (datetime) Either the time or advisory value from a asgs url
         offset: (int) Number of DAYS to look back/forward from strvalue
             if strvalue is an Advisory then we look back a number of STEPS 
@@ -134,7 +134,7 @@ def generate_six_hour_time_castings_from_offset(time_value,offset)->list:
     the overall code has not been tested for it, we simply reorder the times
     as necc and proceed
 
-    Input: 
+    Parameters: 
        time_value: (datetime) start time
        offset: (int) Number of DAYS to look back/forward from strvalue
 
@@ -161,7 +161,7 @@ def generate_six_hour_time_advisories_from_offset(strtime,offset)->list:
 
     Save Advisories in a leading zero format: "{:02d}".format(adv)
 
-    Input: 
+    Parameters: 
        strvale: (str) time
        offset: (int) Number of DAYS to look back/forward from strvalue
 
@@ -188,7 +188,7 @@ def grab_years_from_time_list(list_of_times)->list:
     Note: This could be a list of Advisories as well. If so, 
     simply return the advisory number, though it will probably not be used
 
-    Input: 
+    Parameters: 
         list_of_times: List of (str) time in the format %Y%m%d%H
     Returns:
         list of years values
@@ -212,7 +212,7 @@ def generate_list_of_instances(list_of_times, in_gridname, in_instance):
     Currently, though, we will simply build a list of identical instances.
     The value of the selected instance may be passed in by the caller
 
-    Input: 
+    Parameters: 
        list_of_times: list (str)(%Y%m%d%H) ordered set of instances from which to build new URLs
        in_gridname: current gridname from a representative INPUT url
        in_gridname: current instance from a representative INPUT url
@@ -263,7 +263,7 @@ def construct_starttime_from_offset(stoptime,ndays):
     advosirty shiort assuming each advisaory is 6 hoursa in duration. No
     negative advisories are returned
 
-    Input:
+    Parameters:
         stoptime (str) (%Y-%m-%d %H:%M:%S)
         ndays: (int) number of 24 hours days to look back/forward
 
@@ -310,7 +310,7 @@ class generate_urls_from_times(object):
         3) Input URL and offset only. This will scrap the time/advisory from the URL and offset it in 6 hour steps
                generate a set of URLs between the two time/advisory ranges. This can work for a Hurricanes 
 
-    Input: 
+    Parameters: 
         url: (str) A single URL from which more URLs may be built
         ndays: (int) Number of look back/ahead days from the stoptime value 
         starttime: (str) Selected time to begin the building of the list (YYYY-mm-dd HH:MM:SS)
@@ -382,15 +382,18 @@ class generate_urls_from_times(object):
         if url is not None:
            print('Current estimated ensemble {}, instance {}, and gridname {}'.format(self.ensemble,self.instance_name,self.grid_name))
 
-    def build_url_list_from_template_url_and_times(self, ensemble='nowcast'):
+    def build_url_list_from_template_url_and_times(self, ensemble='nowcast')-> list:
         """
         We seek to build a set of compatible URLs spanning the input time range based on the
         structure of the input URL. We expect the caller to provide a proper ensemble value
         for the new URLs. 
         We expect no changes in the grid name. Only change in the ensemble and times are expected
    
-        Input:
+        Parameters:
             ensemble: (str) Caller specified ensemble. THis way one could input a namforecast but request nowcasts, eg.
+
+        Returns:
+            urls: list(str). List of valid URLs for processing
         """
         url = self.url
         time_range=(self.starttime,self.stoptime) # This could also be an advisory range
@@ -407,16 +410,20 @@ class generate_urls_from_times(object):
         return urls
 
 # This might be used by the APSVIZ2 pipeline where only forecast url is presented
-    def build_url_list_from_template_url_and_offset(self, ensemble='nowcast'):
+    def build_url_list_from_template_url_and_offset(self, ensemble='nowcast')->list:
         """
-        We seek to build a set of compatible URLs startting from the URL embedded time 
+        We seek to build a set of compatible URLs starting from the URL embedded time 
         and walking back/forward offset days while using the provided ensemble value.
         Eg, you might send in a forecast and want back a list of nowcasts for the same grid
         structure of the input URL. We expect the caller to provide a proper ensemble value
         for the new URLs. 
         We expect no changes in the grid name. Only change in the ensemble and times are expected
    
-        Input:
+        Parameters:
+            ensemble: (str)( def of "nowcast") The desired ensemble word for the resultant urls
+
+        Returns:
+            urls: list(str). List of valid URLs for processing
         """
         url = self.url
         time_value=self.stoptime  # Could also be an advisory
@@ -437,7 +444,7 @@ class generate_urls_from_times(object):
         return urls
 
 # Approach Used by ADDA
-    def build_url_list_from_yaml_and_times(self, ensemble='nowcast'):
+    def build_url_list_from_yaml_and_times(self, ensemble='nowcast')->list:
         """
         We seek to build a set of compatible URLs spanning the input time range based on the
         structure of asgs urls in the config_name. The structure of the output URLs wil be based on the 
@@ -446,11 +453,16 @@ class generate_urls_from_times(object):
         for the new URLs. 
         We REQUIRE the grid name. Only change in the ensemble and times are expected
    
-        Input:
-            time_range: (tuple) (datetime,datetime). Time range inclusive (could also be hurricane advisories)
-            instance: (str) if set the used for all urls. If not, attempt to find it in the yaml
-            gridname: (str) name for the grid
+        Uses the following class variables:
+        time_range: (tuple) (datetime,datetime). Time range inclusive (could also be hurricane advisories)
+        instance: (str) if set the used for all urls. If not, attempt to find it in the yaml
+        gridname: (str) name for the grid
+
+        Parameters:
             ensemble: (str) ensemble name (dafaults to nowcast)
+
+        Returns:
+            urls: list(str). List of valid URLs for processing
         """
         if self.config_name is None:
             utilities.log.error('self.config_name is None. Cannot use the YAML generators: Abort')
@@ -460,7 +472,6 @@ class generate_urls_from_times(object):
         except FileNotFoundError: # OSError:
             utilities.log.error('No URL structural config  yml file found.{}: Abort'.format(self.config_name))
             sys.exit(1)
-
         
         time_range=(self.starttime,self.stoptime) # Could also be a range of advisories
         list_of_times = generate_six_hour_time_steps_from_range(time_range)
@@ -475,7 +486,7 @@ class generate_urls_from_times(object):
         return urls
 
 # Approach Used by ADDA
-    def build_url_list_from_yaml_and_offset(self, ensemble='nowcast'):
+    def build_url_list_from_yaml_and_offset(self, ensemble='nowcast')->list:
         """
         We seek to build a set of compatible URLs spanning the input time range based on the
         structure of asgs urls in the config_name. The structure of the output URLs wil be based on the 
@@ -484,11 +495,17 @@ class generate_urls_from_times(object):
         for the new URLs. 
         We REQUIRE the grid name. Only change in the ensemble and times are expected
    
-        Input:
-            offset: (int). Offset in days
-            instance: (str) if set then used for all urls
-            gridname: (str) name for the grid
+        Uses the following class variables:
+        offset: (int). Offset in days
+        instance: (str) if set then used for all urls
+        gridname: (str) name for the grid
+        ensemble: (str) ensemble name (dafaults to nowcast)
+
+        Parameters:
             ensemble: (str) ensemble name (dafaults to nowcast)
+
+        Returns:
+            urls: list(str). List of valid URLs for processing
         """
         if self.config_name is None:
             utilities.log.error('self.config_name is None. Cannot use the YAML generators: Abort')

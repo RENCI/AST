@@ -20,10 +20,16 @@ SOURCES = ['ASGS']
 
 ##TODO reconcile the different data structures for fort63/fort61
 ##    Requires mods in the fetch_adcirc_data.py code where for fort63, it build a list of stationid,node tuples
-def get_adcirc_stations_fort63_style(fname=None):
+def get_adcirc_stations_fort63_style(fname=None)->pd.DataFrame:
     """
     Simply read a list of stations from a csv file.
     This gets read into a DataFrame. File MUST contain at least Node and stationid columns
+
+    Parameters:
+        fname: (str) full path to a valid stationid file
+    Returns:
+        DataFrame: [stationid, Node]
+
     """
     if fname is None:
         utilities.log.error('No Fort63_style ADCIRC station file assigned: Abort')
@@ -33,7 +39,7 @@ def get_adcirc_stations_fort63_style(fname=None):
         df["stationid"]=df["stationid"].astype(str)
         df["Node"]=df["Node"].astype(int)
     except IndexError as e:
-        utilities.log.error('UNsuccessful fort63_station read. Perhaps no Node column ? {}'.format(e))
+        utilities.log.error('Unsuccessful fort63_station read. Perhaps no Node column ? {}'.format(e))
     return df
 
 def get_adcirc_stations_fort61_style(fname=None):
@@ -41,6 +47,12 @@ def get_adcirc_stations_fort61_style(fname=None):
     Simply read a list of stations from a csv file. File MUST contain a stationid column
     Generally, we simply combine NOAA and Contrails into a single list. It is okay to include stations not likely to exist since
     the processing stage will simply remove them
+
+    Parameters:
+        fname: (str) full path to a valid stationid file
+    Returns:
+        DataFrame: stationid
+
     """
     if fname is None:
         utilities.log.error('No Fort63_style ADCIRC station file assigned: Abort')
@@ -65,7 +77,13 @@ def format_data_frames(df):
 # The hurricane methods are for the future
 def check_advisory(value, dformat='%Y%m%d%H'):
     """
-    Try to ensure if an advisory number was passed
+    Try to determine if an advisory number was passed instead of a time value
+
+    Parameters:
+        value: (str) The time/adv word extracted form a url
+        dformat: (str) format used for perfom,ring time test
+    Returns:
+        state_hurricane: (bool) True if hurricane
     """
     state_hurricane=False
     utilities.log.debug('Check advisory {}'.format(value))
@@ -85,7 +103,13 @@ def check_advisory(value, dformat='%Y%m%d%H'):
 def check_if_hurricane(urls):
     """
     Very simple procedure but requires using the ASGS nomenclature
-    Only need to check one valid url
+    Only need to check one valid url from the list. This presumnes they all have the same
+    grid, instance, class, etc
+
+    Parameters:
+        urls: list(str) A list of valid urls
+    Returns:
+        state_hurricane: (bool) (bool) True if hurricane
     """
     if not isinstance(urls, list):
         utilities.log.error('time: URLs must be in list form')
@@ -108,6 +132,12 @@ def convert_input_url_to_nowcast(urls):
 
     To use this feature:
     We mandate that the url is used to access ASGS data. The "ensemble" information will be in position .split('/')[-2]
+
+    Parameters:
+        urls: list(str) A list of valid urls
+    Returns:
+        urls: list(str) with all ensmble values set to "nowcast"
+
     """
     if not isinstance(urls, list):
         utilities.log.error('nowcast: URLs must be in list form')
@@ -136,7 +166,24 @@ PRODUCT='water_level'
 ## Run stations
 ##
 
-def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, metadata, data_product='water_level', resample_mins=0, fort63_style=False):
+def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product='water_level', resample_mins=0, fort63_style=False):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+
+    Parameters:
+        urls: list(str). Previously generated list of urls that span the desired time range 
+        stations: list(str). List of desired stations
+        gridname: (str) gridname of the urls (opt)
+        ensemble: (str) ensemble (opt)
+        sitename (str): sitename (opt)
+        data_product: (str) (def data_product). An AST named data product (Not the True data product name) 
+        resample_mins: (int) Returned time series with a sampling of resample_mins
+        fort63_style: (bool) Request fetching water levels from fort.63.nc. Requires compatible station dataframe 
+    Returns:
+        df_adcirc_data: DataFrame (time x station)
+        df_adcirc_meta: DataFrame (station x metadata)
+    """
+
     # Fetch the data
     try:
         if data_product != 'water_level':
@@ -160,15 +207,18 @@ def first_true(iterable, default=False, pred=None):
 
     first_true([a,b,c], x) --> a or b or c or x
     first_true([a,b], x, f) --> a if f(a) else b if f(b) else x
+
     """
     return next(filter(pred, iterable), default)
 
-def strip_time_from_url(urls):
+def strip_time_from_url(urls)->str:
     """
     We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "time" information will be in position .split('/')[-6]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return:
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
          time string in either ASGS formatted '%Y%m%d%H' or possibly as a hurricane advisory string (to be checked later)
     """
     url = grab_first_url_from_urllist(urls)
@@ -179,12 +229,14 @@ def strip_time_from_url(urls):
         utilities.log.error('strip_time_from_url Uexpected failure try next:{}'.format(e))
     return ttime
 
-def strip_ensemble_from_url(urls):
+def strip_ensemble_from_url(urls)->str:
     """
     We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "ensemble" information will be in position .split('/')[-2]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return:
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
         Ensemble string
     """
     url = grab_first_url_from_urllist(urls)
@@ -195,12 +247,14 @@ def strip_ensemble_from_url(urls):
         utilities.log.error('strip_ensemble_from_url Uexpected failure try next:{}'.format(e))
     return ensemble
 
-def strip_instance_from_url(urls):
+def strip_instance_from_url(urls)->str:
     """
     We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "instance" information will be in position .split('/')[-3]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return:
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
         Instance string
     """
     url = grab_first_url_from_urllist(urls)
@@ -211,7 +265,7 @@ def strip_instance_from_url(urls):
         utilities.log.error('strip_instance_from_url Uexpected failure try next:{}'.format(e))
     return instance 
 
-def strip_sitename_from_url(urls, fill='NoSite'):
+def strip_sitename_from_url(urls, fill='NoSite')->str:
     """
     Here we attempt to find which site the url was computed at. We read the
     machine name from the url and lookup in the dict for the canonical site
@@ -219,7 +273,10 @@ def strip_sitename_from_url(urls, fill='NoSite'):
     The "machine name" information will be in position .split('/')[-4]. It may consist of multiple words.
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return:
+    Parameters:
+        urls: list(str). list of valid urls
+        fill: (str) manually specify the value for the sitename metadata
+    Returns:
         canonical site name: (str) eg RENCI,PSC
     """
     known_sites= {'hatteras.renci.org':'RENCI', 
@@ -234,12 +291,14 @@ def strip_sitename_from_url(urls, fill='NoSite'):
     site = known_sites[machine] if machine in known_sites.keys() else fill
     return site
 
-def grab_gridname_from_url(urls):
+def grab_gridname_from_url(urls)->str:
     """
     We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "grid" information will be in position .split('/')[-2]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return:
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
         grid.upper() string
     """
     url = grab_first_url_from_urllist(urls)
@@ -250,11 +309,14 @@ def grab_gridname_from_url(urls):
         utilities.log.error('strip_gridname_from_url Uexpected failure try next:{}'.format(e))
     return grid.upper()
 
-def grab_first_url_from_urllist(urls):
+def grab_first_url_from_urllist(urls)->str:
     """
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
-    Return:
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
+        url: (str) . Fetch first available, valid url in the list
     """
     if not isinstance(urls, list):
         utilities.log.error('first url: URLs must be in list form')
@@ -352,7 +414,7 @@ def main(args):
         else:
             adcirc_metadata='Raw_data'
 
-        data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, adcirc_metadata, data_product, resample_mins=0, fort63_style=args.fort63_style)
+        data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product, resample_mins=0, fort63_style=args.fort63_style)
         ## df_adcirc_data = format_data_frames(data)
 
         ## Skip the melt: Note this is only for the written file

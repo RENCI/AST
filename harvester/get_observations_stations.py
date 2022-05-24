@@ -42,7 +42,7 @@ class get_obs_stations(object):
         """
         get_obs_stations constructor
 
-        Input: 
+        Parameters: 
             contrails_yamlname: str Location of the login info for Contrails (optional) Not used if source=NOAA)
             source: str Named source. For now either NOAA or CONTRAILS
             product: str, product type desired. Values are source-specific
@@ -105,6 +105,14 @@ class get_obs_stations(object):
         The time ranges specified in the args.knockout will be set to Nans inclusively.
         This method can be useful when the indicated statin has historically shown 
         poor unexplained performance over a large window of time
+
+        Uses the class variables:
+        self.knockout
+
+        Parameters:
+           dataframe: time x stations.
+        Returns:
+           dataframe (time x stations) with self.knockout stations removed
         """
         stations=list(self.knockout.keys()) # How many. We anticipate only one but multiple stations can be handled
         cols=list(map(str,df_station.columns.to_list()))
@@ -124,8 +132,10 @@ class get_obs_stations(object):
         This method allows the user to override the current list of stations to process
         They will be subject to the usual validity testing. We overwrite any station data fetched in the class
     
-        Input:
+        Parameters:
             stationlist: list (str) of stationIDs. Overrides any existing list.
+        Returns:
+            self.station_list: list(str) of stations in the class variable
         """
         if isinstance(station_list, list):
             self.station_list=station_list
@@ -141,10 +151,10 @@ class get_obs_stations(object):
         (100-max_nan_percentage_cutoff) as the rate of nans per station
         Note: This should generally only apply to high resolution data (eg 6 min NOAA)
 
-        Input:
+        Parameters:
             df_in: Input dataframe (time x stations).
             max_nan_max_nan_percentage_cutoff: float. Percent of allowable nans. (dafault=100 - non-excluded)
-        Return:
+        Returns:
             df_out: dataframe (time x stationID) with stations kept
         """
         num_times=df_in.shape[0]
@@ -169,11 +179,11 @@ class get_obs_stations(object):
         to sample the data. This harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn't pad nans), and then
         resample the data at the desired freq (in minutes)
 
-        Input:
+        Parameters:
             time_range: Tuple (str,str). Starttime,endtime,inclusive. format='%Y-%m-%d %H:%M:%S' 
             return_sample_min: (int) sampling frequency of the returned, interpolated, data set
             interval: (str): Values of None or 'h'. Only applied to NOAA. None gives full avail freq
-        Return:
+        Returns:
             data: Sampled data of dims (time x stations)
             meta: associated metadata
         """
@@ -234,13 +244,13 @@ class get_obs_stations(object):
 
         CENTERED window rolling average.
 
-        Input:
+        Parameters:
             df_in: input dataframe of times x stations.
             window: (int,def=11) width of window.
             return_sample_min: (int) Number of mins to sample on the output product
                 upsampling will pad with Nans. Values <=0 indicates no sampling returning
                 raw averaged data
-        Return:
+        Returns:
             df_smoothed: dataframe (time x stations) smoothed and possibly resampled.
         """
         utilities.log.info('Smoothing requested. Window of {}'.format(window))

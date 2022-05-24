@@ -25,9 +25,14 @@ import harvester.generate_urls_from_times as genurls # generate_urls_from_times
 from utilities.utilities import utilities as utilities
 from argparse import ArgumentParser
 
-def convert_urls_to_61style(urls):
+def convert_urls_to_61style(urls)->list:
     """
     Process a list of ASGS urls and mandate filename to be fort.61.nc
+
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
+        urls: list(str). list of converted urls
     """
     urls_61 = list()
     for url in urls:
@@ -37,9 +42,14 @@ def convert_urls_to_61style(urls):
     utilities.log.info('Conversion of url list to url_61 list')
     return urls_61
 
-def convert_urls_to_63style(urls):
+def convert_urls_to_63style(urls)->list:
     """
     Process a list of ASGS urls and mandate filename to be fort.63.nc
+
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
+        urls: list(str). list of converted urls
     """
     urls_63 = list()
     for url in urls:
@@ -54,10 +64,9 @@ def first_available_netCDF4(urls):
     This method seeks to find the tested netCDF4 in a list of netCDF4 urls.
     So we loop over all and simply test for the exitance of the x variable
 
-    Input:
+    Parameters:
         urls. List of urls to netCDF4 files
-
-    Return:
+    Returns:
         url: A single url value
     """
     for url in urls:
@@ -66,7 +75,7 @@ def first_available_netCDF4(urls):
             gridx = nc.variables['x']
             break
         except OSError: # FileNotFoundError: # OSError:
-            # Skip and go onm to the next in the list
+            # Skip and go on to the next in the list
             utilities.log.debug('first_true: skip a url look up. Try next iteration')
         except Exception as e:
             utilities.log.debug('first_available_netCDF4: something wrong looking for url: {}'.format(e))
@@ -78,14 +87,14 @@ def first_available_netCDF4(urls):
 # set of lon(x)/lat(y) coordinates for the given url and grid. These coords can be used, for example, to build offset interpolation surfaces to be used by 
 # ADCIRC offset. So we need to call the URL again but for the fort.63.nc file. 
 
-def extract_adcirc_grid_coords( urls_63 )->pd.DataFrame:
+def extract_adcirc_grid_coords(urls_63 )->pd.DataFrame:
     """
     The input URLs is a list. But we only check one of them
     You MUST pass in URLs that point to fort.63.nc
 
-    Input:
+    Parameters:
        urls_63. list(str). THe current list if fort63_style urls from which to get the grid coordinates
-    Return:
+    Returns:
        adc_coords: Dictionary with the keys ['LON','LAT'] 
     """
     print(urls_63)
@@ -110,7 +119,7 @@ class get_adcirc_stations(object):
     Input station IDs must be stationids or tuples of statiods/nodeids) depending on the
     callers choice of fort63_style.
 
-    Input: 
+    Parameters: 
 
     Returns:
         product: ('water_level').
@@ -127,7 +136,7 @@ class get_adcirc_stations(object):
         """
         get_adcirc_stations constructor
 
-        Input: 
+        Parameters: 
             source: str Named source. For now only ASGS
             product: str, product type desired. For now only water_level
             knockout: A dict used to remove ranges of time(s) for a given station
@@ -175,6 +184,14 @@ class get_adcirc_stations(object):
         The time ranges specified in the args.knockout will be set to Nans inclusively.
         This method can be useful when the indicated statin has historically shown 
         poor unexplained performance over a large window of time
+
+        Uses the class variables:
+        self.knockout
+
+        Parameters:
+           dataframe: time x stations.
+        Returns:
+           dataframe (time x stations) with self.knockout stations removed
         """
         stations=list(self.knockout.keys()) # How many. We anticipate only one but multiple stations can be handled
         cols=list(map(str,df_station.columns.to_list()))
@@ -194,8 +211,10 @@ class get_adcirc_stations(object):
         This method allows the user to override the current list of stations to process
         They will be subject to the usual validity testing. We overwrite any station data fetched in the class
     
-        Input:
+        Parameters:
             stationlist: list (str) of stationIDs. Overrides any existing list.
+        Returns:
+            self.station_list: list(str) of stations in the class variable
         """
         if isinstance(station_list, list):
             self.station_list=station_list
@@ -214,10 +233,10 @@ class get_adcirc_stations(object):
         to sample the data. The harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn't pad nans), and then
         resample the data at the desired freq (in minutes)
 
-        Input:
+        Parameters:
             urls: List (str). ASGS format. 
             return_sample_min: (int) sampling frequency of the returned, interpolated, data set
-        Return:
+        Returns:
             data: Sampled data of dims (time x stations)
             meta: associated metadata
         """
@@ -234,10 +253,7 @@ class get_adcirc_stations(object):
         if self.source.upper()=='ASGS':
             adc_stations=self.station_list
             #adc_metadata='_'+endtime.replace(' ','T') 
-            adc_metadata = '_TEST_';
-            #data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.instance,adc_metadata,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style)
-            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,adc_metadata,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style)
-
+            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style)
         time_index=data.index.tolist()
         self.Tmin = min(time_index).strftime('%Y%m%d%H')
         self.Tmax = max(time_index).strftime('%Y%m%d%H')

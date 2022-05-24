@@ -32,9 +32,14 @@ SOURCES = ['NOAA','CONTRAILS','NDBC']
 def get_noaa_stations(fname=None):
     """
     Simply read a CSV file containing stations under the header stationid
-
     Expected format is
         serial_nr, stationid
+
+    Parameters:
+        fname: (str) full path to a valid stationid file
+
+    Returns:
+        noaa_stations: list(str). List of valid noaa station ids 
     """
     if fname is None:
         utilities.log.error('No NOAA station file assigned: Abort')
@@ -53,6 +58,11 @@ def get_contrails_stations(fname=None):
 
     Expected format is
         serial_nr, stationid
+    Parameters:
+        fname: (str) full path to a valid stationid file
+
+    Returns:
+        contrails_stations: list(str). List of valid contrails station ids 
     """
     if fname is None:
         utilities.log.error('No Contrails station file assigned: Abort')
@@ -72,8 +82,12 @@ def get_ndbc_buoys(fname=None):
     Expected format is
         serial_nr, stationid, location, state
     
-    Return a list of tuples:
-    [ (station,location,state), (station, location, state), etc]
+    Parameters:
+        fname: (str) full path to a valid stationid file
+
+    Returns:
+     a list of tuples:
+        station_tuples: [(station,location,state), (station, location, state), etc]
 
     """
     if fname is None:
@@ -153,6 +167,20 @@ GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in the z
 ##
 
 def process_noaa_stations(time_range, noaa_stations, interval=None, data_product='water_level', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+
+    Parameters:
+        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        noaa_stations: list(str). List of desired NOAA stations
+        interval: (str)(def=None or 'h') A NOAA specific interval setting
+        data_product: (str) (def data_product). An AST named data product ( Not the True NOAA data product name) 
+        resample_mins: (int) Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_noaa_data: DataFrame (time x station)
+        df_noaa_meta: DataFrame (station x metadata)
+    """
     # Fetch the data
     noaa_products=['water_level', 'predictions', 'hourly_height', 'air_pressure', 'wind_speed']
     try:
@@ -168,6 +196,20 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
     return df_noaa_data, df_noaa_meta
 
 def process_contrails_stations(time_range, contrails_stations, authentication_config, data_product='river_water_level', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+
+    Parameters:
+        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        contrails_stations: list(str). List of desired Contrails stations
+        authentication_config: (dict). A Contrails specific authorization dic
+        data_product: (str) (def data_product). An AST named data product ( Not the True Contrails data product name) 
+        resample_mins: (int) Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_contrails_data: DataFrame (time x station)
+        df_contrails_meta: DataFrame (station x metadata)
+    """
     # Fetch the data
     contrails_product=['river_water_level','coastal_water_level', 'air_pressure']
     try:
@@ -183,6 +225,19 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
     return df_contrails_data, df_contrails_meta
 
 def process_ndbc_buoys(time_range, ndbc_buoys, data_product='wave_height', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+    
+    Parameters:
+        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        ndbc_buoys: list(str). List of desired NDBC buoys
+        data_product: (str) (def data_product). An AST named data product ( Not the True NDBC data product name) 
+        resample_mins: (int) Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_ndbc_data: DataFrame (time x station)
+        df_ndbc_meta: DataFrame (station x metadata)
+    """
     # Fetch the data
     ndbc_products=['wave_height', 'air_pressure', 'wind_speed']
     try:

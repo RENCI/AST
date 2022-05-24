@@ -71,7 +71,7 @@ def map_product_to_harvester_units(product):
 
 def replace_and_fill(df):
     """
-    Replace all Nans ans 'None" values with GLOBAL_FILL_VALUE
+    Replace all Nans with 'None" values with GLOBAL_FILL_VALUE
     """
     df=df.fillna(GLOBAL_FILL_VALUE)
     return df
@@ -82,14 +82,14 @@ def stations_resample(df, sample_mins=15)->pd.DataFrame:
         to zero retains full resolution. Defaults to 15min
 
     NOTE: Final aggregated data still have flanked nans for some stations because
-    The reported times might have been different staggered. 
+    The reported times might have been differently staggered. 
 
-    Input:
+    Parameters:
         df: A time series x stations data frame
         sample_min. (Dafaut=15mins) A numerical value for the number of mins to resample
             setting to 0 disables any resampling and returns the raw data
 
-    Output:
+    Returns:
         df_out. New time series every 15mins x stations
     """
     if sample_mins==0:
@@ -106,10 +106,10 @@ def stations_interpolate(df)->pd.DataFrame:
     Final aggregated data still have flanked nans for some stations because
     the reported times might have been different.
 
-    Input:
+    Parameters:
         df: A time series x stations data frame
 
-    Output:
+    Returns:
         df_out. New time series x stations
     """
     utilities.log.info('Interpolating station data' )
@@ -119,14 +119,14 @@ def stations_interpolate(df)->pd.DataFrame:
 class fetch_station_data(object):
     """
     We expect upon entry to this class a list of station ids. The content of this list can
-    vary depending o0n data source. But usually this is simply a list of (str) station ids. If
+    vary depending on data source. But usually this is simply a list of (str) station ids. If
     an ADCIRC Fort63_style lookup is requested, THEN the elements of this list are TUPLES (stations,node)
 
     A list of times (periods) is required. The list contents can vary with data source. Generally, this is
     a list of one element; a tuple as [(time1,time2)]. However, the caller could gang together multiple tuple ranges.,
     For calling ADCIRC data, periods is a list of ASGS URLs
 
-    The output data are aggregated station products into a datraframe: (TIME vs PRODUCT)
+    The output data are aggregated station products into a dataframe: (TIME vs PRODUCT)
     with TIME as datetime timestamps and a column of data of the desired units and with a column
     name of the station
 
@@ -249,7 +249,7 @@ class adcirc_fetch_data(fetch_station_data):
     Currently available products:
     water_level (default)
 
-    Input:
+    Parameters:
         station_id_list: list of station_ids to pass to ADCIRC
         periods: list of valid ADCIRC urls tuples (*63.nc,*.61.nc) for aggregation 
         fort63_style: (bool) If True use the fort.63-based approach
@@ -340,7 +340,7 @@ class adcirc_fetch_data(fetch_station_data):
 
         The Node index is DEPRECATED by one to better share subsequent code
 
-        Input:
+        Parameters:
             station_csv <str>. A list of station ids/Nodes in DataFrame format
             periods <list>. The list of url-63 values. 
 
@@ -365,7 +365,7 @@ class adcirc_fetch_data(fetch_station_data):
         have one or more of the requested urls. So we keep checking urls for stations until no more
         urls exist. If none, then die.
 
-        Input:
+        Parameters:
             station <str>. A list of (eg NOAA/Contrails) station ids
             periods <list>. The list of url-61 values. 
 
@@ -423,7 +423,7 @@ class adcirc_fetch_data(fetch_station_data):
 ##
     def fetch_single_product(self, station_tuple, periods) -> pd.DataFrame:
         """
-        Input:
+        Parameters:
             station_tuple (str,int). A tuple that maps stationid to the current ADCIRC-grid nodeid
             periods <list>. A url-61 values. 
 
@@ -484,7 +484,7 @@ class adcirc_fetch_data(fetch_station_data):
 
     def fetch_single_metadata(self, station_tuple) -> pd.DataFrame:
         """
-        Input:
+        Parameters:
             station <str>. A valid station id
 
         Return:
@@ -530,7 +530,7 @@ class adcirc_fetch_data(fetch_station_data):
 
 class noaanos_fetch_data(fetch_station_data):
     """
-    Input:
+    Parameters:
         station_id_list: list of NOAA station_ids <str>
         a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
         a valid PRODUCT id <str>: hourly_height, water_level,predictions (tidal predictions)
@@ -625,7 +625,7 @@ class noaanos_fetch_data(fetch_station_data):
         NOAA COOPS does not have the same time range constraints as Contrails. So this tuple list
         can, in fact, simply be the start and end time.
         
-        Input:
+        Parameters:
             station <str>. A valid station id
             time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
 
@@ -675,7 +675,7 @@ class noaanos_fetch_data(fetch_station_data):
         For a single NOAA site_id fetch the associated metadata.
         The choice of data is highly subjective at this time.
 
-        Input:
+        Parameters:
              A valid station id <str>
         Return:
              dataframe of preselected metadata for a single station in the (keys,values) orientation
@@ -713,7 +713,7 @@ class noaanos_fetch_data(fetch_station_data):
 
 class contrails_fetch_data(fetch_station_data):
     """
-    Input:
+    Parameters:
         station_id_list: list of station_ids <str>
         a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
         a valid OWNER for Contrails <str>: One of NCDOT,Lake Lure,Asheville,Carolina Beach,
@@ -793,12 +793,12 @@ class contrails_fetch_data(fetch_station_data):
 
     def return_list_of_daily_timeranges(self, time_tuple)-> list():
         """
-        Input:
+        Parameters:
             A tuple consisting of:
             start_time: Time of format %Y-%m-%d %H:%M:%S (str)
             end_time: Time of format %Y-%m-%d %H:%M:%S (str)
     
-        Output:
+        Returns:
             periods: List of daily tuple ranges
     
         Take an arbitrary start and end time (inclusive) in the format of %Y-%m-%d %H:%M:%S. Break up into a list of tuples which 
@@ -815,7 +815,7 @@ class contrails_fetch_data(fetch_station_data):
         print(end_time)
         periods=list()
         dformat='%Y-%m-%d %H:%M:%S'
-        print('Input: start time {}, end_time {}'.format(start_time, end_time))
+        print('Parameters: start time {}, end_time {}'.format(start_time, end_time))
     
         time_start = dt.datetime.strptime(start_time, dformat)
         time_end = dt.datetime.strptime(end_time, dformat)
@@ -903,7 +903,7 @@ class contrails_fetch_data(fetch_station_data):
         and aggregate them into a dataframe with index pd.timestamps and a single column
         containing the desired CLASSDICT[...] values. Rename the column to station id
         
-        Input:
+        Parameters:
             station <str>. A valid station id
             time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
 
@@ -953,7 +953,7 @@ class contrails_fetch_data(fetch_station_data):
         Need to perform multiple queries to get the desired set of data. This is optional
         The caller will check the DB to see if this a new station requiring metadata
 
-        Input:
+        Parameters:
              A valid station id <str>
         Return:
              dataframe of preselected metadata for a single station in the (keys,values) orientation
@@ -1018,7 +1018,7 @@ class contrails_fetch_data(fetch_station_data):
 
 class ndbc_fetch_data(fetch_station_data):
     """
-    Input:
+    Parameters:
         station_id_list: list of NDBC buoy ids <str>
         a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
         a valid PRODUCT id <str>: wave_height,pressure, wind_speed
@@ -1078,7 +1078,7 @@ class ndbc_fetch_data(fetch_station_data):
         Aggregate them into a dataframe with index pd.timestamps and a single column
         containing the desired product values. Rename the column to station id
         
-        Input:
+        Parameters:
             station <str>. A valid NDBC buoy id
             time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
 
@@ -1118,7 +1118,7 @@ class ndbc_fetch_data(fetch_station_data):
         For a single NDBC site_id fetch the associated metadata.
         The choice of data is highly subjective at this time.
 
-        Input:
+        Parameters:
              A valid buoy id <str>
         Return:
              dataframe of preselected metadata for a single station in the (keys,values) orientation
