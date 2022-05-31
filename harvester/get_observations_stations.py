@@ -113,16 +113,16 @@ class get_obs_stations(object):
         Returns:
            dataframe (time x stations) with self.knockout stations removed
         """
-        stations=list(self.knockout.keys()) # How many. We anticipate only one but multiple stations can be handled
+        stations=list(self.knockout_dict.keys()) # How many. We anticipate only one but multiple stations can be handled
         cols=list(map(str,df_station.columns.to_list()))
         # 1 Do any stations exist? If not quietly leave
         if not bool(set(stations).intersection(cols)):
             return df_station
         # 2 Okay for each station loop over time range(s) and NaN away
         utilities.log.debug('Stations is {}'.format(stations))
-        utilities.log.debug('dict {}'.format(self.knockout))
+        utilities.log.debug('dict {}'.format(self.knockout_dict))
         for station in stations:
-            for key, value in self.knockout[station].items():
+            for key, value in self.knockout_dict[station].items():
                 df_station[station][value[0]:value[1]]=np.nan 
         utilities.log.info('Knockout dict has been applied')
         return df_station
@@ -233,6 +233,11 @@ class get_obs_stations(object):
                 utilities.log.error('NDBC process error {}'.format(template.format(type(ex).__name__, ex.args)))
                 sys.exit(1)
         utilities.log.info('Finished with data source {}'.format(self.source))
+
+        if self.knockout_dict is not None:
+            data = self.remove_knockout_stations(data)
+            utilities.log.info('Removing knockouts from acquired observational data')
+
         utilities.log.info('Data file {}, meta file {}'.format(data,meta))
         utilities.log.info('Finished')
         return data, meta

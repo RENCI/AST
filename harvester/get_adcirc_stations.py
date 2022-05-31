@@ -192,16 +192,16 @@ class get_adcirc_stations(object):
         Returns:
            dataframe (time x stations) with self.knockout stations removed
         """
-        stations=list(self.knockout.keys()) # How many. We anticipate only one but multiple stations can be handled
+        stations=list(self.knockout_dict.keys()) # How many. We anticipate only one but multiple stations can be handled
         cols=list(map(str,df_station.columns.to_list()))
         # 1 Do any stations exist? If not quietly leave
         if not bool(set(stations).intersection(cols)):
             return df_station
         # 2 Okay for each station loop over time range(s) and NaN away
         utilities.log.debug('Stations is {}'.format(stations))
-        utilities.log.debug('dict {}'.format(self.knockout))
+        utilities.log.debug('dict {}'.format(self.knockout_dict))
         for station in stations:
-            for key, value in self.knockout[station].items():
+            for key, value in self.knockout_dict[station].items():
                 df_station[station][value[0]:value[1]]=np.nan 
         return df_station
 
@@ -256,6 +256,10 @@ class get_adcirc_stations(object):
         time_index=data.index.tolist()
         self.Tmin = min(time_index).strftime('%Y%m%d%H')
         self.Tmax = max(time_index).strftime('%Y%m%d%H')
+
+        if self.knockout_dict is not None:
+            data = self.remove_knockout_stations(data)
+            utilities.log.info('Removing knockouts from acquired ADCIRC data')
         return data, meta
 
 ##
