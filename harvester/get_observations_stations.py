@@ -38,7 +38,7 @@ class get_obs_stations(object):
     # Default to assuming a NOAA/NOS WL run
 
     def __init__(self, source='NOAA',product='water_level', 
-                contrails_yamlname=None,knockout_file=None, station_list_file=None):
+                contrails_yamlname=None,knockout_dict=None, station_list_file=None):
         """
         get_obs_stations constructor
 
@@ -91,10 +91,9 @@ class get_obs_stations(object):
             utilities.log.info('Got Contrails access information')
 
         # Specify up any knockout filename based exclusions as a Dict()
-        if knockout_file is not None:
-            self.knockout = utilities.read_json_file(knockout_file)
-            utilities.log.info('Value of input knockout file {}'.format(self.knockout_file))
-            utilities.log.debug('Values of input knockout dict {}'.format(self.knockout))
+        self.knockout_dict = knockout_dict
+        if self.knockout_dict is not None:
+            utilities.log.info('A knockout dict has been specified')
 
         utilities.log.info('SOURCE to fetch from {}'.format(self.source))
         utilities.log.info('PRODUCT to fetch is {}'.format(self.product))
@@ -125,6 +124,7 @@ class get_obs_stations(object):
         for station in stations:
             for key, value in self.knockout[station].items():
                 df_station[station][value[0]:value[1]]=np.nan 
+        utilities.log.info('Knockout dict has been applied')
         return df_station
 
     def override_station_IDs(self, station_list):
@@ -324,7 +324,7 @@ def main(args):
             noaa_stations=station_list
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=None,
-                    knockout_file=None, station_list_file=noaa_stations)
+                    knockout_dict=None, station_list_file=noaa_stations)
     elif args.data_source.upper() == 'CONTRAILS':
         if station_list is None: 
             contrails_stations=os.path.join(os.path.dirname(__file__), '../supporting_data','contrails_stations.csv')
@@ -333,7 +333,7 @@ def main(args):
         contrails_yamlname=os.path.join(os.path.dirname(__file__),'../secrets','contrails.yml')
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=contrails_yamlname,
-                    knockout_file=None, station_list_file=contrails_stations)
+                    knockout_dict=None, station_list_file=contrails_stations)
     elif args.data_source.upper() == 'NDBC':
         if station_list is None:
             ndbc_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'ndbc_buoys.csv')
@@ -341,7 +341,7 @@ def main(args):
             ndbc_stations=station_list
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=None,
-                    knockout_file=None, station_list_file=ndbc_stations)
+                    knockout_dict=None, station_list_file=ndbc_stations)
     else:
         print('No source specified')
         sys.exit(1)

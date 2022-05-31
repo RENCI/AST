@@ -132,7 +132,7 @@ class get_adcirc_stations(object):
     ASGS_PRODUCTS = ['water_level']
 
     def __init__(self, source='ASGS',product='water_level',
-                knockout_file=None, fort63_style=False, station_list_file=None):
+                knockout_dict=None, fort63_style=False, station_list_file=None):
         """
         get_adcirc_stations constructor
 
@@ -167,10 +167,9 @@ class get_adcirc_stations(object):
             sys.exit(1)
 
         # Specify up any knockout filename based exclusions as a Dict()
-        if knockout_file is not None:
-            self.knockout = utilities.read_json_file(knockout_file)
-            utilities.log.info('Value of input knockout file {}'.format(self.knockout_file))
-            utilities.log.debug('Values of input knockout dict {}'.format(self.knockout))
+        self.knockout_dict=knockout_dict 
+        if self.knockout_dict is not None:
+            utilities.log.info('ADCIRC: knockout data to be applied')
 
         Tmin=None  # These will be populated with the min/max times as a str with format %Y%m%d%H%M
         Tmax=None
@@ -330,7 +329,7 @@ def main(args):
     # Run the job
     rpl = get_adcirc_stations(source=args.data_source, product=args.data_product,
                 station_list_file=station_file, 
-                knockout_file=None, fort63_style=args.fort63_style )
+                knockout_dict=None, fort63_style=args.fort63_style )
 
     # Fetch best resolution and no resampling
     data,meta=rpl.fetch_station_product(urls, return_sample_min=args.return_sample_min, fort63_style=args.fort63_style  )
