@@ -45,6 +45,8 @@ def convert_urls_to_61style(urls)->list:
 def convert_urls_to_63style(urls)->list:
     """
     Process a list of ASGS urls and mandate filename to be fort.63.nc
+    Make a slight change. It is possible we may want to explore a SWAN file instead. 
+    So put a check in here
 
     Parameters:
         urls: list(str). list of valid urls
@@ -54,7 +56,7 @@ def convert_urls_to_63style(urls)->list:
     urls_63 = list()
     for url in urls:
         words=url.split('/')
-        words[-1]='fort.63.nc'
+        words[-1]='swan_HS.63.nc' if 'swan' in words[-1] else 'fort.63.nc'
         urls_63.append('/'.join(words))
     utilities.log.info('Conversion of url list to url_63 list')
     return urls_63
