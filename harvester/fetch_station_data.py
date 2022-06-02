@@ -31,8 +31,9 @@ import xmltodict
 # NOAA/NOS
 import noaa_coops as coops
 
-# NDBC
+# NDBC # Continue to need siphon to get Lat/Lon values
 from siphon.simplewebservice.ndbc import NDBC
+import buoypy as bp
 
 # THREDDS (ADCIRC model)
 import netCDF4 as nc4
@@ -1044,9 +1045,9 @@ class ndbc_fetch_data(fetch_station_data):
 
     # NOTE: This dict maps the generic input data type (key) to the actual product name used by noaa-coops
 
-    products={ 'wave_height':'wave_height', 
-               'air_pressure':'pressure',
-               'wind_speed':'wind_speed'}
+    products={ 'wave_height':'WVHT', # m
+               'air_pressure':'PRES', # hPa=mb
+               'wind_speed':'WSPD'} # mps
 
     def __init__(self, station_id_list, periods, product='wave_height', units='metric',
                 resample_mins=15):
@@ -1092,14 +1093,156 @@ class ndbc_fetch_data(fetch_station_data):
         utilities.log.info('NDBC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
         try:
             df = NDBC.realtime_observations(buoy[0])
-            df_data = df[['time',self._product]]
-            newtimes =  [ d.replace(tzinfo=None) for d in df_data['time']]
-            df_data['time']=newtimes
-            df_data.columns=['TIME',self._product.upper()]
-            df_data.set_index('TIME',inplace=True)
+            B = bp.realtime(buoy[0])
+            df=B.txt()
+            df.index.name='TIME'
+            df_data = df[self._product].to_frame()
             df_data.columns=[str(buoy[0])]
             df_data.sort_index(inplace=True) # From lowest to highest
             df_data = df_data.loc[time_range[0]:time_range[1]]
+            df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
+        except ConnectionError:
+            utilities.log.error('Hard fail: Could not connect to NDBC for products {}'.format(bouy[0]))
+        except HTTPError:
+            utilities.log.error('Hard fail: HTTP error to NDBC for products')
+        except Timeout:
+            utilities.log.error('Hard fail NDBC: Timeout')
+        except Exception as e:
+            utilities.log.error('NDBC data error: {} was {}'.format(e, self._product))
+        try:
+            df_data=df_data.astype(float)
+        except Exception as e:
+            utilities.log.error('NDBC concat error: {}'.format(e))
+            df_data = np.nan
+        return df_data
+
+    def fetch_single_metadata(self, buoy) -> pd.DataFrame:
+        """
+        For a single NDBC site_id fetch the associated metadata.
+        The choice of data is highly subjective at this time.
+
+        Parameters:
+             A valid buoy id <str>
+        Return:
+             dataframe of preselected metadata for a single station in the (keys,values) orientation
+
+             This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+             to our preferred orientation with stations as index
+        """
+        meta=dict()
+        df_latest = NDBC.latest_observations().set_index('station')
+        lat, lon = df_latest.loc[buoy[0]][['latitude','longitude']]
+        meta['LAT'] = lat
+        meta['LON'] = lon
+        meta['NAME'] =  buoy[1]
+        meta['UNITS'] = self._data_unit 
+        meta['TZ'] = GLOBAL_TIMEZONE
+        meta['OWNER'] = 'NONE'
+        meta['STATE'] = buoy[2]
+        meta['COUNTY'] = np.nan # None
+        df_meta=pd.DataFrame.from_dict(meta, orient='index')
+        df_meta.columns = [str(buoy[0])]
+        return df_meta
+
+class ndbc_fetch_historic_data(fetch_station_data):
+    """
+    Parameters:
+        station_id_list: list of NDBC buoy ids <str>
+        a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
+        a valid PRODUCT id <str>: wave_height,pressure, wind_speed
+
+        One dict is used to manage jobs. The products dict maps generic product names used by high level codes
+        (keys) to the specific product names in NDBC 
+
+        UNITS: Based on an examinination of the data and comparison to plots on the NDBC website, it appears that
+        at least for the tested stations:
+            wave_height: meters
+            pressure: mbars 
+            wind_speed: m/s
+ 
+        Currently tested input products:
+            wave_heigh
+            pressure
+            wind_speed
+    """
+    # dict( persistant tag: source specific tag )
+    # products defines current products (as keys) and uses the value as a column header in the returned data set
+
+    # NOTE: This dict maps the generic input data type (key) to the actual product name used by noaa-coops
+
+    products={ 'wave_height':'WVHT', # m
+               'air_pressure':'PRES', # hPa=mb
+               'wind_speed':'WSPD'} # mps
+
+    def __init__(self, station_id_list, periods, product='wave_height', units='metric',
+                resample_mins=15):
+        """
+        NDBC: National Data Buoy Center
+        Read Historical buoy product data.
+
+        Parameters
+            station_id_list: :List of triplets [(id,name,state)...]
+            periods: A tuple of time range (timein,timeend).format %Y-%m-%d %H:%M:%S
+       
+        """
+        self._data_unit=map_product_to_harvester_units(product)
+        try:
+            self._product=self.products[product] # self.products[product] # product
+            utilities.log.info('NDBC Fetching Historicalproduct {}'.format(self._product))
+        except KeyError:
+            utilities.log.error('NDBC No such historical product key. Input {}, Available {}'.format(product, self.products.keys()))
+            sys.exit(1)
+        else:
+            self._units='metric' # Redundant cleanup TODO
+        if units !='metric':
+            utilities.log.info('NDBC: units must be metric: {}: Abort'.format(units))
+            sys.exit(1)
+        super().__init__(station_id_list, periods, resample_mins=resample_mins)
+
+    def get_year_from_timerange(self, time_range):
+        """
+        The input time_range tuple is queried to detemrine what year we are interested in.
+        only ONE YEAR is supported. If multiple years are found, the code will abort the job
+
+        input time formats are '%Y-%m-%d %H:%M:%S'
+        """
+        dformat = '%Y-%m-%d %H:%M:%S'
+        yin = dt.datetime.strptime(time_range[0], dformat).year
+        yout = dt.datetime.strptime(time_range[1], dformat).year
+        if yin == yout:
+            print('NDBC HISTORIC: found a proper year {}'.format(yin))
+            return int(yin)
+        print('Fail: Two different years found {},{}'.format(yin,yout))
+        sys.exit(1)
+
+    def fetch_single_product(self, buoy, time_range) -> pd.DataFrame:
+        """
+        For a single NDBC site_id, process the tuple from the input period.
+        Aggregate them into a dataframe with index pd.timestamps and a single column
+        containing the desired product values. Rename the column to station id
+        
+        Parameters:
+            station <str>. A valid NDBC buoy id
+            time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
+
+        Return:
+            dataframe of time (timestamps) vs values for the requested station
+        """
+        tstart,tend=time_range
+
+        utilities.log.info('NDBC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
+
+        year = self.get_year_from_timerange(time_range)
+        print(year)
+        try:
+            H = bp.historic_data(buoy[0],year)
+            df = H.get_stand_meteo() 
+            df.index.name='TIME'
+            df_data = df[self._product].to_frame()
+            df_data.columns=[str(buoy[0])]
+            df_data.sort_index(inplace=True) # From lowest to highest
+            df_data = df_data.loc[time_range[0]:time_range[1]]
+            df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
         except ConnectionError:
             utilities.log.error('Hard fail: Could not connect to NDBC for products {}'.format(bouy[0]))
         except HTTPError:

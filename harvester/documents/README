@@ -60,6 +60,12 @@ a) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_sourc
 b) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'air_pressure'
 c) python fetch_data.py --ndays -4 --stoptime '2022-05-10 00:00:00' --data_source 'NDBC' --data_product 'wind_speed'
 
+# 4) NDBC_HISTORIC data
+    ../supporting_data/ndbc_buoys.csv. To provide a list of buoy ids, names and states
+
+a) python fetch_data.py --ndays -4 --stoptime '2021-12-31 00:00:00' --data_source 'NDBC_HISTORIC' --data_product 'wave_height'
+
+
 #Testing output datafiles
     1) ./ndbc_stationdata_2022-02-20T00:00:00.csv
     2) ./ndbc_stationdata_meta_2022-02-20T00:00:00.csv

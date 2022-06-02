@@ -18,7 +18,7 @@ import pandas as pd
 import datetime as dt
 import math
 
-from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data
+from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data, ndbc_fetch_historic_data
 from utilities.utilities import utilities as utilities
 
 ##
@@ -26,7 +26,7 @@ from utilities.utilities import utilities as utilities
 ##
 
 # Currently supported sources
-SOURCES = ['NOAA','CONTRAILS','NDBC']
+SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
 
 #def get_noaa_stations(fname='./config/noaa_stations.txt'):
 def get_noaa_stations(fname=None):
@@ -252,6 +252,34 @@ def process_ndbc_buoys(time_range, ndbc_buoys, data_product='wave_height', resam
         utilities.log.error('Error: NEW NDBC: {}'.format(e))
     return df_ndbc_data, df_ndbc_meta
 
+def process_ndbc_historic_buoys(time_range, ndbc_buoys, data_product='wave_height', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+    
+    Parameters:
+        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        ndbc_buoys: list(str). List of desired NDBC buoys
+        data_product: (str) (def data_product). An AST named data product ( Not the True NDBC data product name) 
+        resample_mins: (int) Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_ndbc_data: DataFrame (time x station)
+        df_ndbc_meta: DataFrame (station x metadata)
+    """
+    # Fetch the data
+    ndbc_products=['wave_height', 'air_pressure', 'wind_speed']
+    try:
+        if not data_product in ndbc_products:
+            utilities.log.error('NDBC: data product can only be {}'.format(ndbc_products))
+            #sys.exit(1)
+        ndbc = ndbc_fetch_historic_data(ndbc_buoys, time_range, product=data_product, resample_mins=resample_mins)
+        df_ndbc_data = ndbc.aggregate_station_data()
+        df_ndbc_meta = ndbc.aggregate_station_metadata()
+        df_ndbc_meta.index.name='STATION'
+    except Exception as e:
+        utilities.log.error('Error: NEW NDBC HISTORIC: {}'.format(e))
+    return df_ndbc_data, df_ndbc_meta
+
 def main(args):
     """
     Generally we anticipate inputting a STOPTIME
@@ -384,6 +412,28 @@ def main(args):
             utilities.log.error('Error: NDBC: Failed Write {}'.format(e))
             sys.exit(1)
 
+    if data_source.upper()=='NDBC_HISTORIC':
+        time_range=(starttime,endtime) # Can be directly used by NDBC
+        # Use default station list
+        ndbc_stations=get_ndbc_buoys(args.station_list) if args.station_list is not None else get_ndbc_buoys(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','ndbc_buoys.csv'))
+        ndbc_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
+        data, meta  = process_ndbc_historic_buoys(time_range, ndbc_stations, data_product = data_product)
+        df_ndbc_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
+        # Output
+        # If choosing non-default locations BOTH variables must be specified
+        try:
+            if args.ofile is not None:
+                dataf=f'%s/ndbc_stationdata%s.csv'% (args.ofile,ndbc_metadata)
+                metaf=f'%s/ndbc_stationdata_meta%s.csv'% (args.ometafile,ndbc_metadata)
+            else:
+                dataf=f'./ndbc_stationdata%s.csv'%ndbc_metadata
+                metaf=f'./ndbc_stationdata_meta%s.csv'%ndbc_metadata
+            df_ndbc_data.to_csv(dataf)
+            meta.to_csv(metaf)
+            utilities.log.info('NDBC data has been stored {},{}'.format(dataf,metaf))
+        except Exception as e:
+            utilities.log.error('Error: NDBC: Failed Write {}'.format(e))
+            sys.exit(1)
 
     utilities.log.info('Finished with data source {}'.format(data_source))
     utilities.log.info('Finished')
