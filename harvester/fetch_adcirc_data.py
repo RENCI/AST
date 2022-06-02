@@ -166,7 +166,7 @@ PRODUCT='water_level'
 ## Run stations
 ##
 
-def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product='water_level', resample_mins=0, fort63_style=False):
+def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product='water_level', resample_mins=0, fort63_style=False, variable_name='zeta'):
     """
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
 
@@ -189,7 +189,7 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         if data_product != 'water_level':
             utilities.log.error('ADCIRC data product can only be: water_level')
             sys.exit(1)
-        adcirc = adcirc_fetch_data(adcirc_stations, urls, data_product, sitename=sitename, gridname=gridname, castType=ensemble.rstrip(), resample_mins=resample_mins, fort63_style=fort63_style)
+        adcirc = adcirc_fetch_data(adcirc_stations, urls, data_product, sitename=sitename, gridname=gridname, castType=ensemble.rstrip(), resample_mins=resample_mins, fort63_style=fort63_style, variable_name=variable_name)
         df_adcirc_data = adcirc.aggregate_station_data()
         df_adcirc_meta = adcirc.aggregate_station_metadata()
         df_adcirc_meta.index.name='STATION'
@@ -366,6 +366,9 @@ def main(args):
     else:
         utilities.log.info('Chosen data source {}'.format(data_source))
 
+    variable_name = args.variable_name
+    utilities.log.info('Selected variable name is {}'.format(variable_name))
+
     # If reading in a LOCAL url then we must skip the following steps
     if not args.raw_local_url:
         # Check if this is a Hurricane
@@ -414,7 +417,7 @@ def main(args):
         else:
             adcirc_metadata='Raw_data'
 
-        data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product, resample_mins=0, fort63_style=args.fort63_style)
+        data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product, resample_mins=0, fort63_style=args.fort63_style, variable_name=variable_name)
         ## df_adcirc_data = format_data_frames(data)
 
         ## Skip the melt: Note this is only for the written file
@@ -460,5 +463,7 @@ if __name__ == '__main__':
                         help='Choose a non-default metadata output directory')
     parser.add_argument('--raw_local_url', action='store_true',
                         help='Specify input url is locally stored')
+    parser.add_argument('--variable_name', action='store', dest='variable_name', default='zeta', type=str,
+                        help='Choose a non-default netCDF4 variable name')
     args = parser.parse_args()
     sys.exit(main(args))

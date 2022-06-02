@@ -304,7 +304,7 @@ class adcirc_fetch_data(fetch_station_data):
 #TODO change name periods to urls
     def __init__(self, station_id_list, periods=None, product='water_level',
                 datum='MSL', sitename=None, gridname=None, castType=None, resample_mins=15,
-                fort63_style=False):
+                fort63_style=False, variable_name='zeta'):
         self._product=self.products[product]
         #self._interval=interval 
         self._units='metric'
@@ -319,6 +319,8 @@ class adcirc_fetch_data(fetch_station_data):
         if sitename==None:
             utilities.log.info('ADCIRC: sitename not specified. Will result in poor metadata NAME value')
         self._sitename=sitename
+        self._variable_name=variable_name
+        utilities.log.info('FS: Variable name is {}'.format(self._variable_name))
 
         if fort63_style:
             utilities.log.info('Fetch station ids using fort.63 style')
@@ -435,7 +437,7 @@ class adcirc_fetch_data(fetch_station_data):
         node=station_tuple[1]
         datalist=list()
         typeCast_status=list() # Check each period to see if this was a nowcast or forecast type fetch. If mixed then abort
-        for url in periods: # If a period is SHORT no data may be found esp for Contrails
+        for url in periods: # If a period is SHORT no data may be found esp for Contrails time ranges
             try:
                 nc = nc4.Dataset(url)
             except OSError as e:
@@ -443,15 +445,15 @@ class adcirc_fetch_data(fetch_station_data):
                 sys.exit(1)
             # we need to test access to the netCDF variables, due to infrequent issues with
             # netCDF files written with v1.8 of HDF5.
-            if "zeta" not in nc.variables.keys():
-                print("zeta not found in netCDF for {}.".format(url))
+            if self._variable_name not in nc.variables.keys():
+                print("{} not found in netCDF for {}.".format(self._variable_name,url))
                 # okay to have a missing one  do not exit # sys.exit(1)
             else:
                 time_var = nc.variables['time']
                 t = nc4.num2date(time_var[:], time_var.units)
                 data = np.empty([len(t), 0])
                 try:
-                    data = nc['zeta'][:,node] # Not the same as when reading fort.63 -1]
+                    data = nc[self._variable_name][:,node] # Note the same as when reading fort.63 -1]
                 except IndexError as e:
                     utilities.log.error('Error: This is usually caused by accessing non-hsofs data but forgetting to specify the proper --grid {}'.format(e))
                     #sys.exit()
