@@ -1230,7 +1230,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
         """
         tstart,tend=time_range
 
-        utilities.log.info('NDBC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
+        utilities.log.info('NDBC_HISTORIC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
 
         year = self.get_year_from_timerange(time_range)
         print(year)
@@ -1254,7 +1254,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
         try:
             df_data=df_data.astype(float)
         except Exception as e:
-            utilities.log.error('NDBC concat error: {}'.format(e))
+            utilities.log.error('NDBC_HISTORIC concat error: {}'.format(e))
             df_data = np.nan
         return df_data
 
