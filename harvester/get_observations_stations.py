@@ -30,7 +30,7 @@ class get_obs_stations(object):
 
     # Currently supported sources and products
 
-    SOURCES = ['NOAA','CONTRAILS','NDBC']
+    SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
     NOAA_PRODUCTS = ['water_level','hourly_height','predictions','air_pressure','wind_speed']
     CONTRAILS_PRODUCTS = ['river_water_level','coastal_water_level','air_pressure']
     NDBC_PRODUCTS=['wave_height','air_pressure','wind_speed']
@@ -61,8 +61,9 @@ class get_obs_stations(object):
                 utilities.log.error('For Contrails work an authentication yaml is required. It was missing: Abort')
                 sys.exit(1)
             selected_products = self.CONTRAILS_PRODUCTS
-        elif self.source=='NDBC':
+        elif self.source=='NDBC' or self.source=='NDBC_HISTORIC':
             selected_products = self.NDBC_PRODUCTS
+            utilities.log.info('NDBC request source is {}'.format(self.source))
         else:
             utilities.log.error('No valid source specified {}'.format(self.source))
             sys.exit(1)
@@ -75,6 +76,9 @@ class get_obs_stations(object):
             self.station_list=fetch_data.get_contrails_stations(station_list_file)
 
         if self.source=='NDBC':
+            self.station_list = fetch_data.get_ndbc_buoys(station_list_file)
+
+        if self.source=='NDBC_HISTORIC':
             self.station_list = fetch_data.get_ndbc_buoys(station_list_file)
        
         utilities.log.info('Fetched station list from {}'.format(self.station_list))
@@ -232,6 +236,42 @@ class get_obs_stations(object):
             except Exception as ex:
                 utilities.log.error('NDBC process error {}'.format(template.format(type(ex).__name__, ex.args)))
                 sys.exit(1)
+
+        if self.source.upper()=='NDBC_HISTORIC':
+            template = "An exception of type {0} occurred."
+            excludedStations=list()
+            # Use default station list
+            ndbc_stations=self.station_list
+            ndbc_metadata='_'+endtime.replace(' ','T')
+            try:
+                data, meta = fetch_data.process_ndbc_historic_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
+                utilities.log.info('NDBC_HISTORIC data {}'.format(data))
+            except Exception as ex:
+                utilities.log.error('NDBC_HISTORIC process error {}'.format(template.format(type(ex).__name__, ex.args)))
+                sys.exit(1)
+
+        utilities.log.info('Finished with data source {}'.format(self.source))
+
+        if self.knockout_dict is not None:
+            data = self.remove_knockout_stations(data)
+            utilities.log.info('Removing knockouts from acquired observational data')
+
+        utilities.log.info('Data file {}, meta file {}'.format(data,meta))
+        utilities.log.info('Finished')
+        return data, meta
+
+        if self.source.upper()=='NDBC_HISTORIC':
+            template = "An exception of type {0} occurred."
+            excludedStations=list()
+            # Use default station list
+            ndbc_stations=self.station_list
+            ndbc_metadata='_'+endtime.replace(' ','T')
+            try:
+                data, meta = fetch_data.process_ndbc_historic_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
+                utilities.log.info('NDBC_HISTORIC data {}'.format(data))
+            except Exception as ex:
+                utilities.log.error('NDBC_HISTORIC process error {}'.format(template.format(type(ex).__name__, ex.args)))
+                sys.exit(1)
         utilities.log.info('Finished with data source {}'.format(self.source))
 
         if self.knockout_dict is not None:
@@ -339,7 +379,7 @@ def main(args):
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=contrails_yamlname,
                     knockout_dict=None, station_list_file=contrails_stations)
-    elif args.data_source.upper() == 'NDBC':
+    elif args.data_source.upper() == 'NDBC' or args.data_source.upper() == 'NDBC_HISTORIC':
         if station_list is None:
             ndbc_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'ndbc_buoys.csv')
         else:
