@@ -1199,27 +1199,33 @@ class ndbc_fetch_historic_data(fetch_station_data):
             sys.exit(1)
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
 
-    def get_year_from_timerange(self, time_range):
+    def get_year_list_from_timerange(self, time_range):
         """
         The input time_range tuple is queried to detemrine what year we are interested in.
-        only ONE YEAR is supported. If multiple years are found, the code will abort the job
+        No chgecks are made to ensure the CURRENT year is excluded. If it is included,
+        the subsequent histirucal data call will fail
 
         input time formats are '%Y-%m-%d %H:%M:%S'
+
+        Returns:
+            year_list: list sorted range of years
         """
         dformat = '%Y-%m-%d %H:%M:%S'
         yin = dt.datetime.strptime(time_range[0], dformat).year
         yout = dt.datetime.strptime(time_range[1], dformat).year
-        if yin == yout:
-            print('NDBC HISTORIC: found a proper year {}'.format(yin))
-            return int(yin)
-        print('Fail: Two different years found {},{}'.format(yin,yout))
-        sys.exit(1)
+        if yin > yout:
+            yin,yout = yout,yim
+        year_list=list(range(yin,yout+1))
+        return year_list
 
     def fetch_single_product(self, buoy, time_range) -> pd.DataFrame:
         """
         For a single NDBC site_id, process the tuple from the input period.
         Aggregate them into a dataframe with index pd.timestamps and a single column
         containing the desired product values. Rename the column to station id
+   
+        As of this writing, it is unclear if the time_range argument to buoypy 
+        works. So I build this year_list approach to be sure
         
         Parameters:
             station <str>. A valid NDBC buoy id
@@ -1232,30 +1238,34 @@ class ndbc_fetch_historic_data(fetch_station_data):
 
         utilities.log.info('NDBC_HISTORIC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
 
-        year = self.get_year_from_timerange(time_range)
-        print(year)
-        try:
-            H = bp.historic_data(buoy[0],year)
-            df = H.get_stand_meteo() 
-            df.index.name='TIME'
-            df_data = df[self._product].to_frame()
-            df_data.columns=[str(buoy[0])]
-            df_data.sort_index(inplace=True) # From lowest to highest
-            df_data = df_data.loc[time_range[0]:time_range[1]]
-            df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
-        except ConnectionError:
-            utilities.log.error('Hard fail: Could not connect to NDBC for products {}'.format(bouy[0]))
-        except HTTPError:
-            utilities.log.error('Hard fail: HTTP error to NDBC for products')
-        except Timeout:
-            utilities.log.error('Hard fail NDBC: Timeout')
-        except Exception as e:
-            utilities.log.error('NDBC data error: {} was {}'.format(e, self._product))
+        data_list=list()
+        year_list = self.get_year_list_from_timerange(time_range)
+        for year in year_list:
+            print(f'NDBC_HISTORICAL: Found year {year}')
+            try:
+                H = bp.historic_data(buoy[0],year)
+                df = H.get_stand_meteo() 
+                df.index.name='TIME'
+                df_data = df[self._product].to_frame()
+                df_data.columns=[str(buoy[0])]
+                df_data.sort_index(inplace=True) # From lowest to highest
+                df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
+                data_list.append(df_data)
+            except ConnectionError:
+                utilities.log.error('Hard fail: Could not connect to NDBC for products {}'.format(bouy[0]))
+            except HTTPError:
+                utilities.log.error('Hard fail: HTTP error to NDBC for products')
+            except Timeout:
+                utilities.log.error('Hard fail NDBC: Timeout')
+            except Exception as e:
+                utilities.log.error('NDBC data error: {} was {}'.format(e, self._product))
+            df_data = pd.concat(data_list, axis=0) 
         try:
             df_data=df_data.astype(float)
         except Exception as e:
-            utilities.log.error('NDBC_HISTORIC concat error: {}'.format(e))
+            utilities.log.error('NDBC_HISTORIC float assignment error: {}'.format(e))
             df_data = np.nan
+        df_data = df_data.loc[time_range[0]:time_range[1]]
         return df_data
 
     def fetch_single_metadata(self, buoy) -> pd.DataFrame:
