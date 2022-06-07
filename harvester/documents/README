@@ -153,6 +153,11 @@ a) python get_observations_stations.py --starttime '2022-05-01 00:00:00' --stopt
 b) python get_observations_stations.py --starttime '2022-05-01 00:00:00' --stoptime '2022-05-10 12:00:00' --data_source 'NDBC' --data_product 'air_pressure'
 c) python get_observations_stations.py --starttime '2022-05-01 00:00:00' --stoptime '2022-05-10 12:00:00' --data_source 'NDBC' --data_product 'wind_speed'
 
+# 4) Get sme historic data: NOTE the user must ensure the time range doesn't include dates from the CURRENT year.
+#    In this case, the dates from the CURRENT year will be EXCLUDED
+#
+python get_observations_stations.py --starttime '2020-05-10 00:00:00' --stoptime '2021-05-10 12:00:00' --data_source 'NDBC_HISTORIC' --data_product 'wave_height'
+
 ##
 ## Getting ADCIRC data from the ASGS
 ##
