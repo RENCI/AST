@@ -331,10 +331,11 @@ class adcirc_fetch_data(fetch_station_data):
             available_stations = self._fetch_adcirc_nodes_from_fort61_input_file(station_id_list, periods)
         if available_stations==None:
             utilities.log.error('No valid fort.61 files were found: Abort')
-            #sys.exit(1)
-        utilities.log.info('List of ADCIRC generated stations {}'.format(available_stations))
+            sys.exit(1)
+        self.available_stations_tuple=available_stations
+        utilities.log.info('List of ADCIRC generated stations {}'.format(self.available_stations_tuple))
         periods = self._remove_empty_url_pointers(periods)
-        super().__init__(available_stations, periods, resample_mins=resample_mins) # Pass in the full dict
+        super().__init__(self.available_stations_tuple, periods, resample_mins=resample_mins) # Pass in the full dict
 
     def _fetch_adcirc_nodes_from_fort63_input_file(self, station_df) -> list():
         """

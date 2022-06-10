@@ -150,6 +150,20 @@ def convert_input_url_to_nowcast(urls):
     utilities.log.info('Modified input URL to be a nowcast type')
     return newurls
 
+
+def combine_metadata_with_station_tuples(df_meta, station_nodes, fort63_style):
+    """
+    Grabs the list of station tuples [(stationid,adcirc node)] and adds a 
+    column to the df_meta object
+    """
+    df_stations=pd.DataFrame(station_nodes, columns=['STATION','Node'])
+    df_stations.set_index('STATION',inplace=True)
+    df_stations['Node']=df_stations['Node'].astype('str')
+    typ = '63_' if fort63_style else '61_'
+    df_stations['Node']=typ+df_stations['Node'] # Create something like 61-12345
+    df_meta = pd.concat([df_meta,df_stations],axis=1)
+    return df_meta
+
 ##
 ## End functions
 ##
@@ -193,6 +207,9 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         df_adcirc_data = adcirc.aggregate_station_data()
         df_adcirc_meta = adcirc.aggregate_station_metadata()
         df_adcirc_meta.index.name='STATION'
+        # Add insitu found nodes for metadata
+        station_nodes = adcirc.available_stations_tuple
+        df_adcirc_meta=combine_metadata_with_station_tuples(df_adcirc_meta, station_nodes, fort63_style)
     except Exception as e:
         utilities.log.error('Error: ADCIRC: {}'.format(e))
     return df_adcirc_data, df_adcirc_meta 
