@@ -208,7 +208,7 @@ class get_obs_stations(object):
                 data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
             except Exception as ex:
                 utilities.log.error('NOAA error {}'.format(template.format(type(ex).__name__, ex.args)))
-                sys.exit(1)
+                #sys.exit(1)
 
         if self.source.upper()=='CONTRAILS':
             contrails_config = utilities.load_config(self.contrails_yamlname)['DEFAULT']
@@ -222,7 +222,7 @@ class get_obs_stations(object):
                 data, meta = fetch_data.process_contrails_stations(time_range, contrails_stations, contrails_config, data_product=self.product, resample_mins=return_sample_min)
             except Exception as ex:
                 utilities.log.error('CONTRAILS error {}'.format(template.format(type(ex).__name__, ex.args)))
-                sys.exit(1)
+                #sys.exit(1)
 
         if self.source.upper()=='NDBC':
             template = "An exception of type {0} occurred."
@@ -235,7 +235,7 @@ class get_obs_stations(object):
                 utilities.log.info('NDBC data {}'.format(data))
             except Exception as ex:
                 utilities.log.error('NDBC process error {}'.format(template.format(type(ex).__name__, ex.args)))
-                sys.exit(1)
+                #sys.exit(1)
 
         if self.source.upper()=='NDBC_HISTORIC':
             template = "An exception of type {0} occurred."
@@ -248,7 +248,7 @@ class get_obs_stations(object):
                 utilities.log.info('NDBC_HISTORIC data {}'.format(data))
             except Exception as ex:
                 utilities.log.error('NDBC_HISTORIC process error {}'.format(template.format(type(ex).__name__, ex.args)))
-                sys.exit(1)
+                #sys.exit(1)
 
         utilities.log.info('Finished with data source {}'.format(self.source))
 
