@@ -473,7 +473,7 @@ class adcirc_fetch_data(fetch_station_data):
         # Check if ALL entries in typeCast_status are the same. If not fail hard.
         if len(set(typeCast_status)) != 1:
             utilities.log.error('Some mix up with typeCast_status {}'.format(typeCast_status))
-            sys.exit(1)
+            #sys.exit(1)
         self._typeCast = list(set(typeCast_status))[0] 
         utilities.log.info('ADCIRC type determined to be {}'.format(self._typeCast))
         return df_data
