@@ -923,12 +923,9 @@ class contrails_fetch_data(fetch_station_data):
                  'tz': GLOBAL_TIMEZONE,
                  'data_start': tstart,'data_end': tend }
             url = self.build_url_for_contrails_station(self._domain,self._systemkey,indict)
-            print(url)
             try:
                 response = requests.get(url)
-                print(response)
                 dict_data = xmltodict.parse(response.content)
-                print(dict_data)
                 data = dict_data['onerain']['response']['general']
                 dx = pd.DataFrame(data['row']) # Will  be <= 5000
                 dx = dx[['data_time','data_value']]
