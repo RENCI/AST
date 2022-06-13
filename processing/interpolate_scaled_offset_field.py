@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from utilities.utilities import utilities
 from sklearn.neighbors import KNeighborsRegressor
-from sklearn.model_selection import KFold
+from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.metrics import mean_squared_error
 from scipy import interpolate as sci
 
@@ -282,7 +282,7 @@ def generic_grid():
     adc_coords = {'LON':x.tolist(), 'LAT':y.tolist()}
     return adc_coords 
 
-def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=None, cv_splits=5, nearest_neighbors=3):
+def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=None, cv_splits=5, nearest_neighbors=3, stratified_header_name=None):
     """
     df_source is the set of stationids and their values (errors)
 
@@ -302,23 +302,34 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
         df_water_controls: (DataFrame) stationsids x values(==0) 
         cv_splits: (int) Type of Cross-validation splitting
         nearest_neighbors: (int) How many gauges should be applied to KNN compute land_control nodes 
+        stratified_header_name: (str) Name iof an existing header form which to stratify the KFolds. No checking is made
+            to enforce a minimum number of members to train and test
 
     Returns:
         kf_dict: (dict) Statistical values for the full data set. Returns aveMSE, for each CV fold and overall best_cnt
         kf_cntr_dict: (dict) Statistical values for the only the land control nodes. Returns aveCnrlMSE, for each CV fold and overall best_cnt
     """
-
     utilities.log.info('Initiating the CV testing: Using station drop outs to check overfitting. cv_splits {}, knn {}'.format(cv_splits, nearest_neighbors))
-    # Must ensure no Nans get pass through this method
     df_source_drop = df_source.dropna()
     utilities.log.info('test_interpolation_fit: Nan Removal. Init {}. after {}'.format(len(df_source), len(df_source_drop)))
 
-    kf = KFold(n_splits=cv_splits)
-    folds = kf.get_n_splits(df_source)
+    if stratified_header_name is None:
+        kf = KFold(n_splits=cv_splits)
+        kfs = kf.split(df_source_drop)
+        folds = kf.get_n_splits(df_source_drop)
+    else:
+        try:
+            kf = StratifiedKFold(n_splits=cv_splits)
+            folds=kf.get_n_splits()
+            kfs = kf.split(df_source_drop,  df_source_drop[stratified_header_name])
+        except Exception as ex:
+            print('Stratified header_id error {}'.format(ex.args))
+            sys.exit(1)
     kf_dict = dict([("fold_%s" % i,[]) for i in range(1, folds+1)])
     kfcntl_dict = dict([("Cnrl_fold_%s" % i,[]) for i in range(1, folds+1)])
     fold = 0
-    for train_index, test_index in kf.split(df_source_drop):
+    for train_index, test_index in kfs: # kf.split(df_source_drop):
+        print('TRAIN {}, TEST {}'.format(train_index, test_index))
         train_list = list()
         fold += 1
         print('Fold: {}'.format(fold))
@@ -326,9 +337,9 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
         train_list.append(df_source_train)
         if df_land_controls is not None:
             df_land_controls_train = knn_fit_control_points(df_source_train, df_land_controls, nearest_neighbors=nearest_neighbors)
-            ktest = len(df_source_test) if len(df_source_test) < nearest_neighbors else nearest_neighbors 
+            ktest = len(df_source_test) if len(df_source_test) < nearest_neighbors else nearest_neighbors
             df_land_controls_test = knn_fit_control_points(df_source_test, df_land_controls, nearest_neighbors=ktest)
-            train_list.append(df_land_controls_train) 
+            train_list.append(df_land_controls_train)
         if df_water_controls is not None:
             train_list.append(df_water_controls)
         utilities.log.info('test_interpolation_fit: Num of DFs to combined for fit {}'.format(len(train_list)))
@@ -406,6 +417,8 @@ if __name__ == '__main__':
                         type=str, help='PKL file with land_control points - no KNN applied')
     parser.add_argument('--water_control_file', action='store', dest='water_control_file', default='../interpolate_testing/water_controls_interpolation.pkl',
                         type=str, help='PKL file with water_control points')
+    parser.add_argument('--stratified_header_name', action='store', dest='stratified_header_name', default=None,
+                        type=str, help='Header for performing stratified sampling')
     args = parser.parse_args()
 
 if __name__ == '__main__':
