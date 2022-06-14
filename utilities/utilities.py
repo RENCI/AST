@@ -25,7 +25,7 @@ class utilities:
 
     """
     @staticmethod
-    def init_logging(subdir=None, config_file=None):
+    def init_logging(subdir=None, config_file=None, log_file_metadata=None):
         """
         Initialize the Utilities class, set up logging
         """
@@ -33,14 +33,14 @@ class utilities:
         global LOGFILE
         config_data = utilities.load_config(yaml_file=config_file)
         if LOGGER is None:
-            log,logfile = utilities.initialize_logging(subdir=subdir, config=config_data)
+            log,logfile = utilities.initialize_logging(subdir=subdir, config=config_data, log_file_metadata = log_file_metadata)
             LOGGER = log
             LOGFILE = logfile
         utilities.log = LOGGER
         utilities.LogFile = LOGFILE
         return config_data
 
-    def initialize_logging(subdir=None, config=None):
+    def initialize_logging(subdir=None, config=None, log_file_metadata = None):
         """
         Log file get saved to $LOG_PATH/subdir. LOG_PATH defaults to '.'
 
@@ -62,7 +62,10 @@ class utilities:
             Logdir = os.getenv('LOG_PATH','.')
 
         #LogName =os.getenv('LOG_NAME','logs')
-        LogName='AdcircSupportTools.log'
+        if log_file_metadata is None:
+            LogName='AdcircSupportTools.log'
+        else:    
+            LogName=f'AdcircSupportTools_{log_file_metadata}.log'
         LogFile='/'.join([Logdir,LogName])
 
         formatter = logging.Formatter('%(asctime)s : %(levelname)s : %(funcName)s : %(module)s : %(name)s : %(message)s ')
