@@ -57,9 +57,27 @@ def convert_urls_to_63style(urls)->list:
     urls_63 = list()
     for url in urls:
         words=url.split('/')
-        words[-1]='swan_HS.63.nc' if 'swan' in words[-1] else 'fort.63.nc'
+        words[-1]='fort.63.nc'
         urls_63.append('/'.join(words))
     utilities.log.info('Conversion of url list to url_63 list')
+    return urls_63
+
+def convert_urls_to_swan_63style(urls)->list:
+    """
+    Process a list of ASGS urls and mandate filename to be swan_HS.63.nc
+    So put a check in here
+
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
+        urls: list(str). list of converted urls
+    """
+    urls_63 = list()
+    for url in urls:
+        words=url.split('/')
+        words[-1]='swan_HS.63.nc'
+        urls_63.append('/'.join(words))
+    utilities.log.info('Conversion of url list to swan url_63 list')
     return urls_63
 
 def first_available_netCDF4(urls):
@@ -330,8 +348,14 @@ def main(args):
 
     # Invoke the harvester related class
     if args.fort63_style:
-        urls=convert_urls_to_63style(urls)
+        if args.variable_name='zeta':
+            urls=convert_urls_to_63style(urls)
+        else:
+            urls=convert_urls_to_swan_63style(urls)
     else:
+        if args.variable_name='zeta':
+            utilities.log.error('Cannot use fort63_style with a swan file')
+            sys.exit(1)
         urls=convert_urls_to_61style(urls)
 
     # Sample test also needs to have a station list
