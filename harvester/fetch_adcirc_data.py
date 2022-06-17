@@ -18,8 +18,6 @@ from utilities.utilities import utilities as utilities
 # Currently supported sources
 SOURCES = ['ASGS']
 
-##TODO reconcile the different data structures for fort63/fort61
-##    Requires mods in the fetch_adcirc_data.py code where for fort63, it build a list of stationid,node tuples
 def get_adcirc_stations_fort63_style(fname=None)->pd.DataFrame:
     """
     Simply read a list of stations from a csv file.
@@ -192,7 +190,8 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         sitename (str): sitename (opt)
         data_product: (str) (def data_product). An AST named data product (Not the True data product name) 
         resample_mins: (int) Returned time series with a sampling of resample_mins
-        fort63_style: (bool) Request fetching water levels from fort.63.nc. Requires compatible station dataframe 
+        fort63_style: (bool) Request fetching water levels from fort.63.nc/swan_HS.63.nc. Requires compatible station dataframe 
+        variable_nme: (str)  If wanting swan results,must pass in the correct NC4 data varable name of 'swan_HS'
     Returns:
         df_adcirc_data: DataFrame (time x station)
         df_adcirc_meta: DataFrame (station x metadata)

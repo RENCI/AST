@@ -94,9 +94,12 @@ f)  python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/n
 python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/Projects/NOAA.Reanalysis/fr3/2018/fort.63.nc" --data_source 'ASGS' --station_list '/projects/sequence_analysis/vol1/prediction_work/FR3_UNASSIMILATED_REANALYSIS_2018/supporting_data/unassimilated_stations.csv' --fort63_style --raw_local_url
 
 # Try to read a SWAN file instead. Must specify the correct variable name AND specify fort63_style as well as raw_local_url
-1) python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/HSOFS-PRIOR-2022/2018/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
 
-2) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/Reanalysis/ADCIRC/ERA5/hsofs/2012/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
+a) python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/HSOFS-PRIOR-2022/2018/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
+
+b) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/Reanalysis/ADCIRC/ERA5/hsofs/2012/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
+
+c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS' 
 
 # Output datafiles
 
@@ -227,6 +230,10 @@ python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gr
     3) ./adc_wl_metadata_2022033112.json
     4) ./adc_wl_detailed_2022033112.json
 
+## Case Get a swan data file using the new API
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --data_source 'ASGS' --timeout '2022-06-13 00:00:00' --fort63_style --ensemble 'namforecast' --variable_name 'swan_HS'
+
+
 ##
 ## Generating URLs
 ##
@@ -283,11 +290,20 @@ python generate_urls_from_times.py --url "http://tds.renci.org/thredds/dodsC/202
 # Override default ensemble
 python generate_urls_from_times.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc" --ensemble 'namforecast' --ndays -3  --timeout '2022-02-05 00:00:00'
 
+# Apply template method to a SWAN fie
+python generate_urls_from_times.py  --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --timein '2022-02-03 00:00:00' --timeout '2022-02-05 00:00:00' 
+
+# Swan and change the ensemble name
+python generate_urls_from_times.py  --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --timein '2022-02-03 00:00:00' --timeout '2022-02-05 00:00:00' --ensemble 'namforecast'
+
+
 # Try some Hurricane url generations - NOTE "times" are now advisories. ndays is still "days".
 
 python generate_urls_from_times.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/ec95d/hatteras.renci.org/ec95d-al09-bob/nhcOfcl/fort.61.nc" --timein 3 --timeout 11 
 
 python generate_urls_from_times.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/ec95d/hatteras.renci.org/ec95d-al09-bob/nhcOfcl/fort.61.nc" --ndays -4  --timeout 11
+
+python generate_urls_from_times.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/ec95d/hatteras.renci.org/ec95d-al09-bob/nhcOfcl/fort.61.nc" --ndays -4  --timeout 11 --ensemble 'nhcOfcl'
 
 ## Scenario 2: Using a yaml structural file, build urls 
 
@@ -305,6 +321,10 @@ python generate_urls_from_times.py --ndays -4 --timeout '2022-02-05 00:00:00' --
 python generate_urls_from_times.py --ndays -4 --timeout 11 --config_name '../secrets/url_framework.yml' --grid_name 'ec95d' --instance_name 'ec95d-al09-bob' --hurricane_yaml_year='2021' --hurricane_yaml_source='al09'
 
 python generate_urls_from_times.py --ndays -4 --timeout 11 --config_name '../secrets/url_framework.yml' --grid_name 'ec95d' --instance_name 'ec95d-al09-bob' --hurricane_yaml_year='2021' --hurricane_yaml_source='al09' --ensemble 'nowcast'
+
+# Build a SWAN url from a new yaml and for a SWAN data file
+
+python generate_urls_from_times.py --ndays -4 --timeout '2022-02-05 00:00:00' --config_name '../secrets/swan_url_framework.yml' --grid_name 'NCSC_SAB_v1.23' --instance_name 'ncsc123-nam-sb55.01' --ensemble 'namforecast'
 
 ##
 ## Grid to station maps
