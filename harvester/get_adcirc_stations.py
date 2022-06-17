@@ -25,6 +25,7 @@ import harvester.generate_urls_from_times as genurls # generate_urls_from_times
 from utilities.utilities import utilities as utilities
 from argparse import ArgumentParser
 
+# TO DO not sure if a swan_HS.61 style file will ever be created
 def convert_urls_to_61style(urls)->list:
     """
     Process a list of ASGS urls and mandate filename to be fort.61.nc
@@ -92,7 +93,7 @@ def first_available_netCDF4(urls):
 def extract_adcirc_grid_coords(urls_63 )->pd.DataFrame:
     """
     The input URLs is a list. But we only check one of them
-    You MUST pass in URLs that point to fort.63.nc
+    You MUST pass in URLs that point to fort.63.nc/swan_HS.63
 
     Parameters:
        urls_63. list(str). THe current list if fort63_style urls from which to get the grid coordinates
@@ -144,7 +145,6 @@ class get_adcirc_stations(object):
             knockout: A dict used to remove ranges of time(s) for a given station
             fort63_style: bool. Perform water level reads on the fort.63 file. Requires a station list
                 of tuples that contains stationids, nodeid
-   
         """
         self.source = source.upper()
 
@@ -228,7 +228,7 @@ class get_adcirc_stations(object):
 # Since we will do a rolling averager later followed by a final resampling at 1 hour freq.
 # ADCIRC will by default return data back in hourly steps
 
-    def fetch_station_product(self, urls, return_sample_min=0, fort63_style=False):
+    def fetch_station_product(self, urls, return_sample_min=0, fort63_style=False, variable_name='zeta'):
         """
         Fetch the desire data. The main information is part of the class (sources, products, etc.). However, one must still specify the return_sample_minutes
         to sample the data. The harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn't pad nans), and then
@@ -237,6 +237,8 @@ class get_adcirc_stations(object):
         Parameters:
             urls: List (str). ASGS format. 
             return_sample_min: (int) sampling frequency of the returned, interpolated, data set
+            variable_name: (str) (usually 'zeta' or 'swan_HS') Name of the actual variable in the netCDF4 file to query
+
         Returns:
             data: Sampled data of dims (time x stations)
             meta: associated metadata
@@ -254,7 +256,7 @@ class get_adcirc_stations(object):
         if self.source.upper()=='ASGS':
             adc_stations=self.station_list
             #adc_metadata='_'+endtime.replace(' ','T') 
-            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style)
+            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style, variable_name=variable_name)
         time_index=data.index.tolist()
         self.Tmin = min(time_index).strftime('%Y%m%d%H')
         self.Tmax = max(time_index).strftime('%Y%m%d%H')
@@ -306,6 +308,9 @@ def main(args):
         stoptime=args.timeout
     print('Stoptime and ndays {}. {}'.format(stoptime,args.ndays))
 
+    variable_name = args.variable_name
+    utilities.log.info('variable_name set to {}'.format(variable_name))
+
     # Generate a list of URLs consistent with the desired criteria
     # How to do this depends on whether you passed in a template_url or not
 
@@ -338,7 +343,7 @@ def main(args):
                 knockout_dict=None, fort63_style=args.fort63_style )
 
     # Fetch best resolution and no resampling
-    data,meta=rpl.fetch_station_product(urls, return_sample_min=args.return_sample_min, fort63_style=args.fort63_style  )
+    data,meta=rpl.fetch_station_product(urls, return_sample_min=args.return_sample_min, fort63_style=args.fort63_style, variable_name=variable_name  )
 
     # Revert Harvester filling of nans to -99999 back to nans
     data.replace('-99999',np.nan,inplace=True)
@@ -409,5 +414,7 @@ if __name__ == '__main__':
                         help='Boolean: Will inform Harvester to use fort.63.methods to get station nodesids')
     parser.add_argument('--gridname', action='store', dest='gridname', default=None,
                         help='String: Test code gridname value')
+    parser.add_argument('--variable_name', action='store', dest='variable_name', default='zeta', type=str,
+                        help='Choose a non-default netCDF4 variable name')
     args = parser.parse_args()
     sys.exit(main(args))
