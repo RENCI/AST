@@ -184,6 +184,16 @@ class compute_error_field(object):
         self.adc=adc
         utilities.log.info('OBS and ADC DataFrames reduced (inplace) to common times of len {}'.format(len(common_times)))
 
+#
+# The tidal transform step used here is a bit tricky. We begin with the input hourly data (starttime,endtime) from the adc/obs sources.
+# Then, beginning at starttime, we build an estimated tidal time series my incrementing by 12/12.42 to the endtime (plus any hourly n_pad if set)
+# Then the new times are interpolated and the hourly indexing is removed (except the initial time). 
+# Then we seek (in reverse) the number of time steps that comprise full tidal periods (12.42). We take the int( total time steps/12.42 )
+# to compute the number of full periods (num_periods). Then selecting rows backwards from the final time we step back num_periods * 12.
+# (inclusive). We can step back 12 rows for each tidal period since the new row indexing is implied to be on a 12.42 hour scale
+# Then we keep only the full tidal period data.
+# You would expect the number of tidal periods to be <  input range/12 unless user specified n_pad > 0
+
     def _tidal_transform_data(self):
         """
         For ADC and OBS. transform data (inplace). Interpolate on a diurnal time of period n_hours_per_tide = 12.42
@@ -199,16 +209,23 @@ class compute_error_field(object):
         normalRange = pd.date_range(str(timein), str(timeout), freq='3600S') 
         n_hours_per_period = self.n_hours_per_period
         n_hours_per_tide = self.n_hours_per_tide
-        n_pad = self.n_pad
-
-        if n_hours_per_period != 12:
-            sys.warning('Interpolation code currently only tested for n_hours_per_period=12')
+        n_pad = self.n_pad # This is used to push inteprlation end-nans to outside the time bounds
 
         time_step =  int(3600*n_hours_per_tide/n_hours_per_period) # Always scale to an hour (3600s)
         diurnal_range = pd.date_range(timein, timeout+np.timedelta64(n_pad,'h'), freq=str(time_step)+'S').to_list()
-
+    
         self.adc = interpolate_and_sample( diurnal_range, self.adc )
         self.obs = interpolate_and_sample( diurnal_range, self.obs )
+
+        # Truncate the time ranges to only retain full tidal periods. Update data inplace. 
+        num_periods = int(len(self.adc)/12.42)
+        num_rows_keep = num_periods * 12
+        self.adc = self.adc.tail(num_rows_keep)
+        self.obs = self.obs.tail(num_rows_keep)
+
+        print(len(self.adc))
+        utilities.log.info('Tidal transform: Num retained periods {}, num rows kept {}, adc data index {}'.format(num_periods, num_rows_keep, self.adc.index))
+        # Now only keep a complete set of 12.42 ur full-tidal periods whos last time <=timeout
 
         ttimestart, ttimeend = diurnal_range[0],diurnal_range[-1]
         utilities.log.info('inplace tidal_transform_data: n_pad {}, n_hours_per_period {}, n_hours_per_tide {}'.format(n_pad, n_hours_per_period, n_hours_per_tide))
