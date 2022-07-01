@@ -302,7 +302,7 @@ class adcirc_fetch_data(fetch_station_data):
             utilities.log.info('Found either Hurricane Advisory value or this is a raw_url style url input: Assumes forecast {}'.format(starttime))
             return 'FORECAST'
         except IndexError as e:
-            utilities.log.error('Found (probably) a LOCAL netCDF file {}'.format(e))
+            utilities.log.info('Found (probably) a LOCAL netCDF file {}'.format(e))
             return 'FORECAST'
         except Exception as e:
             utilities.log.error('Error: {}'.format(e))
