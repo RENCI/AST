@@ -284,12 +284,15 @@ class adcirc_fetch_data(fetch_station_data):
         url TIME must reside in url.split('/')[-6]
         Assume the times series are ordered.
 
+        If the input url is a LOCAL data file, then we can make no assumptions about length of name or nomenclature
+        Just assume it is a FORECAST if indexing errors occur
+
         Return:
               Either NOWCAST or FORECAST
         """
         timeseries = pd.to_datetime(df.index.astype(str)) # Account for ctime/calender changes in pandas. Thx !.
-        starttime=url.split('/')[-6]
         try:
+            starttime=url.split('/')[-6]
             urltime = dt.datetime.strptime(starttime,'%Y%m%d%H')
             if timeseries[-1] > urltime:
                 return 'FORECAST'
@@ -299,6 +302,9 @@ class adcirc_fetch_data(fetch_station_data):
             utilities.log.info('Found either Hurricane Advisory value or this is a raw_url style url input: Assumes forecast {}'.format(starttime))
             return 'FORECAST'
         except IndexError as e:
+            utilities.log.error('Found (probably) a LOCAL netCDF file {}'.format(e))
+            return 'FORECAST'
+        except Exception as e:
             utilities.log.error('Error: {}'.format(e))
             sys.exit(1)
 
