@@ -15,6 +15,8 @@ import math
 from harvester.fetch_station_data import adcirc_fetch_data
 from utilities.utilities import utilities as utilities
 
+import time as tm
+
 # Currently supported sources
 SOURCES = ['ASGS']
 
@@ -419,6 +421,7 @@ def main(args):
 
     # metadata are used to augment filename
     #ASGS
+    t0 = tm.time()
     if data_source.upper()=='ASGS':
         excludedStations=list()
         # Use default station list
@@ -452,8 +455,8 @@ def main(args):
         except Exception as e:
             utilities.log.error('Error: ADCIRC: Failed Write {}'.format(e))
             sys.exit(1)
-
-    utilities.log.info('Finished with data source {}'.format(data_source))
+    total_time = tm.time() - t0
+    utilities.log.info('Finished with data source {}. Time was {}'.format(data_source, total_time))
     utilities.log.info('Finished')
 
 if __name__ == '__main__':
