@@ -433,6 +433,9 @@ class adcirc_fetch_data(fetch_station_data):
 ##
     def fetch_single_product(self, station_tuple, periods) -> pd.DataFrame:
         """
+        variables.key() are now checked to try and determine if the dataset has been transposed (and rechunked) or not.
+        If so, then fetching of the timeseries will be much, much faster but also requires chaning the code here a little
+
         Parameters:
             station_tuple (str,int). A tuple that maps stationid to the current ADCIRC-grid nodeid
             periods <list>. A url-61 values. 
@@ -453,6 +456,10 @@ class adcirc_fetch_data(fetch_station_data):
                 sys.exit(1)
             # we need to test access to the netCDF variables, due to infrequent issues with
             # netCDF files written with v1.8 of HDF5.
+
+            data_transposed = False if list(nc.variables.keys())[0]=='time' else True
+            if data_transposed:
+                utilities.log.info('Expecting netCDF data in transposed form')
             if self._variable_name not in nc.variables.keys():
                 print("{} not found in netCDF for {}.".format(self._variable_name,url))
                 # okay to have a missing one  do not exit # sys.exit(1)
@@ -461,7 +468,10 @@ class adcirc_fetch_data(fetch_station_data):
                 t = nc4.num2date(time_var[:], time_var.units)
                 data = np.empty([len(t), 0])
                 try:
-                    data = nc[self._variable_name][:,node] # Note the same as when reading fort.63 -1]
+                    if not data_transposed:
+                        data = nc[self._variable_name][:,node] # Note the same as when reading fort.63 -1]
+                    else:
+                        data = nc[self._variable_name][node] # Note the same as when reading fort.63 -1]
                 except IndexError as e:
                     utilities.log.error('Error: This is usually caused by accessing non-hsofs data but forgetting to specify the proper --grid {}'.format(e))
                     #sys.exit()
@@ -494,6 +504,9 @@ class adcirc_fetch_data(fetch_station_data):
 
     def fetch_single_metadata(self, station_tuple) -> pd.DataFrame:
         """
+        variables.key() are now checked to try and determine if the dataset has been transposed (and rechunked) or not.
+        If so, then fetching of the timeseries will be much, much faster but also requires chaning the code here a little
+
         Parameters:
             station <str>. A valid station id
 
