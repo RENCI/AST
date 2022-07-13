@@ -93,6 +93,12 @@ f)  python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/n
 # Can also specify a LOCAL url datafile. In this case, no scraping of the url for useful information is possible. So the final metadata object will not be very informative
 python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/Projects/NOAA.Reanalysis/fr3/2018/fort.63.nc" --data_source 'ASGS' --station_list '/projects/sequence_analysis/vol1/prediction_work/FR3_UNASSIMILATED_REANALYSIS_2018/supporting_data/unassimilated_stations.csv' --fort63_style --raw_local_url
 
+python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2018/fort.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+
+# Local files ( raw vs transposed)
+python fetch_adcirc_data.py --url "./fort.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+python fetch_adcirc_data.py --url "./fort.63_transposed_and_rechunked_1024.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+
 # Try some other raw runs
 python fetch_adcirc_data.py --url "./fort.63.nc" --data_source 'ASGS' --fort63_style  --raw_local_url
 
