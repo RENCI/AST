@@ -62,6 +62,26 @@ def convert_urls_to_63style(urls)->list:
     utilities.log.info('Conversion of url list to url_63 list')
     return urls_63
 
+def convert_urls_to_63style_customfilename(urls, filename='fort.63.nc')->list:
+    """
+    Process a list of ASGS urls and mandate filename to be fort.63.nc
+    Make a slight change. It is possible we may want to explore a SWAN file instead.
+    So put a check in here
+
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
+        urls: list(str). list of converted urls
+    """
+    urls_63 = list()
+    for url in urls:
+        words=url.split('/')
+        words[-1]=filename
+        urls_63.append('/'.join(words))
+    utilities.log.info('Conversion of url list to url_63 list')
+    return urls_63
+
+
 def convert_urls_to_swan_63style(urls)->list:
     """
     Process a list of ASGS urls and mandate filename to be swan_HS.63.nc
