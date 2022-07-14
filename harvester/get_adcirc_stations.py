@@ -78,7 +78,7 @@ def convert_urls_to_63style_customfilename(urls, filename='fort.63.nc')->list:
         words=url.split('/')
         words[-1]=filename
         urls_63.append('/'.join(words))
-    utilities.log.info('Conversion of url list to url_63 list')
+    utilities.log.info('Conversion of url list to url_63 list using the name {}'.format(filename))
     return urls_63
 
 
