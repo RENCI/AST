@@ -95,12 +95,9 @@ python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_w
 
 python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2018/fort.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
 
-# Local files ( raw vs transposed)
+# Local files (raw vs transposed+rechunked)
 python fetch_adcirc_data.py --url "./fort.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
 python fetch_adcirc_data.py --url "./fort.63_transposed_and_rechunked_1024.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
-
-# Try some other raw runs
-python fetch_adcirc_data.py --url "./fort.63.nc" --data_source 'ASGS' --fort63_style  --raw_local_url
 
 
 # Try to read a SWAN file instead. Must specify the correct variable name AND specify fort63_style as well as raw_local_url
