@@ -133,7 +133,7 @@ class compute_error_field(object):
         one would: set n_hours_per_periods = 24, and n_averging_periods = n_yearly_length(hours) // 24 
     """
 
-    def __init__(self, obs, adc, meta, n_hours_per_period=12, n_hours_per_tide=12.42, n_pad=1, zthresh=3, exclude_outlier=False):
+    def __init__(self, obs, adc, meta, n_hours_per_period=12, n_hours_per_tide=12.42, n_pad=1, zthresh=3):
         """
         The set of input parameters are not neccesarily all used all the time. But all are specified
         here as an example
@@ -158,10 +158,9 @@ class compute_error_field(object):
         self.n_pad=n_pad
 
         self.z_thresh=zthresh
-        self.exclude_outlier=exclude_outlier
         utilities.log.info('Averaging: Hours per period {}'.format(n_hours_per_period))
         utilities.log.info('Tidal: Hours per tidal period {}, num of padding hours {}'.format(self.n_hours_per_tide, self.n_pad))
-        utilities.log.info('Exclusions: Rm station outliers {}, given Z-thresh of {}'.format(self.exclude_outlier,self.z_thresh))
+        utilities.log.info('Exclusions: If chosen use Z-thresh of {}'.format(self.z_thresh))
 
     def _intersection_stations(self):
         """ 
