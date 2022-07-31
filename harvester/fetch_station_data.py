@@ -527,23 +527,27 @@ class adcirc_fetch_data(fetch_station_data):
                 nodelat=nc.variables['y'][node]
                 break; # If we found it no need to check other urls
             except IndexError as e:
-                utilities.log.error('Meta Error:{}'.format(e))
+                utilities.log.error('Meta not found. Trying another URL:{}'.format(e))
                 #sys.exit()
-        lat = float(ma.getdata(nodelat))
-        lon = float(ma.getdata(nodelon))
-        meta['LAT'] = lat 
-        meta['LON'] = lon 
-        # meta['NAME']= nc.agrid # Long form of grid name description # Or possible use nc.version
-        meta['NAME']='_'.join([self._gridname.upper(),self._typeCast.upper()]) # These values come from the calling routine and should be usually nowcast, forecast
-        #meta['VERSION'] = nc.version
-        meta['UNITS'] ='m'
-        meta['TZ'] = GLOBAL_TIMEZONE # Can look in nc.comments
-        meta['OWNER'] = nc.source
-        meta['STATE'] = np.nan 
-        meta['COUNTY'] = np.nan 
-        meta['SITE'] = self._sitename
-        df_meta=pd.DataFrame.from_dict(meta, orient='index')
-        df_meta.columns = [str(station)]
+        try:
+            lat = float(ma.getdata(nodelat))
+            lon = float(ma.getdata(nodelon))
+            meta['LAT'] = lat 
+            meta['LON'] = lon 
+            # meta['NAME']= nc.agrid # Long form of grid name description # Or possible use nc.version
+            meta['NAME']='_'.join([self._gridname.upper(),self._typeCast.upper()]) # These values come from the calling routine and should be usually nowcast, forecast
+            #meta['VERSION'] = nc.version
+            meta['UNITS'] ='m'
+            meta['TZ'] = GLOBAL_TIMEZONE # Can look in nc.comments
+            meta['OWNER'] = nc.source
+            meta['STATE'] = np.nan 
+            meta['COUNTY'] = np.nan 
+            meta['SITE'] = self._sitename
+            df_meta=pd.DataFrame.from_dict(meta, orient='index')
+            df_meta.columns = [str(station)]
+        except IndexError as e:
+            utilities.log.error('Failed updating te ADCIRC station metadata for station {}'.format(station))
+            sys.exit(1)
         return df_meta
 
 #####################################################################################
