@@ -412,8 +412,8 @@ class adcirc_fetch_data(fetch_station_data):
                 full_idx+=idx
             except OSError:
                 utilities.log.warn("Could not open/read a specific fort.61 URL. Try next iteration {}".format(url61))
-            except Exception:
-                utilities.log.error('Could not find ANY fort.61 urls from which to get stations lists')
+            except Exception as e:
+                utilities.log.error('Could not find ANY fort.61 urls from which to get stations lists {}'.format(e))
                 utilities.log.info('Bottomed out in _fetch_adcirc_nodes_from_fort61_input_file')
                 sys.exit(1) 
             #full_idx+=idx
@@ -452,7 +452,7 @@ class adcirc_fetch_data(fetch_station_data):
             try:
                 nc = nc4.Dataset(url)
             except OSError as e:
-                utilities.log.error('URL not found should never happen here. Should have been prefiltered')
+                utilities.log.error('URL not found should never happen here. Should have been prefiltered: {}'.format(e))
                 sys.exit(1)
             # we need to test access to the netCDF variables, due to infrequent issues with
             # netCDF files written with v1.8 of HDF5.
@@ -527,7 +527,7 @@ class adcirc_fetch_data(fetch_station_data):
                 nodelat=nc.variables['y'][node]
                 break; # If we found it no need to check other urls
             except IndexError as e:
-                utilities.log.error('Meta not found. Trying another URL:{}'.format(e))
+                utilities.log.error('Meta not found. Trying another URL was{}:{}'.format(url, e))
                 #sys.exit()
         try:
             lat = float(ma.getdata(nodelat))
@@ -546,7 +546,7 @@ class adcirc_fetch_data(fetch_station_data):
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except IndexError as e:
-            utilities.log.error('Failed updating te ADCIRC station metadata for station {}'.format(station))
+            utilities.log.error('Failed updating te ADCIRC station metadata for station {}, {}'.format(station,e))
             sys.exit(1)
         return df_meta
 
@@ -610,8 +610,8 @@ class noaanos_fetch_data(fetch_station_data):
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.info('NOAA Fetching product {}'.format(self._product))
-        except KeyError:
-            utilities.log.error('NOAA/NOS No such product key. Input {}, Available {}'.format(product, self.products.keys()))
+        except KeyError as e:
+            utilities.log.error('NOAA/NOS No such product key. Input {}, Available {}: {}'.format(product, self.products.keys(),e))
             sys.exit(1)
         else:
             self._interval=interval
@@ -680,14 +680,14 @@ class noaanos_fetch_data(fetch_station_data):
             df_data.columns=[station]
             df_data.index.name='TIME'
             df_data.index = pd.to_datetime(df_data.index)
-        except ConnectionError:
-            utilities.log.error('Hard fail: Could not connect to COOPS for products {}'.format(station))
-        except HTTPError:
-            utilities.log.error('Hard fail: HTTP error to COOPS for products')
+        except ConnectionError as ec:
+            utilities.log.error('Hard fail: Could not connect to COOPS for products {}: {}'.format(station, ec))
+        except HTTPError as eh:
+            utilities.log.error('Hard fail: HTTP error to COOPS for products: {}'.format(eh))
         except Timeout:
             utilities.log.error('Hard fail: Timeout')
         except Exception as e:
-            utilities.log.error('NOAA/NOS data error: {} was {}'.format(e, self._product))
+            utilities.log.error('NOAA/NOS data error: station {}: {} was {}'.format(station,e, self._product))
 
         try:
             df_data=df_data.astype(float)
@@ -728,7 +728,7 @@ class noaanos_fetch_data(fetch_station_data):
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except Exception as e:
-            utilities.log.error('NOAA/NOS meta error: {}'.format(e))
+            utilities.log.error('NOAA/NOS meta error station {}: {}'.format(station, e))
             sys.exit(1)
         return df_meta
 
@@ -1128,10 +1128,10 @@ class ndbc_fetch_data(fetch_station_data):
             df_data.sort_index(inplace=True) # From lowest to highest
             df_data = df_data.loc[time_range[0]:time_range[1]]
             df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
-        except ConnectionError:
-            utilities.log.error('Hard fail: Could not connect to NDBC for products {}'.format(bouy[0]))
-        except HTTPError:
-            utilities.log.error('Hard fail: HTTP error to NDBC for products')
+        except ConnectionError as ec:
+            utilities.log.error('Hard fail: Could not connect to NDBC for products {}: {}'.format(bouy[0], ec))
+        except HTTPError as eh:
+            utilities.log.error('Hard fail: HTTP error to NDBC for products: {}'.format(eh))
         except Timeout:
             utilities.log.error('Hard fail NDBC: Timeout')
         except Exception as e:
@@ -1278,8 +1278,8 @@ class ndbc_fetch_historic_data(fetch_station_data):
                 df_data.sort_index(inplace=True) # From lowest to highest
                 df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
                 data_list.append(df_data)
-            except ConnectionError:
-                utilities.log.error('Hard fail: Could not connect to NDBC for products {}'.format(bouy[0]))
+            except ConnectionError as ec:
+                utilities.log.error('Hard fail: Could not connect to NDBC for products {}: {}'.format(bouy[0],ec))
             except HTTPError:
                 utilities.log.error('Hard fail: HTTP error to NDBC for products')
             except Timeout:
