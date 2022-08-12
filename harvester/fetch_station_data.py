@@ -688,11 +688,10 @@ class noaanos_fetch_data(fetch_station_data):
             utilities.log.error('Hard fail: Timeout')
         except Exception as e:
             utilities.log.error('NOAA/NOS data error: station {}: {} was {}'.format(station,e, self._product))
-
         try:
             df_data=df_data.astype(float)
         except Exception as e:
-            utilities.log.error('NOAA/NOS concat error: {}'.format(e))
+            utilities.log.warning('NOAA/NOS concat warning: {}'.format(e))
             df_data = np.nan
         return df_data
 
@@ -728,7 +727,7 @@ class noaanos_fetch_data(fetch_station_data):
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except Exception as e:
-            utilities.log.error('NOAA/NOS meta error station {}: {}'.format(station, e))
+            utilities.log.exception('NOAA/NOS meta error station {}: {}'.format(station, e))
             sys.exit(1)
         return df_meta
 
@@ -1040,7 +1039,7 @@ class contrails_fetch_data(fetch_station_data):
             df_meta.columns = [str(station)]
 
         except Exception as e:
-            utilities.log.error('Contrails response meta error: {}'.format(e))
+            utilities.log.exception('Contrails response meta error: {}'.format(e))
             sys.exit(1)
         return df_meta
 
@@ -1307,18 +1306,22 @@ class ndbc_fetch_historic_data(fetch_station_data):
 
              This orientation facilitates aggregation upstream. Upstream will transpose this eventually
              to our preferred orientation with stations as index
-        """
-        meta=dict()
-        df_latest = NDBC.latest_observations().set_index('station')
-        lat, lon = df_latest.loc[buoy[0]][['latitude','longitude']]
-        meta['LAT'] = lat
-        meta['LON'] = lon
-        meta['NAME'] =  buoy[1]
-        meta['UNITS'] = self._data_unit 
-        meta['TZ'] = GLOBAL_TIMEZONE
-        meta['OWNER'] = 'NONE'
-        meta['STATE'] = buoy[2]
-        meta['COUNTY'] = np.nan # None
-        df_meta=pd.DataFrame.from_dict(meta, orient='index')
-        df_meta.columns = [str(buoy[0])]
+        """ 
+        try:
+            meta=dict()
+            df_latest = NDBC.latest_observations().set_index('station')
+            lat, lon = df_latest.loc[buoy[0]][['latitude','longitude']]
+            meta['LAT'] = lat
+            meta['LON'] = lon
+            meta['NAME'] =  buoy[1]
+            meta['UNITS'] = self._data_unit 
+            meta['TZ'] = GLOBAL_TIMEZONE
+            meta['OWNER'] = 'NONE'
+            meta['STATE'] = buoy[2]
+            meta['COUNTY'] = np.nan # None
+            df_meta=pd.DataFrame.from_dict(meta, orient='index')
+            df_meta.columns = [str(buoy[0])]
+        except Exception as e:
+            utilities.log.exception('NDBC meta error: {}'.format(e))
+            sys.exit(1)
         return df_meta
