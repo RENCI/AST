@@ -727,8 +727,8 @@ class noaanos_fetch_data(fetch_station_data):
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except Exception as e:
-            utilities.log.exception('NOAA/NOS meta error station {}: {}'.format(station, e))
-            sys.exit(1)
+            utilities.log.exception('NOAA/NOS meta error station {}: {}. Continue'.format(station, e))
+            #sys.exit(1)
         return df_meta
 
 #####################################################################################
