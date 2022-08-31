@@ -194,6 +194,7 @@ class get_obs_stations(object):
         starttime = time_range[0]
         endtime=time_range[1]
         utilities.log.debug('Attempt a product fetch for the time range {}-{}'.format(starttime,endtime))
+        template = "An exception of type {0} occurred."
 
         if interval is 'None':
             interval = None # Just double checking
@@ -212,7 +213,6 @@ class get_obs_stations(object):
 
         if self.source.upper()=='CONTRAILS':
             contrails_config = utilities.load_config(self.contrails_yamlname)['DEFAULT']
-            template = "An exception of type {0} occurred."
             excludedStations=list()
             meta='_RIVERS' if self.product=='river_water_level' else '_COASTAL'
             contrails_stations=self.station_list
@@ -225,7 +225,6 @@ class get_obs_stations(object):
                 #sys.exit(1)
 
         if self.source.upper()=='NDBC':
-            template = "An exception of type {0} occurred."
             excludedStations=list()
             # Use default station list
             ndbc_stations=self.station_list
@@ -238,7 +237,6 @@ class get_obs_stations(object):
                 #sys.exit(1)
 
         if self.source.upper()=='NDBC_HISTORIC':
-            template = "An exception of type {0} occurred."
             excludedStations=list()
             # Use default station list
             ndbc_stations=self.station_list
@@ -261,7 +259,6 @@ class get_obs_stations(object):
         return data, meta
 
         if self.source.upper()=='NDBC_HISTORIC':
-            template = "An exception of type {0} occurred."
             excludedStations=list()
             # Use default station list
             ndbc_stations=self.station_list
