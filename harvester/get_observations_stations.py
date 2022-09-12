@@ -125,9 +125,11 @@ class get_obs_stations(object):
         # 2 Okay for each station loop over time range(s) and NaN away
         utilities.log.debug('Stations is {}'.format(stations))
         utilities.log.debug('dict {}'.format(self.knockout_dict))
+        print(df_station)
         for station in stations:
             for key, value in self.knockout_dict[station].items():
-                df_station[station][value[0]:value[1]]=np.nan 
+                df_station.loc[value[0]:value[1]][station]=np.nan
+                #df_station.loc[station][value[0]:value[1]]=np.nan 
         utilities.log.info('Knockout dict has been applied')
         return df_station
 
