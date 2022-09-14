@@ -25,7 +25,7 @@ def get_lon_lat_control_values(fname=None, header_data='val')->pd.DataFrame:
             Will be changed to VAL on exit
 
     Returns:
-        df: DataFrame witjh tghe headers: LON,LAT,VAL 
+        df: DataFrame with the headers: LON,LAT,VAL 
 
     """
     if fname is None:
@@ -52,7 +52,7 @@ def get_station_values(fname=None, header_data='mean')->pd.DataFrame:
     station (averaging) files can be more complicated than control point files
     but we assume stationids are on the index and that each has lon,lat,mean (or header_data)
 
-    The INPUT headers are very specific to ASTv2 usage
+    The INPUT headers are very specific to AST usage
     examples of typical header_data could be 'mean','std'
 
     Parameters:
@@ -120,7 +120,7 @@ def knn_fit_control_points(df_source, df_controls, nearest_neighbors=3)->pd.Data
             Usually read by get_station_values()
         nearest_neighbors: (int)  Number of neighbors to perform regression fit
 
-    Results:
+    Returns:
         df_fit_controls: DatraFrame with the columns ('LON','LAT','VAL')
 
     """
@@ -157,7 +157,7 @@ def combine_datasets_for_interpolation(list_dfs) ->pd.DataFrame:
     Parameters:
         list_dfs: list(dfs)
 
-    Results:
+    Returns:
         df_combined: DataFrame containing only ('LON','LAT','VAL')
     """ 
     utilities.log.info('combine_datasets_for_interpolation: Combining {} dataframes'.format(len(list_dfs)))
@@ -188,7 +188,7 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
         source and clamp points. (DataFrame) It is expected the caller has already KNN processed the 
         land_control points and concatenated the water_control points
 
-    Results:
+    Returns:
         model: The actual model use for subsequent extrapolations
     """
     model_choices=['LINEARNDINTERPOLATOR','CLOUGHTOCHER2DINTERPOLATOR'] # version 2, March 2022 
@@ -268,7 +268,7 @@ def generic_grid():
     Build 2D grid for testing the interpolation_model_transform.
     this is a style=grid type data set
 
-    Results:
+    Returns:
         df: DataFrame with columns ['LON','LAT']
     """
     print('Using a default interpolation grid that is intended only for testing')
