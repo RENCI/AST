@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+
+# SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LicenseRef-RENCI
+# SPDX-License-Identifier: MIT
+
 #
 # For each new source: Create a subclass that defines the functions:
 # fetch_single_data(station)-> pd.DataFrame

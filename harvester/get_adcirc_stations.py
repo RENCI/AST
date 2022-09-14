@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+
+# SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LicenseRef-RENCI
+# SPDX-License-Identifier: MIT
+
 #
 # On input we DO NOT expect a time_range, rather a list of URLS that correspond to the time range.
 # This method requires information from both the fort.61 and fort.63 files. So helper methods are 

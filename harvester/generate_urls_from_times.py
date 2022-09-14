@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+
+# SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LicenseRef-RENCI
+# SPDX-License-Identifier: MIT
+
 #
 # This helper set of functions takes times,offsets,urls as possible inputs and returns a list of URLs that may be passed
 # to the fetch_adcirc_data methods. If the Caller wants to process a LIST of Urls, just call this repeatedly

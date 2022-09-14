@@ -1,4 +1,11 @@
 #!/usr/bin/env python
+
+# SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+#
+# SPDX-License-Identifier: GPL-3.0-or-later
+# SPDX-License-Identifier: LicenseRef-RENCI
+# SPDX-License-Identifier: MIT
+
 #
 # A file suitable for use by ADDA,APSVIZ2,Reanalysis to fetch ADCIRC water levels from the ASGS
 # The ASGS input to this class is a list of URLs. If you require running this by specifying TIMES, 
