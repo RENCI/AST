@@ -1,0 +1,18 @@
+cd /home/jtilson/NEWTEST/AST
+sphinx-apidoc -F -A "AST: AdcircSupportTools: RENCI EDS" -V "1.1" -o docs /home/jtilson/NEWTEST/AST
+#Creating file /home/jtilson/NEWTEST/AST/docs/conf.py.
+#Creating file /home/jtilson/NEWTEST/AST/docs/index.rst.
+#Creating file /home/jtilson/NEWTEST/AST/docs/Makefile.
+#Creating file /home/jtilson/NEWTEST/AST/docs/make.bat.
+
+cd docs
+# 1) Modify conf.py to use theme 'classic' instead of 'alabaster'
+# 2) Modify the Makefile to specify BUILDSDIR as ../../ASTDocs
+
+make html
+
+
+
+
+
+
