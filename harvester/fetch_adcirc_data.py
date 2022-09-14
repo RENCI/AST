@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #
 # A file suitable for use by ADDA,APSVIZ2,Reanalysis to fetch ADCIRC water levels from the ASGS
-# The ASGS inputs to this class is a list of URLs. If you require running this by specifying TIMES, 
+# The ASGS input to this class is a list of URLs. If you require running this by specifying TIMES, 
 # then you must preprocess the data into a list of URLs.
 #
 # TODO Check into the case where ADCIRC returns completely empty stations. This filtering may have been 
@@ -22,11 +22,11 @@ SOURCES = ['ASGS']
 
 def get_adcirc_stations_fort63_style(fname=None)->pd.DataFrame:
     """
-    Simply read a list of stations from a csv file.
+    This style of data input is required when using the fort63_style methods. Simply read a list of stations from a csv file.
     This gets read into a DataFrame. File MUST contain at least Node and stationid columns
 
     Parameters:
-        fname: (str) full path to a valid stationid file
+        fname: <str> full path to a valid stationid file
     Returns:
         DataFrame: [stationid, Node]
 
@@ -39,7 +39,7 @@ def get_adcirc_stations_fort63_style(fname=None)->pd.DataFrame:
         df["stationid"]=df["stationid"].astype(str)
         df["Node"]=df["Node"].astype(int)
     except IndexError as e:
-        utilities.log.error('Unsuccessful fort63_station read. Perhaps no Node column ? {}'.format(e))
+        utilities.log.error(f'Unsuccessful fort63_station read. Perhaps no Node column ? {e}')
     return df
 
 def get_adcirc_stations_fort61_style(fname=None):
@@ -49,7 +49,7 @@ def get_adcirc_stations_fort61_style(fname=None):
     the processing stage will simply remove them
 
     Parameters:
-        fname: (str) full path to a valid stationid file
+        fname: <str> full path to a valid stationid file
     Returns:
         DataFrame: stationid
 
@@ -80,36 +80,37 @@ def check_advisory(value, dformat='%Y%m%d%H'):
     Try to determine if an advisory number was passed instead of a time value
 
     Parameters:
-        value: (str) The time/adv word extracted form a url
-        dformat: (str) format used for perfom,ring time test
+        value: <str> The time/adv word extracted form a url
+        dformat: <str> format of the input str time 
     Returns:
-        state_hurricane: (bool) True if hurricane
+        state_hurricane: <bool> True if hurricane
     """
     state_hurricane=False
-    utilities.log.debug('Check advisory {}'.format(value))
+    utilities.log.debug(f'Check advisory {value}')
     try:
         test=dt.datetime.strptime(value,dformat) # '%Y%m%d%H')
-        utilities.log.info('A timestamp data was found: Not a Hurricane URL ? {}'.format(test))
+        utilities.log.info(f'A timestamp data was found: Not a Hurricane advisory ? {test}')
     except ValueError:
         try:
             outid = int(value)
             state_hurricane=True
         except ValueError:
-            utilities.log.error('Expected an Advisory value but could not convert to int {}'.format(value))
+            utilities.log.error(f'Expected an Advisory value but could not convert to int {value}')
             sys.exit(1)
-    utilities.log.info('URL state_hurricane is {}'.format(state_hurricane))
+    utilities.log.info(f'URL state_hurricane is {state_hurricane}')
     return state_hurricane
 
 def check_if_hurricane(urls):
     """
-    Very simple procedure but requires using the ASGS nomenclature
+    Very simple procedure but requires having the ASGS nomenclature. This will not work 
+    for generic locally stored files
     Only need to check one valid url from the list. This presumnes they all have the same
     grid, instance, class, etc
 
     Parameters:
         urls: list(str) A list of valid urls
     Returns:
-        state_hurricane: (bool) (bool) True if hurricane
+        state_hurricane: <bool>  True if hurricane
     """
     if not isinstance(urls, list):
         utilities.log.error('time: URLs must be in list form')
@@ -120,18 +121,20 @@ def check_if_hurricane(urls):
             state_hurricane = check_advisory(words[-6])
             break
         except IndexError as e:
-            utilities.log.error('check_if_hurricane Uexpected failure try next:{}'.format(e))
+            utilities.log.error(f'check_if_hurricane Uexpected failure try next:{e}')
     return state_hurricane
 
+# This is retained for backward compatability
+# and is only used by this method's main
 def convert_input_url_to_nowcast(urls):
     """
     Though one could call this method using a nowcast url, occasionally we want to be able to
     only pass a forecast type url and, from that, figure out what the corresponding nowcast url might be.
-    This assume a proper ASGS formatted url and makes no attempts to validate the usefullness of
+    This assume a proper ASGS formatted url and makes no attempts to validate the 
     the constructed url. Either it exists or this methiod exits(1)
 
     To use this feature:
-    We mandate that the url is used to access ASGS data. The "ensemble" information will be in position .split('/')[-2]
+    We mandate that the url is used to access ASGS data. The "ensemble" information must be in position .split('/')[-2]
 
     Parameters:
         urls: list(str) A list of valid urls
@@ -150,11 +153,20 @@ def convert_input_url_to_nowcast(urls):
     utilities.log.info('Modified input URL to be a nowcast type')
     return newurls
 
-
+# This is also retained for backward compatability
+# and is only used by this method's main
 def combine_metadata_with_station_tuples(df_meta, station_nodes, fort63_style):
     """
     Grabs the list of station tuples [(stationid,adcirc node)] and adds a 
     column to the df_meta object
+
+    Parameters:
+        df_meta: Input metadata dataframe stations x metadata
+        station_nodes: list(str) list of stationids
+        fort63_style: <bool> Value modifies the associated station Node value for prepending 63_ or 61_
+        
+    Returns:
+        df_meta: An improved ddata ataframe of entries stations x metadata
     """
     df_stations=pd.DataFrame(station_nodes, columns=['STATION','Node'])
     df_stations.set_index('STATION',inplace=True)
@@ -165,19 +177,14 @@ def combine_metadata_with_station_tuples(df_meta, station_nodes, fort63_style):
     return df_meta
 
 ##
-## End functions
-##
-
-##
 ## Globals
 ##
-
 dformat='%Y-%m-%d %H:%M:%S'
 GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in the zone
 PRODUCT='water_level'
 
 ##
-## Run stations
+## Run stations. These functions generaly get called by outside callers
 ##
 
 def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product='water_level', resample_mins=0, fort63_style=False, variable_name='zeta'):
@@ -185,15 +192,15 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
 
     Parameters:
-        urls: list(str). Previously generated list of urls that span the desired time range 
+        urls: list<str>. Previously generated list of urls that span the desired time range 
         stations: list(str). List of desired stations
-        gridname: (str) gridname of the urls (opt)
-        ensemble: (str) ensemble (opt)
-        sitename (str): sitename (opt)
-        data_product: (str) (def data_product). An AST named data product (Not the True data product name) 
-        resample_mins: (int) Returned time series with a sampling of resample_mins
-        fort63_style: (bool) Request fetching water levels from fort.63.nc/swan_HS.63.nc. Requires compatible station dataframe 
-        variable_nme: (str)  If wanting swan results,must pass in the correct NC4 data varable name of 'swan_HS'
+        gridname: <str> gridname of the urls (opt)
+        ensemble: <str> ensemble (opt)
+        sitename <str>: sitename (opt)
+        data_product: <str> (def data_product). An AST named data product (Not the True data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
+        fort63_style: <bool> Request fetching water levels from fort.63.nc/swan_HS.63.nc. Requires compatible station dataframe 
+        variable_nme: <str>  If wanting swan results,must pass in the correct NC4 data varable name of 'swan_HS'
     Returns:
         df_adcirc_data: DataFrame (time x station)
         df_adcirc_meta: DataFrame (station x metadata)
@@ -212,7 +219,7 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         station_nodes = adcirc.available_stations_tuple
         df_adcirc_meta=combine_metadata_with_station_tuples(df_adcirc_meta, station_nodes, fort63_style)
     except Exception as e:
-        utilities.log.error('Error: ADCIRC: {}'.format(e))
+        utilities.log.error(f'Error: ADCIRC: {e}')
     return df_adcirc_data, df_adcirc_meta 
 
 def first_true(iterable, default=False, pred=None):
@@ -237,14 +244,14 @@ def strip_time_from_url(urls)->str:
     Parameters:
         urls: list(str). list of valid urls
     Returns:
-         time string in either ASGS formatted '%Y%m%d%H' or possibly as a hurricane advisory string (to be checked later)
+         time: <str>: in either ASGS formatted '%Y%m%d%H' or possibly as a hurricane advisory string (to be checked later)
     """
     url = grab_first_url_from_urllist(urls)
     try:
         words = url.split('/')
         ttime=words[-6] # Always count from the back. NOTE if a hurrican this could be an advisory number.
     except IndexError as e:
-        utilities.log.error('strip_time_from_url Uexpected failure try next:{}'.format(e))
+        utilities.log.error(f'strip_time_from_url Uexpected failure try next:{e}')
     return ttime
 
 def strip_ensemble_from_url(urls)->str:
@@ -255,14 +262,14 @@ def strip_ensemble_from_url(urls)->str:
     Parameters:
         urls: list(str). list of valid urls
     Returns:
-        Ensemble string
+        Ensemble: <str>
     """
     url = grab_first_url_from_urllist(urls)
     try:
         words = url.split('/')
         ensemble=words[-2] # Usually nowcast,forecast, etc 
     except IndexError as e:
-        utilities.log.error('strip_ensemble_from_url Uexpected failure try next:{}'.format(e))
+        utilities.log.error(f'strip_ensemble_from_url Uexpected failure try next:{e}')
     return ensemble
 
 def strip_instance_from_url(urls)->str:
@@ -273,21 +280,21 @@ def strip_instance_from_url(urls)->str:
     Parameters:
         urls: list(str). list of valid urls
     Returns:
-        Instance string
+        Instance: <str>
     """
     url = grab_first_url_from_urllist(urls)
     try:
         words = url.split('/')
         instance=words[-3] 
     except IndexError as e:
-        utilities.log.error('strip_instance_from_url Uexpected failure try next:{}'.format(e))
+        utilities.log.error(f'strip_instance_from_url Uexpected failure try next:{e}')
     return instance 
 
 def strip_sitename_from_url(urls, fill='NoSite')->str:
     """
-    Here we attempt to find which site the url was computed at. We read the
-    machine name from the url and lookup in the dict for the canonical site
-    name. If no such name use the fill
+    Here we attempt to find which site the url was computed. We read the
+    machine name from the url and lookup in the local dict for the predefined canonical site
+    name. If no such name use the fill value
     The "machine name" information will be in position .split('/')[-4]. It may consist of multiple words.
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
@@ -305,7 +312,7 @@ def strip_sitename_from_url(urls, fill='NoSite')->str:
         words = url.split('/')
         machine=words[-4] 
     except IndexError as e:
-        utilities.log.error('strip_sitename_from_url Uexpected failure try next:{}'.format(e))
+        utilities.log.error(f'strip_sitename_from_url Uexpected failure try next:{e}')
     site = known_sites[machine] if machine in known_sites.keys() else fill
     return site
 
@@ -317,14 +324,14 @@ def grab_gridname_from_url(urls)->str:
     Parameters:
         urls: list(str). list of valid urls
     Returns:
-        grid.upper() string
+        grid.upper(): <str>
     """
     url = grab_first_url_from_urllist(urls)
     try:
         words = url.split('/')
         grid=words[-5] # Usually nowcast,forecast, etc 
     except IndexError as e:
-        utilities.log.error('strip_gridname_from_url Uexpected failure try next:{}'.format(e))
+        utilities.log.error(f'strip_gridname_from_url Uexpected failure try next:{e}')
     return grid.upper()
 
 def grab_first_url_from_urllist(urls)->str:
@@ -334,7 +341,7 @@ def grab_first_url_from_urllist(urls)->str:
     Parameters:
         urls: list(str). list of valid urls
     Returns:
-        url: (str) . Fetch first available, valid url in the list
+        url: <str> . Fetch first available, valid url in the list
     """
     if not isinstance(urls, list):
         utilities.log.error('first url: URLs must be in list form')
@@ -344,9 +351,9 @@ def grab_first_url_from_urllist(urls)->str:
 
 def main(args):
     """
-    We require the provided URL are using the typical ASGS nomenclature and that the timestamp is in ('/') position -6
-    Moreover, This time stamp behaves a little different if fetching a nowcast versus a forecast. For now, we will
-    annotate final .csv files with _TIME_ corresponding to the reported url starttime.
+    We require the provided URL is using the typical ASGS nomenclature and that the timestamp is in ('/') position -6
+    Moreover, This time stamp behaves a little differently if fetching a nowcast versus a forecast (pre vs post). For now, we will
+    annotate final .csv files with _TIME_ corresponding to the actual url data starttime.
     """
 
     main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
@@ -359,9 +366,9 @@ def main(args):
     data_source = args.data_source
 
     if data_source.upper() in SOURCES:
-        utilities.log.info('Found selected data source {}'.format(data_source))
+        utilities.log.info(f'Found selected data source {data_source}')
     else:
-        utilities.log.error('Invalid data source {}'.format(data_source))
+        utilities.log.error(f'Invalid data source {data_source}')
         sys.exit(1)
 
     urls = args.urls
@@ -379,13 +386,13 @@ def main(args):
 
     data_product = args.data_product
     if data_product != 'water_level':
-        utilities.log.error('ADCIRC: Only available data product is water_level: {}'.format(data_product))
+        utilities.log.error('ADCIRC: The Only available data product is water_level: {data_product}')
         sys.exit(1)
     else:
-        utilities.log.info('Chosen data source {}'.format(data_source))
+        utilities.log.info(f'Chosen data source {data_source}')
 
     variable_name = args.variable_name
-    utilities.log.info('Selected variable name is {}'.format(variable_name))
+    utilities.log.info(f'Selected variable name is {variable_name}')
 
     # If reading in a LOCAL url then we must skip the following steps
     if not args.raw_local_url:
@@ -404,7 +411,7 @@ def main(args):
         gridname = grab_gridname_from_url(urls)   # ditto
         sitename = strip_sitename_from_url(urls)
         #starttime='2021-12-08 12:00:00'
-        utilities.log.info('Selected run time/Advisory range is {}'.format(runtime))
+        utilities.log.info(f'Selected run time/Advisory range is {runtime}')
     else:
         print('Raw url data structure specified')
         utilities.log.info('Running a RAW url type')
@@ -419,8 +426,6 @@ def main(args):
     ## Start the processing
     ##
 
-    # metadata are used to augment filename
-    #ASGS
     t0 = tm.time()
     if data_source.upper()=='ASGS':
         excludedStations=list()
@@ -433,6 +438,7 @@ def main(args):
         # Need to specify something for the metadata 
         if not args.raw_local_url:
             adcirc_metadata='_'+ensemble+'_'+gridname.upper()+'_'+runtime.replace(' ','T')
+            adcirc_metadata=f"_{ensemble}_{gridname.upper()}_{runtime.replace(' ','T')}"
         else:
             adcirc_metadata='Raw_data'
 
@@ -451,12 +457,12 @@ def main(args):
                 metaf=f'./adcirc_stationdata_meta%s.csv'%adcirc_metadata
             df_adcirc_data.to_csv(dataf)
             meta.to_csv(metaf)
-            utilities.log.info('ADCIRC data has been stored {},{}'.format(dataf,metaf))
+            utilities.log.info(f'ADCIRC data has been stored {dataf},{metaf}')
         except Exception as e:
-            utilities.log.error('Error: ADCIRC: Failed Write {}'.format(e))
+            utilities.log.error(f'Error: ADCIRC: Failed Write {e}')
             sys.exit(1)
     total_time = tm.time() - t0
-    utilities.log.info('Finished with data source {}. Time was {}'.format(data_source, total_time))
+    utilities.log.info(f'Finished with data source {data_source}. Time was {total_time}')
     utilities.log.info('Finished')
 
 if __name__ == '__main__':

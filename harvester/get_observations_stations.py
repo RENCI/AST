@@ -1,10 +1,6 @@
 #!/usr/bin/env python
 #
-# The beginnings of a new version of this method. 
-# Here we bolt the Harvester fetching code into this to facilitate grabbing
-# any kind of data source.
-#
-# The get_stations methods for NOAA and CONTRAILS are basically all the possible stations
+# The get_stations methods for NOAA,NDBC and CONTRAILS are basically all the possible stations
 # that we might want to get. These are slowly varying lists. Station ids that do not or no longer
 # exist are quietly ignored.
 #
@@ -20,12 +16,12 @@ from argparse import ArgumentParser
 
 class get_obs_stations(object):
     """ 
-    Class to establish connection to the noaa or contrails servers and acquire a range of product levels for the set
+    Class to establish connection to the lower level code to access noaa, ncbc, or contrails servers and acquire a range of product levels for the set
     of stations input stations
 
     Input station IDs must be stationids and they are treated as string values.
 
-    This is the Harvester layer that would nornmally be called byt ADDA,APSVIZ,Reanalysis work
+    This is the Harvester layer that would nornmally be called by ADDA,APSVIZ,Reanalysis work
     """
 
     # Currently supported sources and products
@@ -35,7 +31,7 @@ class get_obs_stations(object):
     CONTRAILS_PRODUCTS = ['river_water_level','coastal_water_level','air_pressure']
     NDBC_PRODUCTS=['wave_height','air_pressure','wind_speed']
 
-    # Default to assuming a NOAA/NOS WL run
+    # Default to NOAA/NOS WL run
 
     def __init__(self, source='NOAA',product='water_level', 
                 contrails_yamlname=None,knockout_dict=None, station_list_file=None):
@@ -43,11 +39,11 @@ class get_obs_stations(object):
         get_obs_stations constructor
 
         Parameters: 
-            contrails_yamlname: str Location of the login info for Contrails (optional) Not used if source=NOAA)
-            source: str Named source. For now either NOAA or CONTRAILS
-            product: str, product type desired. Values are source-specific
-            knockout: A dict used to remove ranges of time(s) for a given station
-            station_list_data 
+            contrails_yamlname: <str> Location of the login info for Contrails (optional) Not used if source=NOAA)
+            source: <str> Named source. For now either NOAA or CONTRAILS
+            product: <str>, product type desired. Values are source-specific
+            knockout: <dict> used to remove ranges of time(s) for a given station
+            station_list_file: <str> file containing station id data 
 
          The input OBS.YML file is used only as a placeholder for future considerations
    
@@ -63,15 +59,16 @@ class get_obs_stations(object):
             selected_products = self.CONTRAILS_PRODUCTS
         elif self.source=='NDBC' or self.source=='NDBC_HISTORIC':
             selected_products = self.NDBC_PRODUCTS
-            utilities.log.info('NDBC request source is {}'.format(self.source))
+            utilities.log.info(f'NDBC request source is {self.source}')
         else:
-            utilities.log.error('No valid source specified {}'.format(self.source))
+            utilities.log.error(f'No valid source specified {self.source}')
             sys.exit(1)
 
         # Setup master list of stations. Can override with a list of stationIDs later if you must
         if self.source=='NOAA':
             self.station_list = fetch_data.get_noaa_stations(station_list_file)
 
+        # It is up to the caller to differentiate river from coastal stations 
         if self.source=='CONTRAILS':
             self.station_list=fetch_data.get_contrails_stations(station_list_file)
 
@@ -81,12 +78,12 @@ class get_obs_stations(object):
         if self.source=='NDBC_HISTORIC':
             self.station_list = fetch_data.get_ndbc_buoys(station_list_file)
        
-        utilities.log.info('Fetched station list from {}'.format(self.station_list))
+        utilities.log.info(f'Fetched station list from {self.station_list}')
 
         # Specify the desired products
         self.product = product.lower()
         if self.product not in selected_products:
-            utilities.log.error('Requested product not available {}, Possible choices {}'.format(self.product,selected_products)) 
+            utilities.log.error('Requested product not available {self.product}, Possible choices {selected_products}') 
             sys.exit(1)
 
         # May Need to get Contrails secrets 
@@ -99,12 +96,14 @@ class get_obs_stations(object):
         if self.knockout_dict is not None:
             utilities.log.info('A knockout dict has been specified')
 
-        utilities.log.info('SOURCE to fetch from {}'.format(self.source))
-        utilities.log.info('PRODUCT to fetch is {}'.format(self.product))
+        utilities.log.info(f'SOURCE to fetch from {self.source}')
+        utilities.log.info(f'PRODUCT to fetch is {self.product}')
 
     def remove_knockout_stations(self, df_station) -> pd.DataFrame:
         """
-        Input should be a data frame of time indexing and stations as columns.
+        Occasionally, a station can report poor results for large ranges of times. This
+        method allows the caller to nan those results
+        Input should be a dataframe of time indexing and stations as columns.
         The time ranges specified in the args.knockout will be set to Nans inclusively.
         This method can be useful when the indicated statin has historically shown 
         poor unexplained performance over a large window of time
@@ -114,6 +113,7 @@ class get_obs_stations(object):
 
         Parameters:
            dataframe: time x stations.
+           knockout_dict: <dict> Class variable instantiated at class invocation
         Returns:
            dataframe (time x stations) with self.knockout stations removed
         """
@@ -123,13 +123,12 @@ class get_obs_stations(object):
         if not bool(set(stations).intersection(cols)):
             return df_station
         # 2 Okay for each station loop over time range(s) and NaN away
-        utilities.log.debug('Stations is {}'.format(stations))
-        utilities.log.debug('dict {}'.format(self.knockout_dict))
+        utilities.log.debug(f'Stations is {stations}')
+        utilities.log.debug(f'dict {self.knockout_dict}')
         print(df_station)
         for station in stations:
             for key, value in self.knockout_dict[station].items():
                 df_station.loc[value[0]:value[1]][station]=np.nan
-                #df_station.loc[station][value[0]:value[1]]=np.nan 
         utilities.log.info('Knockout dict has been applied')
         return df_station
 
@@ -139,27 +138,27 @@ class get_obs_stations(object):
         They will be subject to the usual validity testing. We overwrite any station data fetched in the class
     
         Parameters:
-            stationlist: list (str) of stationIDs. Overrides any existing list.
+            stationlist: list(str) of stationIDs. Overrides any existing list.
         Returns:
             self.station_list: list(str) of stations in the class variable
         """
         if isinstance(station_list, list):
             self.station_list=station_list
-            utility.log.info('Manually resetting value of station_list {}'.format(self.station_list))
+            utility.log.info(f'Manually resetting value of station_list {self.station_list}')
         else:
-            utility.log.error('Manual station list can only be a list of ids {}'.format(station_list))
+            utility.log.error(f'Manual station list can only be a list of ids {self.station_list}')
             sys.exit(1)
 
     def remove_missingness_stations(self, df_in, max_nan_percentage_cutoff=100)-> pd.DataFrame:
         """
         maxmum percentage of allowable nans in any station. 
-        max_nan_percentage_cutoff indicates the MINIMUM percent data per station. Corresponds to
+        max_nan_percentage_cutoff indicates the MINIMUM percent valid data per station. Corresponds to
         (100-max_nan_percentage_cutoff) as the rate of nans per station
         Note: This should generally only apply to high resolution data (eg 6 min NOAA)
 
         Parameters:
             df_in: Input dataframe (time x stations).
-            max_nan_max_nan_percentage_cutoff: float. Percent of allowable nans. (dafault=100 - non-excluded)
+            max_nan_max_nan_percentage_cutoff: <float>. Percent of allowable nans. (dafault=100)
         Returns:
             df_out: dataframe (time x stationID) with stations kept
         """
@@ -172,30 +171,30 @@ class get_obs_stations(object):
         # Now filter away
         df_out = df_in[ df_counts[ df_counts['KEEP_STATION'] == True].index.tolist()]
         exclude_station_list = df_in[ df_counts[ df_counts['KEEP_STATION'] != True].index.tolist()].columns.tolist()
-        utilities.log.info("Remaining {} stations based on a percent cutoff of {}.".format(df_out.shape[1], max_nan_percentage_cutoff))
-        utilities.log.debug('Removing the following stations because of Max Nan %: '+str(exclude_station_list))
+        utilities.log.info(f"Remaining {df_out.shape[1]} stations based on a percent cutoff of {max_nan_percentage_cutoff}")
+        utilities.log.debug(f'Removing the following stations because of Max Nan %:{exclude_station_list}')
         return df_out
 
-# Choosing a sampling min is non-trivial and depends on the data product selected. Underestimatingh is bettere than overestimatatim
+# Choosing a sampling min is non-trivial and depends on the data product selected. Underestimating is better than overestimating
 # Since we will do a rolling averager later followed by a final resampling at 1 hour freq.
 
     def fetch_station_product(self, time_range, return_sample_min=0, interval=None):
         """
-        Fetch the desire data. The main infomration is part of the class (sources, products, etc.). However, one must still specify the return_sample_minutes
+        Fetch the desire data. The main information is part of the class (sources, products, etc.). However, one must still specify the return_sample_minutes
         to sample the data. This harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn't pad nans), and then
         resample the data at the desired freq (in minutes)
 
         Parameters:
-            time_range: Tuple (str,str). Starttime,endtime,inclusive. format='%Y-%m-%d %H:%M:%S' 
-            return_sample_min: (int) sampling frequency of the returned, interpolated, data set
-            interval: (str): Values of None or 'h'. Only applied to NOAA. None gives full avail freq
+            time_range: <Tuple> (str,str). Starttime,endtime,inclusive. format='%Y-%m-%d %H:%M:%S' 
+            return_sample_min: <int> sampling frequency of the returned, interpolated, data set
+            interval: <str>: Values of None or 'h'. Only applied to NOAA. None gives full avail freq
         Returns:
-            data: Sampled data of dims (time x stations)
-            meta: associated metadata
+            data: <dataframe> Sampled data of dims (time x stations)
+            meta: <dataframe> associated metadata
         """
         starttime = time_range[0]
         endtime=time_range[1]
-        utilities.log.debug('Attempt a product fetch for the time range {}-{}'.format(starttime,endtime))
+        utilities.log.debug(f'Attempt a product fetch for the time range {starttime}-{endtime}')
         template = "An exception of type {0} occurred."
 
         if interval is 'None':
@@ -206,11 +205,11 @@ class get_obs_stations(object):
             excludedStations=list()
             # Use default station list
             noaa_stations=self.station_list
-            noaa_metadata='_'+endtime.replace(' ','T') 
+            noaa_metadata=f"_{endtime.replace(' ','T')}" 
             try:
                 data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
             except Exception as ex:
-                utilities.log.error('NOAA error {}'.format(template.format(type(ex).__name__, ex.args)))
+                utilities.log.error(f'NOAA error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
 
         if self.source.upper()=='CONTRAILS':
@@ -220,37 +219,37 @@ class get_obs_stations(object):
             contrails_stations=self.station_list
             try:
                 # Get default station list
-                contrails_metadata=meta+'_'+endtime.replace(' ','T') 
+                contrails_metadata=f"{meta}_{endtime.replace(' ','T')}" 
                 data, meta = fetch_data.process_contrails_stations(time_range, contrails_stations, contrails_config, data_product=self.product, resample_mins=return_sample_min)
             except Exception as ex:
-                utilities.log.error('CONTRAILS error {}'.format(template.format(type(ex).__name__, ex.args)))
+                utilities.log.error(f'CONTRAILS error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
 
         if self.source.upper()=='NDBC':
             excludedStations=list()
             # Use default station list
             ndbc_stations=self.station_list
-            ndbc_metadata='_'+endtime.replace(' ','T')
+            ndbc_metadata=f"_{endtime.replace(' ','T')}"
             try:
                 data, meta = fetch_data.process_ndbc_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
-                utilities.log.info('NDBC data {}'.format(data))
+                utilities.log.info(f'NDBC data {data}')
             except Exception as ex:
-                utilities.log.error('NDBC process error {}'.format(template.format(type(ex).__name__, ex.args)))
+                utilities.log.error(f'NDBC process error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
 
         if self.source.upper()=='NDBC_HISTORIC':
             excludedStations=list()
             # Use default station list
             ndbc_stations=self.station_list
-            ndbc_metadata='_'+endtime.replace(' ','T')
+            ndbc_metadata=f"_{endtime.replace(' ','T')}"
             try:
                 data, meta = fetch_data.process_ndbc_historic_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
-                utilities.log.info('NDBC_HISTORIC data {}'.format(data))
+                utilities.log.info(f'NDBC_HISTORIC data {data}')
             except Exception as ex:
-                utilities.log.error('NDBC_HISTORIC process error {}'.format(template.format(type(ex).__name__, ex.args)))
+                utilities.log.error(f'NDBC_HISTORIC process error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
 
-        utilities.log.info('Finished with data source {}'.format(self.source))
+        utilities.log.info(f'Finished with data source {self.source}')
 
         if self.knockout_dict is not None:
             data = self.remove_knockout_stations(data)
@@ -267,37 +266,37 @@ class get_obs_stations(object):
             ndbc_metadata='_'+endtime.replace(' ','T')
             try:
                 data, meta = fetch_data.process_ndbc_historic_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
-                utilities.log.info('NDBC_HISTORIC data {}'.format(data))
+                utilities.log.info(f'NDBC_HISTORIC data {data}')
             except Exception as ex:
-                utilities.log.error('NDBC_HISTORIC process error {}'.format(template.format(type(ex).__name__, ex.args)))
+                utilities.log.error(f'NDBC_HISTORIC process error {template.format(type(ex).__name__, ex.args)}')
                 sys.exit(1)
-        utilities.log.info('Finished with data source {}'.format(self.source))
+        utilities.log.info(f'Finished with data source {self.source}')
 
         if self.knockout_dict is not None:
             data = self.remove_knockout_stations(data)
             utilities.log.info('Removing knockouts from acquired observational data')
 
-        utilities.log.info('Data file {}, meta file {}'.format(data,meta))
+        utilities.log.info(f'Data file {data}, meta file {meta}')
         utilities.log.info('Finished')
         return data, meta
 
     def fetch_smoothed_station_product(self, df_in, return_sample_min=60, window=11) -> pd.DataFrame:
         """
-        Takes the PROVIDED input df, smooths using indicated window and resamples on the
+        Takes the provided input df, smooths using the indicated window and resamples on the
         input return_sample_min (usually set to an hourly). Lastly, interpolated using a linear model 
 
         CENTERED window rolling average.
 
         Parameters:
-            df_in: input dataframe of times x stations.
-            window: (int,def=11) width of window.
-            return_sample_min: (int) Number of mins to sample on the output product
+            df_in: <dataframe> of times x stations.
+            window: <int> (def=11) width of window.
+            return_sample_min: <int> (def=60) Number of mins to sample on the output product
                 upsampling will pad with Nans. Values <=0 indicates no sampling returning
                 raw averaged data
         Returns:
             df_smoothed: dataframe (time x stations) smoothed and possibly resampled.
         """
-        utilities.log.info('Smoothing requested. Window of {}'.format(window))
+        utilities.log.info(f'Smoothing requested. Window of {window}')
         df_smooth = df_in.rolling(window=window, center=True).mean()
         # Double check if completely empty stations persist
         indlist = df_smooth.loc[df_smooth.isnull().all(1)].index # Only if ALL columns are nan
@@ -309,15 +308,15 @@ class get_obs_stations(object):
             df_smooth=df_smooth.resample(timesampling).asfreq()
             df_smooth = self.remove_columns_with_onevalue(df_smooth)
             df_smooth.interpolate(method='polynomial', order=1, limit=1, inplace=True)
-            utilities.log.debug('Averaged data has been resampled &  then interpolated to {}mins'.format(return_sample_min))
+            utilities.log.debug(f'Averaged data has been resampled and then interpolated to {return_sample_min}mins')
         return df_smooth
 
     def remove_columns_with_onevalue(self, df):
         """
         Depending on the starttime,stoptime and the selection of the missinglness thresholds (esp==100%)
-        It is possible a station may only retain a single. WHen this happends, if that station is passed to an interpolator
-        it wil cause a failure. Instead of try/except trapping the interpolation failure, we do a check here to remove
-        the offending station
+        It is possible a station may only retain a single value. When this happens, if that station is passed to an interpolator
+        it will cause a failure. Instead of try/except trapping the interpolation failure, we do a check here to remove
+        the offending station as a station with a single value is of little benefit
         Alternatively, the caller could explore changing the time range OR tightening up the threshold
         """
         delete_stations = list()
@@ -325,7 +324,7 @@ class get_obs_stations(object):
             if df[stationid].count() <=1:
                 delete_stations.append(stationid)
         if len(delete_stations) > 0:
-            utilities.log.warning('remove_columns_with_onevalue: Some stations have too little data to inteprolate: Removing them {}'.format(delete_stations))
+            utilities.log.warning(f'remove_columns_with_onevalue: Some stations have too little data to inteprolate: Removing them {delete_stations}')
         return df.drop(delete_stations,axis=1)
 
 def main(args):
@@ -339,7 +338,7 @@ def main(args):
     main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
 
     # Set up IO env
-    utilities.log.info("Product Level Working in {}.".format(os.getcwd()))
+    utilities.log.info(f"Product Level Working in {os.getcwd()}")
 
     interval = args.interval if args.interval is 'None' else None
 

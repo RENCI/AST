@@ -51,8 +51,14 @@ GLOBAL_FILL_VALUE='-99999'  # Always replaces final np.nans with this.
 def map_product_to_harvester_units(product):
     """
     The harvester dataset should be returning consistent metric units 
-    for all sources. This dictionary performs ther translation from supported 
-    data products to known units
+    for all sources. This dictionary performs the translation for supported 
+    data products to known units This is mosty used for metadata construction
+
+    Parameters:
+        product: (str) The generic data product name (water_level, wind_speed, etc)
+
+    Returns:
+        units: (str) The chosen data unit for the specified product
     """
     product_unit_maps={
         'water_level': 'm',
@@ -79,19 +85,20 @@ def replace_and_fill(df):
 
 def stations_resample(df, sample_mins=15)->pd.DataFrame:
     """
-    Resample (all stations) on apecified (eg 15min) basis. Setting sample_min
+    Resample (all stations) on a pecified (eg 15min) basis. Setting sample_min
         to zero retains full resolution. Defaults to 15min
 
     NOTE: Final aggregated data still have flanked nans for some stations because
-    The reported times might have been differently staggered. 
+    The reported times might have been differently staggered. Often the case with river and
+    buoy data 
 
     Parameters:
-        df: A time series x stations data frame
+        df: A time series x stations dataframe
         sample_min. (Dafaut=15mins) A numerical value for the number of mins to resample
-            setting to 0 disables any resampling and returns the raw data
+            setting to 0 disables any resampling and returns the raw data at full precision
 
     Returns:
-        df_out. New time series every 15mins x stations
+        df_out. New time series every sample_mins x stations
     """
     if sample_mins==0:
         utilities.log.info('resample freq set to 0. return all')
@@ -103,9 +110,9 @@ def stations_resample(df, sample_mins=15)->pd.DataFrame:
 
 def stations_interpolate(df)->pd.DataFrame:
     """
-    NOTE: Interpolate each station column in the dataframe. Usually for the final data. 
-    Final aggregated data still have flanked nans for some stations because
-    the reported times might have been different.
+    Interpolate each station column in the dataframe. 
+    Final aggregated data still have flanked nans for some stations. 
+    Defaults to: method='polynomial', order=1, limit=1
 
     Parameters:
         df: A time series x stations data frame
@@ -120,12 +127,12 @@ def stations_interpolate(df)->pd.DataFrame:
 class fetch_station_data(object):
     """
     We expect upon entry to this class a list of station ids. The content of this list can
-    vary depending on data source. But usually this is simply a list of (str) station ids. If
-    an ADCIRC Fort63_style lookup is requested, THEN the elements of this list are TUPLES (stations,node)
+    vary depending on chosen data source. But usually this is simply a list of (str) station ids. If
+    an ADCIRC Fort63_style lookup is requested, Then the elements of this list are tuples (stations,node)
 
     A list of times (periods) is required. The list contents can vary with data source. Generally, this is
-    a list of one element; a tuple as [(time1,time2)]. However, the caller could gang together multiple tuple ranges.,
-    For calling ADCIRC data, periods is a list of ASGS URLs
+    a list of one element; a tuple such as [(time1,time2)]. However, the caller could gang together multiple tuple ranges.
+    For calling ADCIRC data, periods is a list of ASGS URLs (which imply a range of times)
 
     The output data are aggregated station products into a dataframe: (TIME vs PRODUCT)
     with TIME as datetime timestamps and a column of data of the desired units and with a column
@@ -135,7 +142,7 @@ class fetch_station_data(object):
     """
     def __init__(self, stations, periods, resample_mins=15):
         """
-        stations:  A list of stations (str) or tuples of (station,adcirc node) (str,int) 
+        stations:  A list of stations <str> or <tuples> of (station,adcirc node) (str,int) 
         periods: A list of tuples. [(time1,time2)]
         """
         self._stations=stations
@@ -144,9 +151,12 @@ class fetch_station_data(object):
 
     def aggregate_station_data(self)->pd.DataFrame:
         """
-        Loop over the list of stations and fetch the products. Then concatenate them info single dataframe
-
+        Loop over the list of stations and fetch the products using the method of the relevant subclasses. Then concatenate them info single dataframe
         nans now get converted to the value in GLOBAL_FILL_VALUE
+
+        Returns:
+            Aggregated results: A dataframe (times x stations) for all periods and input stations
+        
         """
         aggregateData = list()
         excludedStations=list()
@@ -157,13 +167,11 @@ class fetch_station_data(object):
                 dx = self.fetch_single_product(station, self._periods)
                 dx_int = stations_interpolate(dx)
                 aggregateData.append(stations_resample(dx_int, sample_mins=self._resampling_mins))
-                #aggregateData.append(resample_and_interpolate(dx))
                 #tm.sleep(2) # sleep 2 secs
-                #print('Iterate: Kept station is {}'.format(station))
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
-                utilities.log.warn('Error Value: Probably the station simply had no data; Skip {}, msg {}'.format(station, message))
+                utilities.log.warn(f'Error Value: Probably the station simply had no data; Skip {station}, msg {message}')
 
         if len(aggregateData)==0:
             utilities.log.warn('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
@@ -179,8 +187,7 @@ class fetch_station_data(object):
                 utilities.log.info("Duplicated data times found . will keep first value(s) only")
                 df_data = df_data.loc[~df_data.index.duplicated(keep='first')]
             if len(idx) != len(df_data.index):
-                utilities.log.warning('had duplicate times {} {}'.format(len(idx),len(df_data.index)))
-            # I have seen lots of nans coming from ADCIRC
+                utilities.log.warning(f'had duplicate times {len(idx)} {len(df_data.index)}')
             #df_data.dropna(how='all', axis=1, inplace=True)
             df_data = replace_and_fill(df_data)
         except Exception as e:
@@ -189,13 +196,14 @@ class fetch_station_data(object):
         df_data = df_data.sort_index()
         return df_data
 
-# TODO Need to sync with df_data
     def aggregate_station_metadata(self)->pd.DataFrame:
         """
-        Loop over the list of stations and fetch the metadata. Then concatenate info single dataframe
+        Loop over the list of stations and aggregate the metadata using the method of the relevant subclasses. Then concatenate info single dataframe
         Transpose final data to have stations as index
-
         nans now get converted to the value in GLOBAL_FILL_VALUE
+
+        Returns:
+            Aggregated meadata: A dataframe (stations x metacolumns) for all input stations
         """
         aggregateMetaData = list()
         excludedStations = list()
@@ -209,11 +217,11 @@ class fetch_station_data(object):
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
-                utilities.log.warn('Error Value: Metadata: {}, msg {}'.format(station, message))
+                utilities.log.warn(f'Error Value: Metadata: {station}, msg {message}')
         if len(aggregateMetaData)==0:
             utilities.log.warn('Metadata: No site data was found for the given site_id list. Perhaps the server is down Exit')
             #sys.exit(1) # Process remaining list
-        utilities.log.info('{} Metadata Stations were excluded'.format(len(excludedStations)))
+        utilities.log.info(f'{len(excludedStations)} Metadata Stations were excluded')
         df_meta = pd.concat(aggregateMetaData, axis=1).T
         #df_meta.dropna(how='all', axis=1, inplace=True)
         df_meta = replace_and_fill(df_meta)
@@ -221,13 +229,8 @@ class fetch_station_data(object):
 
 #####################################################################################
 ##
-## Fetching the ADCIRC NODE data from TDS
-## In contrast to NOAA and Contrails,
-## We will pass in NOAA/Contrails stationids but we must query the fort.61.nc file 
+## Fetching the ADCIRC NODE data from TDS or a local filesystem
 ##
-
-## The one node at a time approach may not be a big deal as 1: It better conforms to accessinmg the other sources
-## 2: It is a NC4 file which is lazyloading
 
 ## The fort61 file contains INTERPOLATED values of the solution to a specific lon,lat point.  
 ## For the fort.63, we are extracting time series from specific node numbers.  
@@ -236,34 +239,39 @@ class fetch_station_data(object):
 class adcirc_fetch_data(fetch_station_data):
     """
     Fetching WL data from ADCIRC can be done in one of two ways. The default approach is based
-    on the fort.61.nc type solution where lat/lons/WL are extracted from the ADCIRC netCDF4 directly. This
-    approach simply requires a list of stationids to query. This returns WLs that are interpolations of the ADCIRC
-    grid data.
+    on the fort.61.nc type solution where lat/lons/WL are extracted from the ADCIRC netCDF4 fort.61.nc file. This
+    approach simply requires a list of stationids for query. This returns WLs that are interpolations of the ADCIRC
+    grid data. 
 
     An alternative approach is based on using fort.63.nc data. To use the fort.63_style approach requires a more
-    informative inputy list of stations that is a dataframe with columns stationid and nodeid where nodeid is the pre-established
-    grid-specific ADCIRC nodeid corresponding to the station.. Required minimum column headers: (stationid, Node)
-
-    NOTE: Default to using metric units. Because the metadata that gets returned only reports
-
+    informative input list of stations.A dataframe with (at least) two columns with headers: stationid and nodeid where nodeid is the pre-established
+    grid-specific ADCIRC nodeid corresponding to the station. Required minimum column headers: (stationid, Node)
+    The nodeid indexing is that used by ADCIRC and is relative to starting at the value 1 !
 
     Currently available products:
     water_level (default)
 
     Parameters:
         station_id_list: list of station_ids to pass to ADCIRC
-        periods: list of valid ADCIRC urls tuples (*63.nc,*.61.nc) for aggregation 
-        fort63_style: (bool) If True use the fort.63-based approach
+        periods: <list> of valid ADCIRC urls tuples (*63.nc,*.61.nc) for aggregation 
+        fort63_style: <bool> If True use the fort.63-based approach
                     If True then station_id_list: a CSV file containing columns of, at least, stationid and nodeid. 
     """
-    # dict( persistant tag: source speciific tag )
+
     products={ 'water_level':'water_level'  # 6 min
             }
 
-    def _remove_empty_url_pointers(self, in_periods):
+    def _remove_empty_url_pointers(self, in_periods)->list:
         """
-        Loop through the entire list and remove any entries that thorw a File Not Found error
+        Loop through the entire list of adcirc urls and remove any entries that report a File Not Found error
+        We expect to be able to remove many urls. The only time a hard failure occurs is if all urls are not found
+
+        Parameters:
+            in_periods: <list(str)> of proposed ADCIRC file urls
+        Returns:
+            new_periods: <list(str)> of proposed urls that wee actually found at the source
         """
+
         new_periods=list()
         for url in in_periods:
             try:
@@ -273,45 +281,97 @@ class adcirc_fetch_data(fetch_station_data):
                 utilities.log.info('URL not found: Remove url {}'.format(url))
         return new_periods
 
-    def type_ADCIRC_cast(self, url, df):
+## TODO this cast method is is clumsy
+    def type_ADCIRC_cast(self, url, df)->str:
         """
-        Compute the URL starttime value to the time range in df. Ascertain if this
-        job is a forecast or a nowcast type.
-        This is tricky since, eg, an ADCIRC file _might_ include times from a prior (failed) ASGS run. 
-        But it will never have pre-forecasted results. So this is how we will check. Simply compare
-        the last timeseries value to the url starttime. if timeseries > starttime than it is a forecast
+        Attempt to determine if the input adcirc data (df) was a Forecast or a Nowcast type dataset by simply 
+        examining the associated url. Ths method can assign hurricane or synoptic datasets. This method is generally
+        used to build consistent metadata objects for AST  
 
-        url TIME must reside in url.split('/')[-6]
-        Assume the times series are ordered.
+        Attempt to find the url starttime value from the url name. Ascertain if this starttime is < or > the actual entry time in the df.
+        Simply compare the last timeseries value to the url starttime. if timeseries > starttime than it is a forecast else a nowcast
+
+        url TIME are expected to reside in url.split('/')[-6]. If that entry cannot be assigned to a datetime (ValueError), 
+        it is checked if it could be an advisory (int) and thus a huricane. 
+
+
+        If the input url is a LOCAL data file, then [-6] probably doesn't exist we can make no assumptions about length of name or nomenclature
+        Just assume it is a FORECAST if indexing errors occur
+
+
+        Assumes the times series are ordered.
 
         If the input url is a LOCAL data file, then we can make no assumptions about length of name or nomenclature
         Just assume it is a FORECAST if indexing errors occur
 
-        Return:
+        Parameters:
+            url: <str> The ADCIRC netCDG4 url to compare
+            df: <DataFrame>. The ADCIRC WL read from the associated url
+
+        Returns:
               Either NOWCAST or FORECAST
         """
         timeseries = pd.to_datetime(df.index.astype(str)) # Account for ctime/calender changes in pandas. Thx !.
+
+        #  Too short and it must be local
         try:
             starttime=url.split('/')[-6]
+        except IndexError as e:
+            utilities.log.info(f'Found (probably) a LOCAL netCDF file: Assume a FORECAST {e}')
+            return 'FORECAST'
+        except Exception as e:
+            utilities.log.error(f'Error: {e}')
+            sys.exit(1)
+
+        #Synoptic ?
+        try:
             urltime = dt.datetime.strptime(starttime,'%Y%m%d%H')
             if timeseries[-1] > urltime:
                 return 'FORECAST'
             else:
                 return 'NOWCAST'
         except ValueError:
-            utilities.log.info('Found either Hurricane Advisory value or this is a raw_url style url input: Assumes forecast {}'.format(starttime))
+            utilities.log.warn(f'Synoptic time check failed')
+            pass
+        except Exception as e:
+            utilities.log.error(f'synoptic time check hard failed: Error: {e}')
+            sys.exit(1)
+
+        # Hurricane ?
+        try:
+            urltime = starttime
+            advnum = int(urltime)
+            utilities.log.info(f'Found Hurricane Advisory value: Assumes forecast {advnum}')
             return 'FORECAST'
-        except IndexError as e:
-            utilities.log.info('Found (probably) a LOCAL netCDF file {}'.format(e))
+        except ValueError:
+            utilities.log.warn(f'Hurricane advisory check failed: Must be local')
             return 'FORECAST'
         except Exception as e:
-            utilities.log.error('Error: {}'.format(e))
+            utilities.log.error(f'Hurricane advisory check hard failed: Error: {e}')
             sys.exit(1)
 
 #TODO change name periods to urls
+
+##
+## ADCIRC source subclass
+##
     def __init__(self, station_id_list, periods=None, product='water_level',
                 datum='MSL', sitename=None, gridname=None, castType=None, resample_mins=15,
                 fort63_style=False, variable_name='zeta'):
+        """
+        Instantiate the ADCIRC product layer. 
+        Parameters:
+            station_id_list: <list(str/tuple)> input stations /station & node
+            periods: <list(str)> list of input URLs that span the desired time range
+            product: <str> (default 'water_level') input generic product name
+            datum: Not used here
+            sitename: <str> (opt) used for amending metadata only
+            gridname: <str> (opt) used for metadata only
+            castType: <str> (opt) used for amending metadata only
+            resample_mins: <int> resample time. Set to 0 for full resolution
+            fort63_style: <bool> If true input station_ids as list of tuples (stationid/nodeid)
+            variable_name: <str> (default='zeta') If using a SWAN type file then you must change the variable name here
+        """
         self._product=self.products[product]
         #self._interval=interval 
         self._units='metric'
@@ -336,25 +396,23 @@ class adcirc_fetch_data(fetch_station_data):
             utilities.log.info('Fetch station ids using fort.61 style')
             available_stations = self._fetch_adcirc_nodes_from_fort61_input_file(station_id_list, periods)
         if available_stations==None:
-            utilities.log.error('No valid fort.61 files were found: Abort')
+            utilities.log.error('No valid fort file was found: Abort')
             sys.exit(1)
         self.available_stations_tuple=available_stations
-        utilities.log.info('List of ADCIRC generated stations {}'.format(self.available_stations_tuple))
+        utilities.log.info(f'List of ADCIRC generated stations {self.available_stations_tuple}')
         periods = self._remove_empty_url_pointers(periods)
         super().__init__(self.available_stations_tuple, periods, resample_mins=resample_mins) # Pass in the full dict
 
     def _fetch_adcirc_nodes_from_fort63_input_file(self, station_df) -> list():
         """
-        have one or more of the requested urls. So we keep checking urls for stations until no more
-        urls exist. If none, then die.
 
-        The Node index is DEPRECATED by one to better share subsequent code
+        The Node index is decremented by one to better share subsequent code
 
         Parameters:
             station_csv <str>. A list of station ids/Nodes in DataFrame format
             periods <list>. The list of url-63 values. 
 
-        Return: list of tuples (stationid,nodeid). Superfluous stationids are ignored
+        Returns: list of tuples (stationid,nodeid). Superfluous stationids are ignored
         """
         utilities.log.info('Attempt to find ADCIRC fort_63 stations/Nodes')
         try:
@@ -366,7 +424,7 @@ class adcirc_fetch_data(fetch_station_data):
             idx = (list(zip(station_ids, node_idx)))
             return idx
         except Exception as e:
-            utilities.log.error('fort_63_style. Input file problematic {} {}: Abort'.format(station_df, e))
+            utilities.log.error(f'fort_63_style. Input file problematic {station_df} {e}: Abort')
             sys.exit(1)
 
     def _fetch_adcirc_nodes_from_fort61_input_file(self, stations, periods) -> list(): 
@@ -379,7 +437,7 @@ class adcirc_fetch_data(fetch_station_data):
             station <str>. A list of (eg NOAA/Contrails) station ids
             periods <list>. The list of url-61 values. 
 
-        Return: list of tuples (stationid,nodeid). Superfluous stationids are ignored
+        Returns: list of tuples (stationid,nodeid). Superfluous stationids are ignored
         """
         utilities.log.info('Attempt to find ADCIRC stations')
         full_idx=list()
@@ -407,8 +465,6 @@ class adcirc_fetch_data(fetch_station_data):
                     else:
                         utilities.log.info("{} not in fort.61.nc station_name list".format(s))
                         ##sys.exit(1)
-                # Remove duplicate tuples that were found across multiple URLs in the periods
-                # return idx # Need this to get around loop structure in aggregate etch 
                 full_idx+=idx
             except OSError:
                 utilities.log.warn("Could not open/read a specific fort.61 URL. Try next iteration {}".format(url61))
@@ -416,31 +472,20 @@ class adcirc_fetch_data(fetch_station_data):
                 utilities.log.error('Could not find ANY fort.61 urls from which to get stations lists {}'.format(e))
                 utilities.log.info('Bottomed out in _fetch_adcirc_nodes_from_fort61_input_file')
                 sys.exit(1) 
-            #full_idx+=idx
         # Remove any duplicate tuples eg if len(periods) > 1
         full_idx = list(set([i for i in full_idx]))
         return full_idx
 
-##
-## Criky. When I initially inserted nodelat/lon into meta, then subsequently updated COUNTY as np.nan
-## The inserted "nan" was somehow, not a real nan and thus, the fillna() step would do nothing.
-## No idea why at this time. Clearly another SNAFU driven by duck-typing issues. Jan 2022. Even though
-## the nodelat/lon was actually a single element masked array (which I corrected) why would that impact
-## The value of meta['COUNTY'] ?
-##
-## A Series of ARCIRC urls _may_ point to a url that doesn't exist.l It should have but sometimes not.
-## So we pre-filter the url periods lists so no empties show up here
-##
     def fetch_single_product(self, station_tuple, periods) -> pd.DataFrame:
         """
         variables.key() are now checked to try and determine if the dataset has been transposed (and rechunked) or not.
         If so, then fetching of the timeseries will be much, much faster but also requires chaning the code here a little
 
         Parameters:
-            station_tuple (str,int). A tuple that maps stationid to the current ADCIRC-grid nodeid
+            station_tuple (<str>,<int>). A tuple that maps stationid to the current ADCIRC-grid nodeid
             periods <list>. A url-61 values. 
 
-       Return: dataframe of time (timestamps) vs values for the requested stationid
+       Returns: dataframe of time (timestamps) vs values for the requested stationid
         """
         # First up. Get the list of available station ids
 
@@ -454,16 +499,15 @@ class adcirc_fetch_data(fetch_station_data):
             except OSError as e:
                 utilities.log.error('URL not found should never happen here. Should have been prefiltered: {}'.format(e))
                 sys.exit(1)
-            # we need to test access to the netCDF variables, due to infrequent issues with
-            # netCDF files written with v1.8 of HDF5.
 
             data_transposed = nc[self._variable_name].dimensions[0] == 'node'
             if data_transposed:
                 utilities.log.info('Expecting netCDF data in transposed form')
 
             if self._variable_name not in nc.variables.keys():
-                print("{} not found in netCDF for {}.".format(self._variable_name,url))
-                # okay to have a missing one  do not exit # sys.exit(1)
+                print(f'{self._variable_name} not found in netCDF for {url}')
+                # okay to have a missing one  do not exit 
+                # sys.exit(1)
             else:
                 time_var = nc.variables['time']
                 t = nc4.num2date(time_var[:], time_var.units)
@@ -477,33 +521,30 @@ class adcirc_fetch_data(fetch_station_data):
                         utilities.log.error(f'Unexpected leading variable name {ds.variables[v].dims}: Abort')
                         sys.exit(1)
                 except IndexError as e:
-                    utilities.log.error('Error: This is usually caused by accessing non-hsofs data but forgetting to specify the proper --grid {}'.format(e))
+                    utilities.log.error(f'Error: This is usually caused by accessing non-hsofs data but forgetting to specify the proper --grid {e}')
                     #sys.exit()
                 np.place(data, data < -1000, np.nan)
                 dx = pd.DataFrame(data, columns=[str(node)], index=t)
                 dx.columns=[station]
                 dx.index.name='TIME'
                 typeCast_status.append(self.type_ADCIRC_cast(url, dx))
-                # Now some fudging to account for Pandas timestamp capability changes
                 dx.index = pd.to_datetime(dx.index.astype(str)) # New pandas can only do this to strings now
                 datalist.append(dx)
         try:
             df_data = pd.concat(datalist)
         except Exception as e:
-            print('ADCIRC concat error: {}'.format(e))
+            print(f'ADCIRC concat error: {e}')
         # Check if ALL entries in typeCast_status are the same. If not fail hard.
         if len(set(typeCast_status)) != 1:
             utilities.log.error('Some mix up with typeCast_status {}'.format(typeCast_status))
             #sys.exit(1)
         self._typeCast = list(set(typeCast_status))[0] 
-        utilities.log.info('ADCIRC type determined to be {}'.format(self._typeCast))
+        utilities.log.info('ADCIRC typeCast determined to be {}'.format(self._typeCast))
         return df_data
-
 ##
 ## The nodelat/nodelon objects are masked arrays. For a single node (as used here)
 ## the ma.getdata() returns an ndarray of shape=() but with the a single value.
 ## Imposing a float() onto that value converts it to a real float
-##
 ## Try to determine if this was a nowcast or a forecast type dataset
 
     def fetch_single_metadata(self, station_tuple) -> pd.DataFrame:
@@ -514,7 +555,7 @@ class adcirc_fetch_data(fetch_station_data):
         Parameters:
             station <str>. A valid station id
 
-        Return:
+        Returns:
             dataframe of time (timestamps) vs values for the requested nodes 
         """
         station=station_tuple[0]
@@ -529,7 +570,7 @@ class adcirc_fetch_data(fetch_station_data):
             try:
                 nodelon=nc.variables['x'][node]
                 nodelat=nc.variables['y'][node]
-                break; # If we found it no need to check other urls
+                break; 
             except IndexError as e:
                 utilities.log.error('Meta not found. Trying another URL was{}:{}'.format(url, e))
                 #sys.exit()
@@ -550,13 +591,13 @@ class adcirc_fetch_data(fetch_station_data):
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except IndexError as e:
-            utilities.log.error('Failed updating te ADCIRC station metadata for station {}, {}'.format(station,e))
+            utilities.log.error(f'Failed updating te ADCIRC station metadata for station {station}, {e}')
             sys.exit(1)
         return df_meta
 
 #####################################################################################
 ##
-## Fetching the Station data from NOAA/NOS
+## NOAA/NOS source subclass
 ##
 
 class noaanos_fetch_data(fetch_station_data):
@@ -565,12 +606,12 @@ class noaanos_fetch_data(fetch_station_data):
         station_id_list: list of NOAA station_ids <str>
         a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
         a valid PRODUCT id <str>: hourly_height, water_level,predictions (tidal predictions)
-        interval <str> set to 'h' returned hourly data, else 6min data
+        interval <str> set to 'h' return hourly data, else 6min data
 
-        Note: hourly_height data only appear after some time period (not sure how long that is). 
+        Note: hourly_height data only appear for station after some time period (not sure how long that is). 
 
         NOTE: Default to using imperial units. Because the metadata that gets returned only reports
-        the units for how the data were stored not fetched. So it wouid be easay for the calling program to get confused.
+        the units for how the data were stored not fetched. So it wouid be easy for the calling program to get confused.
         Let the caller choose to update units and modify the df_meta structure prior to DB uploads
 
         Two dicts are used to manage jobs. The first (products) maps generic product names used by high level codes
@@ -597,8 +638,8 @@ class noaanos_fetch_data(fetch_station_data):
                'hourly_height':'hourly_height', # hourly
                'wind_speed':'wind'}
 
-    # NOTE: This dict maps the input data type (key) to the column name that gets returned by noaa-coops
-    # Unfortunately, this value is not always the product name
+    # NOTE: This dict maps the input data type (key) to the COLUMN NAME that gets returned by noaa-coops
+    # this value is not always the product name
     noaa_data_column_names={ 'water_level':'water_level',  # 6 min
                'predictions': 'predicted_wl', # 6 min
                'air_pressure': 'air_press',
@@ -608,14 +649,22 @@ class noaanos_fetch_data(fetch_station_data):
     def __init__(self, station_id_list, periods, product='water_level', interval=None, units='metric', 
                 datum='MSL', resample_mins=15):
         """
-        An interval value of None default to 6 mins. If choosing Tidal or Hourhy Height specify interval as h
+        Invoke the NOAA subclass
+
+        Parameters:
+            station_id_list: <list> List of desired station ids
+            periods: list of time-tuples indicating the desired time range(s)
+            product: <str> (Default='water_level')  The generic product name
+            interval: <str> NOAA coops specific param. None or 'h'
+            datum: <str> (Default='MSL')
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
         self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
-            utilities.log.info('NOAA Fetching product {}'.format(self._product))
+            utilities.log.info(f'NOAA Fetching product {self._product}')
         except KeyError as e:
-            utilities.log.error('NOAA/NOS No such product key. Input {}, Available {}: {}'.format(product, self.products.keys(),e))
+            utilities.log.error(f'NOAA/NOS No such product key. Input {product}, Available {self.products.keys()}: {e}')
             sys.exit(1)
         else:
             self._interval=interval
@@ -630,21 +679,21 @@ class noaanos_fetch_data(fetch_station_data):
         Choosing first was based on a single station and looking at the noaa coops website
 
         Parameters:
-            station: str an individual stationID to check
-            stationData: dataframe. Current list of all station product levels (from detailedIDlist) 
-        Results:
+            station: <str> an individual stationID to check
+            stationData: <dataframe>. Current list of all station product levels (from detailedIDlist) 
+        Returns:
             New dataframe containing no duplicate values
             multivalue. bool: True if duplicates were found 
         """
         multivalue = False
         idx = stationdata.index
         if idx.duplicated().any():
-            utilities.log.info("Duplicated Obs data found for station {} will keep first value(s) only".format(str(station)))
+            utilities.log.info(f'Duplicated Obs data found for station {str(station)} will keep first value(s) only')
             stationdata = stationdata.loc[~stationdata.index.duplicated(keep='first')]
             multivalue = True
         return stationdata, multivalue
 
-# The weirdness with tstart/tend. Prior work by us indicated noaa coops reqs time formats of %Y%m%d %H:%M')
+# The weirdness with tstart/tend. Prior work by us indicated noaa coops requires time formats of (%Y%m%d %H:%M')
 # Even though their website says otherwise (as of Oct 2021)
 
     def fetch_single_product(self, station, time_range) -> pd.DataFrame:
@@ -660,7 +709,7 @@ class noaanos_fetch_data(fetch_station_data):
             station <str>. A valid station id
             time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
 
-        Return:
+        Returns:
             dataframe of time (timestamps) vs values for the requested station
         """
         tstart,tend=time_range
@@ -678,24 +727,24 @@ class noaanos_fetch_data(fetch_station_data):
                                             interval=self._interval, # If none defaults to 6min
                                             time_zone=GLOBAL_TIMEZONE)[self.noaa_data_column_names[self._product]].to_frame()
             df_data, multivalue = self.check_duplicate_time_entries(station, dx)
-            # Put checks in here in case we want to exclude these stations with multiple values
+            # Put checks in here in case we want to exclude stations with determined multiple values
             df_data.reset_index(inplace=True)
             df_data.set_index(['date_time'], inplace=True)
             df_data.columns=[station]
             df_data.index.name='TIME'
             df_data.index = pd.to_datetime(df_data.index)
         except ConnectionError as ec:
-            utilities.log.error('Hard fail: Could not connect to COOPS for products {}: {}'.format(station, ec))
+            utilities.log.error(f'Hard fail: Could not connect to COOPS for products {station}: {ec}')
         except HTTPError as eh:
-            utilities.log.error('Hard fail: HTTP error to COOPS for products: {}'.format(eh))
+            utilities.log.error(f'Hard fail: HTTP error to COOPS for products: {eh}')
         except Timeout:
             utilities.log.error('Hard fail: Timeout')
         except Exception as e:
-            utilities.log.error('NOAA/NOS data error: station {}: {} was {}'.format(station,e, self._product))
+            utilities.log.error(f'NOAA/NOS data error: station {station}: {e} was {self._product}')
         try:
             df_data=df_data.astype(float)
         except Exception as e:
-            utilities.log.warning('NOAA/NOS concat warning: {}'.format(e))
+            utilities.log.warning(f'NOAA/NOS concat warning: {e}')
             df_data = np.nan
         return df_data
 
@@ -707,13 +756,11 @@ class noaanos_fetch_data(fetch_station_data):
 
         Parameters:
              A valid station id <str>
-        Return:
+        Returns:
              dataframe of preselected metadata for a single station in the (keys,values) orientation
 
              This orientation facilitates aggregation upstream. Upstream will transpose this eventually
              to our preferred orientation with stations as index
-
-        NOTE: DO not store a column entry with the stationid. Simply name the column station id, then take transpose.
         """
         meta=dict()
         try:
@@ -731,16 +778,17 @@ class noaanos_fetch_data(fetch_station_data):
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except Exception as e:
-            utilities.log.exception('NOAA/NOS meta error station {}: {}. Continue'.format(station, e))
+            utilities.log.exception(f'NOAA/NOS meta error station {station}: {e}')
             #sys.exit(1)
         return df_meta
 
 #####################################################################################
 ##
+## CONTRAILS source subclass
 ## Fetching the Station data from Contrails managed by OneRain
 ##
 
-## Must MANUALLY convert to meters here
+## Must MANUALLY convert to metric here
 
 class contrails_fetch_data(fetch_station_data):
     """
@@ -753,9 +801,7 @@ class contrails_fetch_data(fetch_station_data):
         config: a dict containing values for domain <str>, method <str>, systemkey <str>
         a valid PRODUCT id <str>: See CLASSDICT definitions for specifics
 
-        NOTE: Default to using imperial units. Because the metadata that gets returned only reports
-        the units for how the data were stored not fetched. So it wouid be easay for the calling program to get confused.
-        Let the caller choose to update units and modify the df_meta structure prior to DB uploads
+        NOTE: Defaults to using imperial units. Manually correct them 
 
         Two dicts are used to manage jobs. The first (products) maps generic product names used by high level codes
         to the specific product names in NOAA/NOS, The second (CLASSDICT) is used here internally map names to
@@ -779,8 +825,8 @@ class contrails_fetch_data(fetch_station_data):
     CLASSDICT = {
         'Rain Increment':10,
         'Rain Accumulation':11,
-        'Stage':20,            # River guages
-        'Water Elevation':94,  # Coastal guages  - not documented in contrails doc as of today
+        'Stage':20,            # River gauges
+        'Water Elevation':94,  # Coastal gauges  - not documented in contrails doc as of early 2022
         'Flow Volume':25,
         'Air Temperature':30,
         'Fuel Temperature':38,
@@ -806,6 +852,18 @@ class contrails_fetch_data(fetch_station_data):
     # Currently only tested with the NCEM owner
 
     def __init__(self, station_id_list, periods, config, product='river_water_level', owner='NCEM', resample_mins=15):
+        """
+        Invoke the Contrails subclass
+
+        Parameters:
+            station_id_list: <list> List of desired station ids
+            periods: list of time-tuples indicating the desired time range(s)
+            product: <str> (Default='river_water_level')  The generic product name
+            interval: <str> NOAA coops specific param. None or 'h'
+            owner: <str> (Default 'NCEM') a valid owner
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
+        """
+
         self._owner=owner
         self._data_unit=map_product_to_harvester_units(product)
         try:
@@ -814,31 +872,28 @@ class contrails_fetch_data(fetch_station_data):
             utilities.log.error('Contrails No such product key. Input {}, Available {}'.format(product, self.products.keys()))
             sys.exit(1)
         print(self._product)
-        utilities.log.info('CONTRAILS Fetching product {}'.format(self._product))
+        utilities.log.info(f'CONTRAILS Fetching product {self._product}')
         self._systemkey=config['systemkey']
         self._domain=config['domain']
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
 
-    # Customized splitting of the timeranger into a list of day-centric tuples.
-    # So far this only applied to CONTRAILS data sources
+    # Customized splitting of the timerange into a list of day-centric tuples.
 
     def return_list_of_daily_timeranges(self, time_tuple)-> list():
         """
-        Parameters:
-            A tuple consisting of:
-            start_time: Time of format %Y-%m-%d %H:%M:%S (str)
-            end_time: Time of format %Y-%m-%d %H:%M:%S (str)
-    
-        Returns:
-            periods: List of daily tuple ranges
-    
-        Take an arbitrary start and end time (inclusive) in the format of %Y-%m-%d %H:%M:%S. Break up into a list of tuples which 
-        which are at most a day in length AND break alopng day boundaries. [ {day1,day1),(day2,day2)..]
+        Take an arbitrary start and endtime (inclusive) in the format of %Y-%m-%d %H:%M:%S. Break up into a list of tuples which 
+        are at most a day in length AND break along day boundaries. [ {day1,day1),(day2,day2)..]
         The first tuple and the last tuple can be partial days. All intervening tuples will be full days.
     
         Assume an HOURLY stepping even though non-zero minute offsets may be in effect.
+
+        Parameters:
+            A tuple consisting of:
+            start_time: <str> Time of format %Y-%m-%d %H:%M:%S
+            end_time: <str> Time of format %Y-%m-%d %H:%M:%S
     
-        Return:  
+        Returns:
+            periods: List of daily tuple ranges
        """
         start_time=time_tuple[0]
         end_time=time_tuple[1]
@@ -846,21 +901,20 @@ class contrails_fetch_data(fetch_station_data):
         print(end_time)
         periods=list()
         dformat='%Y-%m-%d %H:%M:%S'
-        print('Parameters: start time {}, end_time {}'.format(start_time, end_time))
+        print(f'Parameters: start time {start_time}, end_time {end_time}')
     
         time_start = dt.datetime.strptime(start_time, dformat)
         time_end = dt.datetime.strptime(end_time, dformat)
         if time_start > time_end:
-            print('Swapping input times') # I want to be able to log this eventually
+            print('Swapping input times')
             time_start, time_end = time_end, time_start
     
         today = dt.datetime.today()
         if time_end > today:
               time_end = today
-              print('Contrails: Truncating list: new end time is {} '.format(dt.datetime.strftime(today, dformat)))
+              print(f'Contrails: Truncating list: new end time is {dt.datetime.strftime(today, dformat)}')
     
         #What hours/min/secs are we starting on - compute proper interval shifting
-    
         init_hour = 24-math.floor(time_start.hour)-1
         init_min = 60-math.floor(time_start.minute)-1
         init_sec = 60-math.floor(time_start.second)-1
@@ -880,14 +934,17 @@ class contrails_fetch_data(fetch_station_data):
         """
         Build a simple query for a single gauge and the product level values
         Parameters:
-        Results:
+            domain: <str> contrails domain
+            systemkey: <str> contrails authorization key
+            indict: <dict> of parameters for the the final url
+        Returns:
+            full_url: <str> A fully formatted Contrails URL
         """
         url=domain
         url_values=urllib.parse.urlencode(indict)
         full_url = url +'?' +url_values
         return full_url
 
-##TODO confirm Contrails pressure units are bars
     def convert_to_metric(self, df)-> pd.DataFrame:
         """
         Contrails returns moost (all?) data in imperial units
@@ -896,21 +953,21 @@ class contrails_fetch_data(fetch_station_data):
         which is carried by self.product
 
         arbitrary_min = 600. Contrails can return pressures in mb OR inHg with little warning.
+            depending on the station. We can't check here so try to deduce which units the data are in
       
         Dataframe is updated inplace
 
         Parameters
-            df: Data of tmes x product for a specific station
-        Return:
-            df: Data of times x product in metric units
+            df: <dataframe> Data of tmes x product for a specific station
+        Returns:
+            df: <dataframe> Data of times x product in metric units
         """ 
-        # 
         arbitrary_min = 600 
         product = self._product
         df=df.astype(float)
         if product == 'Stage' or product == 'Water Elevation':
             utilities.log.info('Contrails. Converting to meters')
-            df=df * 0.3048 # Convert feet to meters
+            df=df * 0.3048 # feet to meters
             return df
         if product == 'Barometric Pressure':
             test_val = max(df.values)
@@ -921,13 +978,8 @@ class contrails_fetch_data(fetch_station_data):
         utilities.log.error('convert_to_metric: Dropped out the bottom. Unexpected product of {}: Abort'.format(product))
         sys.exit(1)
 
-# We do a station at a time because the max number of rows returned is 5,000
-# And the data for some stations is 6min
-#
-# For each source: define the functions:
-# fetch_single_data(station)-> pd.DataFrame
-# fetch_single_metadata(station,periods)-> pd.DataFrame
-#
+## Now implement the required two methods
+
     def fetch_single_product(self, station, time_range) -> pd.DataFrame: 
         """
         For a single Contrails site_id, process all tuples from the input periods list
@@ -938,7 +990,7 @@ class contrails_fetch_data(fetch_station_data):
             station <str>. A valid station id
             time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
 
-        Return:
+        Returns:
             dataframe of time (timestamps) vs values for the requested station
         """
         METHOD = 'GetSensorData'
@@ -955,7 +1007,7 @@ class contrails_fetch_data(fetch_station_data):
                 response = requests.get(url)
                 dict_data = xmltodict.parse(response.content)
                 data = dict_data['onerain']['response']['general']
-                dx = pd.DataFrame(data['row']) # Will  be <= 5000
+                dx = pd.DataFrame(data['row']) # must be <= 5000 entries returned
                 dx = dx[['data_time','data_value']]
                 utilities.log.info('Contrails. Converting to meters')
                 dx.columns = ['TIME',station]
@@ -963,7 +1015,7 @@ class contrails_fetch_data(fetch_station_data):
                 dx.index = pd.to_datetime(dx.index)
                 datalist.append(dx)
             except Exception as e:
-                utilities.log.warn('Contrails response data error: Perhaps empty data contribution: {}'.format(e))
+                utilities.log.warn(f'Contrails response data error: Perhaps empty data contribution: {e}')
         try:
             # Manually convert all values to meters
             df_data = pd.concat(datalist)
@@ -974,10 +1026,9 @@ class contrails_fetch_data(fetch_station_data):
             df_data=np.nan
         return df_data
 
-# Note it is possible to get all station metadata but only a subset of station data
 # According to oneRain the current best way to access the meta data is using or_site_id
-#
-# river and coastal metadata return different kind of objects
+# Also river and coastal metadata return different kind of objects
+
     def fetch_single_metadata(self, station) -> pd.DataFrame:      
         """
         For a single Contrails site_id fetch the associated metadata.
@@ -986,18 +1037,12 @@ class contrails_fetch_data(fetch_station_data):
 
         Parameters:
              A valid station id <str>
-        Return:
+        Returns:
              dataframe of preselected metadata for a single station in the (keys,values) orientation
 
              This orientation facilitates aggregation upstream. Upstream will transpose this eventually
              to our preferred orientation with stations as index
         """
-        # Something wrong with GTNN7 the second dict is way too big as a LIST. The list doesn't include GTNN7
-        # Sent bug report to contrails.Dec 8, 2021
-        # The second dict for GTNN7 contains LOTS of station's data which corrupts the algorithm
-        # Solution: Switch to using or_site_id
-        #
-        # Needed a more extensive SensorMetaData approach
         meta=dict() 
         # 1
         METHOD = 'GetSensorMetaData'
@@ -1007,7 +1052,6 @@ class contrails_fetch_data(fetch_station_data):
         response = requests.get(url)
         dict_data = xmltodict.parse(response.content)
         data = dict_data['onerain']['response']['general']['row']
-
         if isinstance(data, list):
             for entry in data:
                 if entry['sensor_class']==self.CLASSDICT[self._product]:
@@ -1016,7 +1060,7 @@ class contrails_fetch_data(fetch_station_data):
                     break
         else:
             or_site_id= data['or_site_id']
-        utilities.log.info('Current or_site_id is {}'.format(or_site_id))
+        utilities.log.info(f'Current or_site_id is {or_site_id}')
         # 2
         METHOD = 'GetSiteMetaData'
         #indict = {'method': METHOD,'tz':GLOBAL_TIMEZONE, 'class': self.CLASSDICT[self._product],
@@ -1041,16 +1085,23 @@ class contrails_fetch_data(fetch_station_data):
             #
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
-
         except Exception as e:
-            utilities.log.exception('Contrails response meta error: {}'.format(e))
+            utilities.log.exception(f'Contrails response meta error: {e}')
             sys.exit(1)
         return df_meta
 
-## Must MANUALLY convert to metric here
+#####################################################################################
+##
+## NOAA/NDBC source Realtime subclass
+##
 
 class ndbc_fetch_data(fetch_station_data):
     """
+    Invoke the NDBC subclass
+
+        This class develops the realtime data
+        Realtime data goes back now()-45days. 
+
     Parameters:
         station_id_list: list of NDBC buoy ids <str>
         a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
@@ -1085,22 +1136,23 @@ class ndbc_fetch_data(fetch_station_data):
         NDBC: National Data Buoy Center
         Read buoy product data.
 
-        Parameters
-            station_id_list: :List of triplets [(id,name,state)...]
+        Parameters:
+            station_id_list: List of triplets [(id,name,state)...]
             periods: A tuple of time range (timein,timeend).format %Y-%m-%d %H:%M:%S
-       
+            product: <str> (Default='wave_height')  The generic product name
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
         self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
-            utilities.log.info('NDBC Fetching product {}'.format(self._product))
+            utilities.log.info(f'NDBC Fetching product {self._product}')
         except KeyError:
-            utilities.log.error('NDBC No such product key. Input {}, Available {}'.format(product, self.products.keys()))
+            utilities.log.error(f'NDBC No such product key. Input {product}, Available {self.products.keys()}')
             sys.exit(1)
         else:
             self._units='metric' # Redundant cleanup TODO
         if units !='metric':
-            utilities.log.info('NDBC: units must be metric: {}: Abort'.format(units))
+            utilities.log.info(f'NDBC: units must be metric: {units}: Abort')
             sys.exit(1)
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
 
@@ -1115,7 +1167,7 @@ class ndbc_fetch_data(fetch_station_data):
             station <str>. A valid NDBC buoy id
             time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
 
-        Return:
+        Returns:
             dataframe of time (timestamps) vs values for the requested station
         """
         tstart,tend=time_range
@@ -1132,28 +1184,28 @@ class ndbc_fetch_data(fetch_station_data):
             df_data = df_data.loc[time_range[0]:time_range[1]]
             df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
         except ConnectionError as ec:
-            utilities.log.error('Hard fail: Could not connect to NDBC for products {}: {}'.format(bouy[0], ec))
+            utilities.log.error(f'Hard fail: Could not connect to NDBC for products {bouy[0]}: {ec}')
         except HTTPError as eh:
-            utilities.log.error('Hard fail: HTTP error to NDBC for products: {}'.format(eh))
+            utilities.log.error(f'Hard fail: HTTP error to NDBC for products: {eh}')
         except Timeout:
             utilities.log.error('Hard fail NDBC: Timeout')
         except Exception as e:
-            utilities.log.error('NDBC data error: {} was {}'.format(e, self._product))
+            utilities.log.error(f'NDBC data error: {e} was {self._product}')
         try:
             df_data=df_data.astype(float)
         except Exception as e:
-            utilities.log.error('NDBC concat error: {}'.format(e))
+            utilities.log.error(f'NDBC concat error: {e}')
             df_data = np.nan
         return df_data
 
     def fetch_single_metadata(self, buoy) -> pd.DataFrame:
         """
         For a single NDBC site_id fetch the associated metadata.
-        The choice of data is highly subjective at this time.
+        The choice of metadata is highly subjective at this time.
 
         Parameters:
              A valid buoy id <str>
-        Return:
+        Returns:
              dataframe of preselected metadata for a single station in the (keys,values) orientation
 
              This orientation facilitates aggregation upstream. Upstream will transpose this eventually
@@ -1174,8 +1226,16 @@ class ndbc_fetch_data(fetch_station_data):
         df_meta.columns = [str(buoy[0])]
         return df_meta
 
+##
+## NOAA/NDBC source historical subclass
+##
+
 class ndbc_fetch_historic_data(fetch_station_data):
     """
+    Invoke the NDBC historical subclass
+        This class develops the historical data
+        Historical data will not return data from the current year.
+
     Parameters:
         station_id_list: list of NDBC buoy ids <str>
         a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
@@ -1191,7 +1251,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
             wind_speed: m/s
  
         Currently tested input products:
-            wave_heigh
+            wave_height
             pressure
             wind_speed
     """
@@ -1213,14 +1273,15 @@ class ndbc_fetch_historic_data(fetch_station_data):
         Parameters
             station_id_list: :List of triplets [(id,name,state)...]
             periods: A tuple of time range (timein,timeend).format %Y-%m-%d %H:%M:%S
-       
+            product: <str> (Default='wave_height')  The generic product name
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
         self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
-            utilities.log.info('NDBC Fetching Historicalproduct {}'.format(self._product))
+            utilities.log.info(f'NDBC Fetching Historicalproduct {self._product}')
         except KeyError:
-            utilities.log.error('NDBC No such historical product key. Input {}, Available {}'.format(product, self.products.keys()))
+            utilities.log.error(f'NDBC No such historical product key. Input {product}, Available {self.products.keys()}')
             sys.exit(1)
         else:
             self._units='metric' # Redundant cleanup TODO
@@ -1231,12 +1292,12 @@ class ndbc_fetch_historic_data(fetch_station_data):
 
     def get_year_list_from_timerange(self, time_range):
         """
-        The input time_range tuple is queried to detemrine what year we are interested in.
-        No chgecks are made to ensure the CURRENT year is excluded. If it is included,
-        the subsequent histirucal data call will fail
+        The input time_range tuple is queried to determine what year we are interested in.
+        No checks are made to ensure the CURRENT year is excluded. If it is included,
+        then the subsequent historical data call will fail
 
-        input time formats are '%Y-%m-%d %H:%M:%S'
-
+        Parameters:
+            input time tuple: (<str>,<str>) formats are '%Y-%m-%d %H:%M:%S'
         Returns:
             year_list: list sorted range of years
         """
@@ -1247,6 +1308,8 @@ class ndbc_fetch_historic_data(fetch_station_data):
             yin,yout = yout,yim
         year_list=list(range(yin,yout+1))
         return year_list
+
+## Implement the required two methods
 
     def fetch_single_product(self, buoy, time_range) -> pd.DataFrame:
         """
@@ -1261,7 +1324,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
             station <str>. A valid NDBC buoy id
             time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
 
-        Return:
+        Returns:
             dataframe of time (timestamps) vs values for the requested station
         """
         tstart,tend=time_range
@@ -1282,18 +1345,18 @@ class ndbc_fetch_historic_data(fetch_station_data):
                 df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
                 data_list.append(df_data)
             except ConnectionError as ec:
-                utilities.log.error('Hard fail: Could not connect to NDBC for products {}: {}'.format(bouy[0],ec))
+                utilities.log.error(f'Hard fail: Could not connect to NDBC for products {buoy[0]}: {ec}')
             except HTTPError:
                 utilities.log.error('Hard fail: HTTP error to NDBC for products')
             except Timeout:
                 utilities.log.error('Hard fail NDBC: Timeout')
             except Exception as e:
-                utilities.log.error('NDBC data error: {} was {}'.format(e, self._product))
+                utilities.log.error(f'NDBC data error: {e} was {self._product}')
             df_data = pd.concat(data_list, axis=0) 
         try:
             df_data=df_data.astype(float)
         except Exception as e:
-            utilities.log.error('NDBC_HISTORIC float assignment error: {}'.format(e))
+            utilities.log.error(f'NDBC_HISTORIC float assignment error: {e}')
             df_data = np.nan
         df_data = df_data.loc[time_range[0]:time_range[1]]
         return df_data
@@ -1305,7 +1368,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
 
         Parameters:
              A valid buoy id <str>
-        Return:
+        Returns:
              dataframe of preselected metadata for a single station in the (keys,values) orientation
 
              This orientation facilitates aggregation upstream. Upstream will transpose this eventually
@@ -1314,6 +1377,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
         try:
             meta=dict()
             df_latest = NDBC.latest_observations().set_index('station')
+            df_latest.to_csv('dump.csv')
             lat, lon = df_latest.loc[buoy[0]][['latitude','longitude']]
             meta['LAT'] = lat
             meta['LON'] = lon
@@ -1325,7 +1389,10 @@ class ndbc_fetch_historic_data(fetch_station_data):
             meta['COUNTY'] = np.nan # None
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(buoy[0])]
+        except KeyError:
+             pass
+             utilities.log.warning(f'Station {buoy[0]} had no metadata: skip it')
         except Exception as e:
-            utilities.log.exception('NDBC meta error: {}'.format(e))
+            utilities.log.exception(f'NDBC Historical meta error: {e}')
             sys.exit(1)
         return df_meta

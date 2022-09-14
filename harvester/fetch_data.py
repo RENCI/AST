@@ -1,18 +1,4 @@
 #!/usr/bin/env python
-#
-# Here we are simulating having run a series of fetches from the Harvester and storing the data to csv files.
-# These files will be used for building and testing out schema for the newq DB 
-#
-# We intentionally have time ranges that are overlapping
-#
-# The filenames are going to have the following nomenclature:
-#
-# ensemble: An arbitrary string. According to a cursory look at tds, this has values such as:
-#    nowcast, nhc0fcl, veerright, etc. So we will set the following defaults:
-# grid: hsofs,ec95d,etc
-#
-#
-
 import os,sys
 import pandas as pd
 import datetime as dt
@@ -22,7 +8,7 @@ from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_dat
 from utilities.utilities import utilities as utilities
 
 ##
-## Some basic functions that will eventually be handled by the caller
+## Some basic functions that wrap the underlying calls
 ##
 
 # Currently supported sources
@@ -31,12 +17,12 @@ SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
 #def get_noaa_stations(fname='./config/noaa_stations.txt'):
 def get_noaa_stations(fname=None):
     """
-    Simply read a CSV file containing stations under the header stationid
+    Simply read a CSV file containing stations under the header of stationid
     Expected format is
         serial_nr, stationid
 
     Parameters:
-        fname: (str) full path to a valid stationid file
+        fname: <str> full path to a valid stationid file
 
     Returns:
         noaa_stations: list(str). List of valid noaa station ids 
@@ -52,14 +38,14 @@ def get_noaa_stations(fname=None):
 
 def get_contrails_stations(fname=None):
     """
-    Simply read a CSV file containing stations under the header stationid
+    Simply read a CSV file containing stations under the header of stationid
     A convenience method to fetch river guage lists. 
     Contrails data
 
     Expected format is
         serial_nr, stationid
     Parameters:
-        fname: (str) full path to a valid stationid file
+        fname: <str> full path to a valid stationid file
 
     Returns:
         contrails_stations: list(str). List of valid contrails station ids 
@@ -75,7 +61,7 @@ def get_contrails_stations(fname=None):
 
 def get_ndbc_buoys(fname=None):
     """
-    Read a list of buo data stations. These data are more complicated because
+    Read a list of buoy data stations. These data are more complicated because
     the NDBC reader doesnt easily provide the location and state information. Thus
     we expect this input file to carry that infomration.
     
@@ -83,7 +69,7 @@ def get_ndbc_buoys(fname=None):
         serial_nr, stationid, location, state
     
     Parameters:
-        fname: (str) full path to a valid stationid file
+        fname: <str> full path to a valid stationid file
 
     Returns:
      a list of tuples:
@@ -105,15 +91,15 @@ def get_ndbc_buoys(fname=None):
 
 def choose_common_header_name(product):
     """
-    For harvesting, we only want three common data names in the final data time series
+    For harvesting, we only want select common data names in the final data time series
     This is complicated by the fact that different sources use different product names. So here
     we manually construct a dictionary of current harvester supported data products
 
     Input:
-        product: (str) input product name
+        product: <str> input product name
 
-    Return:
-        name: (str) selected common name
+    Returns:
+        name: <str >selected common name
     """
     product_name_maps={
         'water_level': 'water_level',
@@ -131,12 +117,12 @@ def choose_common_header_name(product):
         name = product_name_maps[product]
         return name.upper()
     else:
-        utilities.log.error('choose_common_header_name. No such product name {}'.format(product))
+        utilities.log.error(f'choose_common_header_name. No such product name {product}')
         sys.exit(1)
 
 def format_data_frames(df, product) -> pd.DataFrame:
     """
-    A Common formatting used by all sources
+    A Common formatting used by all sources. 
     """
     df.index = df.index.strftime('%Y-%m-%dT%H:%M:%S')
     df.reset_index(inplace=True)
@@ -171,11 +157,11 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
 
     Parameters:
-        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
         noaa_stations: list(str). List of desired NOAA stations
-        interval: (str)(def=None or 'h') A NOAA specific interval setting
-        data_product: (str) (def data_product). An AST named data product ( Not the True NOAA data product name) 
-        resample_mins: (int) Returned time series with a sampling of resample_mins
+        interval: <str> (def=None) A NOAA specific interval setting
+        data_product: <str >(def water_level). A generic AST named data product ( Not the True NOAA data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
 
     Returns:
         df_noaa_data: DataFrame (time x station)
@@ -185,14 +171,14 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
     noaa_products=['water_level', 'predictions', 'hourly_height', 'air_pressure', 'wind_speed']
     try:
         if not data_product in noaa_products:
-            utilities.log.error('NOAA: data product can only be {}'.format(noaa_products))
+            utilities.log.error(f'NOAA: data product can only be {noaa_products}')
             #sys.exit(1)
         noaanos = noaanos_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
         df_noaa_data = noaanos.aggregate_station_data()
         df_noaa_meta = noaanos.aggregate_station_metadata()
         df_noaa_meta.index.name='STATION'
     except Exception as e:
-        utilities.log.error('Error: NOAA: {}'.format(e))
+        utilities.log.error(f'Error: NOAA: {e}')
     return df_noaa_data, df_noaa_meta
 
 def process_contrails_stations(time_range, contrails_stations, authentication_config, data_product='river_water_level', resample_mins=15 ):
@@ -200,11 +186,11 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
 
     Parameters:
-        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
         contrails_stations: list(str). List of desired Contrails stations
-        authentication_config: (dict). A Contrails specific authorization dic
-        data_product: (str) (def data_product). An AST named data product ( Not the True Contrails data product name) 
-        resample_mins: (int) Returned time series with a sampling of resample_mins
+        authentication_config: <dict>. A Contrails specific authorization dict
+        data_product: <str> (def river_water_level). A generic AST named data product ( Not the True Contrails data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
 
     Returns:
         df_contrails_data: DataFrame (time x station)
@@ -214,14 +200,14 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
     contrails_product=['river_water_level','coastal_water_level', 'air_pressure']
     try:
         if data_product not in contrails_product:
-            utilities.log.error('Contrails data product can only be: {} was {}'.format(dproduct,data_product))
+            utilities.log.error(f'Contrails data product can only be: {contrails_product} was {data_product}')
             #sys.exit(1)
         contrails = contrails_fetch_data(contrails_stations, time_range, authentication_config, product=data_product, owner='NCEM', resample_mins=resample_mins)
         df_contrails_data = contrails.aggregate_station_data()
         df_contrails_meta = contrails.aggregate_station_metadata()
         df_contrails_meta.index.name='STATION'
     except Exception as e:
-        utilities.log.error('Error: CONTRAILS: {}'.format(e))
+        utilities.log.error(f'Error: CONTRAILS: {e}')
     return df_contrails_data, df_contrails_meta
 
 def process_ndbc_buoys(time_range, ndbc_buoys, data_product='wave_height', resample_mins=15 ):
@@ -229,9 +215,9 @@ def process_ndbc_buoys(time_range, ndbc_buoys, data_product='wave_height', resam
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
     
     Parameters:
-        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
         ndbc_buoys: list(str). List of desired NDBC buoys
-        data_product: (str) (def data_product). An AST named data product ( Not the True NDBC data product name) 
+        data_product: <str> (def wave_height). An AST named data product ( Not the True NDBC data product name) 
         resample_mins: (int) Returned time series with a sampling of resample_mins
 
     Returns:
@@ -242,14 +228,14 @@ def process_ndbc_buoys(time_range, ndbc_buoys, data_product='wave_height', resam
     ndbc_products=['wave_height', 'air_pressure', 'wind_speed']
     try:
         if not data_product in ndbc_products:
-            utilities.log.error('NDBC: data product can only be {}'.format(ndbc_products))
+            utilities.log.error(f'NDBC: data product can only be {ndbc_products}')
             #sys.exit(1)
         ndbc = ndbc_fetch_data(ndbc_buoys, time_range, product=data_product, resample_mins=resample_mins)
         df_ndbc_data = ndbc.aggregate_station_data()
         df_ndbc_meta = ndbc.aggregate_station_metadata()
         df_ndbc_meta.index.name='STATION'
     except Exception as e:
-        utilities.log.error('Error: NEW NDBC: {}'.format(e))
+        utilities.log.error(f'Error: NEW NDBC: {e}')
     return df_ndbc_data, df_ndbc_meta
 
 def process_ndbc_historic_buoys(time_range, ndbc_buoys, data_product='wave_height', resample_mins=15 ):
@@ -257,10 +243,10 @@ def process_ndbc_historic_buoys(time_range, ndbc_buoys, data_product='wave_heigh
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
     
     Parameters:
-        time_range: tuple. Input time range ('%Y-%m-%dT%H:%M:%S)
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
         ndbc_buoys: list(str). List of desired NDBC buoys
-        data_product: (str) (def data_product). An AST named data product ( Not the True NDBC data product name) 
-        resample_mins: (int) Returned time series with a sampling of resample_mins
+        data_product: <str> (def wave_height). An AST named data product ( Not the True NDBC data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
 
     Returns:
         df_ndbc_data: DataFrame (time x station)
@@ -270,14 +256,14 @@ def process_ndbc_historic_buoys(time_range, ndbc_buoys, data_product='wave_heigh
     ndbc_products=['wave_height', 'air_pressure', 'wind_speed']
     try:
         if not data_product in ndbc_products:
-            utilities.log.error('NDBC: data product can only be {}'.format(ndbc_products))
+            utilities.log.error(f'NDBC: data product can only be {ndbc_products}')
             #sys.exit(1)
         ndbc = ndbc_fetch_historic_data(ndbc_buoys, time_range, product=data_product, resample_mins=resample_mins)
         df_ndbc_data = ndbc.aggregate_station_data()
         df_ndbc_meta = ndbc.aggregate_station_metadata()
         df_ndbc_meta.index.name='STATION'
     except Exception as e:
-        utilities.log.error('Error: NEW NDBC HISTORIC: {}'.format(e))
+        utilities.log.error(f'Error: NEW NDBC HISTORIC: {e}')
     return df_ndbc_data, df_ndbc_meta
 
 def main(args):
@@ -301,7 +287,7 @@ def main(args):
         utilities.log.error('Invalid data source {}'.format(data_source))
         sys.exit(1)
 
-    utilities.log.info('Input product {}'.format(data_product))
+    utilities.log.info(f'Input product {data_product}')
 
     # Setup times and ranges
     if args.stoptime is not None:
@@ -320,7 +306,7 @@ def main(args):
     #starttime='2021-12-08 12:00:00'
     #endtime='2021-12-10 00:00:00'
 
-    utilities.log.info('Selected time range is {} to {}, ndays is {}'.format(starttime,endtime,args.ndays))
+    utilities.log.info(f'Selected time range is {starttime} to {endtime}, ndays is {args.ndays}')
 
     # metadata are used to augment filename
     #NOAA/NOS
@@ -329,7 +315,7 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
-        noaa_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
+        noaa_metadata=f"_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
         data, meta = process_noaa_stations(time_range, noaa_stations, data_product = data_product)
         df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
@@ -343,9 +329,9 @@ def main(args):
                 metaf=f'./noaa_stationdata_meta%s.csv'%noaa_metadata
             df_noaa_data.to_csv(dataf)
             meta.to_csv(metaf)
-            utilities.log.info('NOAA data has been stored {},{}'.format(dataf,metaf))
+            utilities.log.info(f'NOAA data has been stored {dataf},{metaf}')
         except Exception as e:
-            utilities.log.error('Error: NOAA: Failed Write {}'.format(e))
+            utilities.log.error(f'Error: NOAA: Failed Write {e}')
             sys.exit(1)
 
     #Contrails
@@ -367,11 +353,11 @@ def main(args):
             time_range=(starttime,endtime) 
             # Get default station list
             contrails_stations=get_contrails_stations(args.station_list) if args.station_list is not None else get_contrails_stations(fname)
-            contrails_metadata=meta+'_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
+            contrails_metadata=f"{meta}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
             data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product = data_product )
             df_contrails_data = format_data_frames(data, data_product) # Melt: Harvester default format
         except Exception as ex:
-            utilities.log.error('CONTRAILS error {}, {}'.format(template.format(type(ex).__name__, ex.args)))
+            utilities.log.error('CONTRAILS error {type(ex).__name__}, {ex.args}')
             sys.exit(1)
         # If choosing non-default locations BOTH variables must be specified
         try:
@@ -383,9 +369,9 @@ def main(args):
                 metaf=f'./contrails_stationdata_meta%s.csv'%contrails_metadata
             df_contrails_data.to_csv(dataf)
             meta.to_csv(metaf)
-            utilities.log.info('CONTRAILS data has been stored {},{}'.format(dataf,metaf))
+            utilities.log.info(f'CONTRAILS data has been stored {dataf},{metaf}')
         except Exception as e:
-            utilities.log.error('Error: CONTRAILS: Failed Write {}'.format(e))
+            utilities.log.error(f'Error: CONTRAILS: Failed Write {e}')
             sys.exit(1)
 
     #NDBC
@@ -393,7 +379,7 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NDBC
         # Use default station list
         ndbc_stations=get_ndbc_buoys(args.station_list) if args.station_list is not None else get_ndbc_buoys(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','ndbc_buoys.csv'))
-        ndbc_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
+        ndbc_metadata=f"_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
         data, meta  = process_ndbc_buoys(time_range, ndbc_stations, data_product = data_product)
         df_ndbc_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
@@ -407,16 +393,16 @@ def main(args):
                 metaf=f'./ndbc_stationdata_meta%s.csv'%ndbc_metadata
             df_ndbc_data.to_csv(dataf)
             meta.to_csv(metaf)
-            utilities.log.info('NDBC data has been stored {},{}'.format(dataf,metaf))
+            utilities.log.info(f'NDBC data has been stored {dataf},{metaf}')
         except Exception as e:
-            utilities.log.error('Error: NDBC: Failed Write {}'.format(e))
+            utilities.log.error(f'Error: NDBC: Failed Write {e}')
             sys.exit(1)
 
     if data_source.upper()=='NDBC_HISTORIC':
         time_range=(starttime,endtime) # Can be directly used by NDBC
         # Use default station list
         ndbc_stations=get_ndbc_buoys(args.station_list) if args.station_list is not None else get_ndbc_buoys(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','ndbc_buoys.csv'))
-        ndbc_metadata='_'+endtime.replace(' ','T') # +'_'+starttime.replace(' ','T')
+        ndbc_metadata=f"_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
         data, meta  = process_ndbc_historic_buoys(time_range, ndbc_stations, data_product = data_product)
         df_ndbc_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
@@ -430,12 +416,12 @@ def main(args):
                 metaf=f'./ndbc_stationdata_meta%s.csv'%ndbc_metadata
             df_ndbc_data.to_csv(dataf)
             meta.to_csv(metaf)
-            utilities.log.info('NDBC data has been stored {},{}'.format(dataf,metaf))
+            utilities.log.info(f'NDBC data has been stored {dataf},{metaf}')
         except Exception as e:
-            utilities.log.error('Error: NDBC: Failed Write {}'.format(e))
+            utilities.log.error(f'Error: NDBC: Failed Write {e}')
             sys.exit(1)
 
-    utilities.log.info('Finished with data source {}'.format(data_source))
+    utilities.log.info(f'Finished with data source {data_source}')
     utilities.log.info('Finished')
 
 if __name__ == '__main__':
