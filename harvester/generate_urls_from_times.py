@@ -267,7 +267,7 @@ def construct_starttime_from_offset(stoptime,ndays):
     """
     Construct an appropriate starttime given the stoptime and offset.
     NOTE if this is a Hurricane advisory, we return an appropriate  
-    advosirty shiort assuming each advisaory is 6 hoursa in duration. No
+    advisory assuming each advisory is 6 hoursa in duration. No
     negative advisories are returned
 
     Parameters:
@@ -297,7 +297,7 @@ class generate_urls_from_times(object):
     We hardwire the concept that hurricane data files timestep every 6 hours. It is okay to have one or two 
     "wrong" urls in the list as Harvester should be pretty resilient.  
 
-    If the caller elects to define output URLs baced on times/ndays, then a YAML decribing the desired structure is required.
+    If the caller elects to define output URLs based on times/ndays, then a YAML decribing the desired structure is required.
     If the caller elects to also supply a URL, then the output URL structure will be gleened from it.
         regardless of instance
 
@@ -305,7 +305,7 @@ class generate_urls_from_times(object):
         If grabbing a nowcast, the data series may begine 6 hours before the indicated url time. 
 
     Pass in a URL and the instance, gridname,  are scraped from it
-    If YAML you must specifdy these terms.
+    If YAML you must specify these terms.
 
     Possible scenarios: (options such as instance/ensemble can be applied to all)
         1) Input timein/timeout and the config_name YML (nominal name is url_framework.yml). This will 
@@ -314,7 +314,7 @@ class generate_urls_from_times(object):
         2) Input timeout and offset and the config_name YML (nominal name is url_framework.yml). This will 
                generate a set of URLs between the two time ranges. This can work for a Hurricane BUT
                timeout must be ADVISORY values
-        3) Input URL and offset only. This will scrap the time/advisory from the URL and offset it in 6 hour steps
+        3) Input URL and offset only. This will scrape the time/advisory from the URL and offset it in 6 hour steps
                generate a set of URLs between the two time/advisory ranges. This can work for a Hurricanes 
 
     Parameters: 
@@ -323,27 +323,18 @@ class generate_urls_from_times(object):
         starttime: (str) Selected time to begin the building of the list (YYYY-mm-dd HH:MM:SS)
         stoptime: (str) Selected time to end the building of the list (YYYY-mm-dd HH:MM:SS)
         config_name: (str) path/filename to yaml file that contains the INSTANCE mappings
-        hurricane_yaml_source=None: (str) This is a specual case. IF you want to build Hurricane URLs from a YAML, 
-            then you wil need to specify the subdir name directly, eg 'al09'. THis will replace the default value of nam. 
+        hurricane_yaml_source=None: (str) This is a special case. If you want to build Hurricane URLs from a YAML, 
+            then you will need to specify the subdir name directly, eg 'al09'. This will replace the default value of nam. 
         hurricane_yaml_year: (str) is part of the Hurricane special case. No way to dig out the year directory name without the user specifying it
             only needed for YAML based hurricane construction. Eg .../thredds/dodsC/2021/al09/11/ec95d/...
     """
     
     def __init__(self, url=None, timein=None, timeout=None, ndays=None, grid_name = None, instance_name=None, config_name=None, hurricane_yaml_year=None, hurricane_yaml_source=None):
-        # config_name=os.path.join(os.path.dirname(__file__),'../config','time2urls.yml')
-        # Find out how the times are specified. We ultimately only want starttime,endtime
-
-        #if config_name is None:
-        #    utilities.log.error('Must supply a config such as url_framework.yml')
-        #    sys.exit(1)
-        #self.config_name = config_name # This is only used if pulling the url structure from, a yaml
-
-        # The Hurricane special terms are ONLY if you are build from a YAML AND the caller wants Hurricane data
-        # If a URL passed in, then gridname and instance can be gottewn from it. ensembles are expexted to be changed by the user
+        # The Hurricane special terms are only usedY if you are requesting to build from a YAML AND the caller wants Hurricane data
+        # If a URL passed in, then gridname and instance can be gotten from it. ensembles values are expected to be changed by the user
 
         self.config_name = config_name
         if url is not None:
-            print('Set up URL words')
             words=url.split('/')
             self.ensemble=words[-2]
             self.instance_name=words[-3]
@@ -397,7 +388,7 @@ class generate_urls_from_times(object):
         We expect no changes in the grid name. Only change in the ensemble and times are expected
    
         Parameters:
-            ensemble: (str) Caller specified ensemble. THis way one could input a namforecast but request nowcasts, eg.
+            ensemble: (str) Caller specified ensemble. This way one could input a namforecast url but request nowcasts, eg.
 
         Returns:
             urls: list(str). List of valid URLs for processing
@@ -416,7 +407,6 @@ class generate_urls_from_times(object):
         utilities.log.info('Constructed {} urls of ensemble {}'.format(len(list_of_times),ensemble))
         return urls
 
-# This might be used by the APSVIZ2 pipeline where only forecast url is presented
     def build_url_list_from_template_url_and_offset(self, ensemble='nowcast')->list:
         """
         We seek to build a set of compatible URLs starting from the URL embedded time 
@@ -454,7 +444,7 @@ class generate_urls_from_times(object):
     def build_url_list_from_yaml_and_times(self, ensemble='nowcast')->list:
         """
         We seek to build a set of compatible URLs spanning the input time range based on the
-        structure of asgs urls in the config_name. The structure of the output URLs wil be based on the 
+        structure of asgs urls in the config_name. The structure of the output URLs will be based on the 
         entries in the associated yaml file. Since, no url will be provided, we must ask the caller to provide
         the gridname, ensemble, and instance. We expect the caller to provide a proper Instance value
         for the new URLs. 
@@ -496,7 +486,7 @@ class generate_urls_from_times(object):
     def build_url_list_from_yaml_and_offset(self, ensemble='nowcast')->list:
         """
         We seek to build a set of compatible URLs spanning the input time range based on the
-        structure of asgs urls in the config_name. The structure of the output URLs wil be based on the 
+        structure of asgs urls in the config_name. The structure of the output URLs will be based on the 
         entries in the associated yaml file. Since, no url will be provided, we must ask the caller to provide
         the gridname, ensemble, and instance. We expect the caller to provide a proper Instance value
         for the new URLs. 
