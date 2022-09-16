@@ -1,0 +1,1639 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>harvester package &#8212; AST  documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="processing package" href="processing.html" />
+    <link rel="prev" title="Welcome to AST’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="harvester-package">
+<h1>harvester package<a class="headerlink" href="#harvester-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-harvester.fetch_adcirc_data">
+<span id="harvester-fetch-adcirc-data-module"></span><h2>harvester.fetch_adcirc_data module<a class="headerlink" href="#module-harvester.fetch_adcirc_data" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.check_advisory">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">check_advisory</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">value</span></em>, <em class="sig-param"><span class="n">dformat</span><span class="o">=</span><span class="default_value">'%Y%m%d%H'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#check_advisory"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.check_advisory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Try to determine if an advisory number was passed instead of a time value</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>value: &lt;str&gt; The time/adv word extracted form a url
+dformat: &lt;str&gt; format of the input str time</p>
+</dd>
+<dt>Returns:</dt><dd><p>state_hurricane: &lt;bool&gt; True if hurricane</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.check_if_hurricane">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">check_if_hurricane</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#check_if_hurricane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.check_if_hurricane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Very simple procedure but requires having the ASGS nomenclature. This will not work 
+for generic locally stored files
+Only need to check one valid url from the list. This presumnes they all have the same
+grid, instance, class, etc</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str) A list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>state_hurricane: &lt;bool&gt;  True if hurricane</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.combine_metadata_with_station_tuples">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">combine_metadata_with_station_tuples</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df_meta</span></em>, <em class="sig-param"><span class="n">station_nodes</span></em>, <em class="sig-param"><span class="n">fort63_style</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#combine_metadata_with_station_tuples"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.combine_metadata_with_station_tuples" title="Permalink to this definition">¶</a></dt>
+<dd><p>Grabs the list of station tuples [(stationid,adcirc node)] and adds a 
+column to the df_meta object</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>df_meta: Input metadata dataframe stations x metadata
+station_nodes: list(str) list of stationids
+fort63_style: &lt;bool&gt; Value modifies the associated station Node value for prepending <a href="#id1"><span class="problematic" id="id2">63_</span></a> or <a href="#id3"><span class="problematic" id="id4">61_</span></a></p>
+</dd>
+<dt>Returns:</dt><dd><p>df_meta: An improved ddata ataframe of entries stations x metadata</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.convert_input_url_to_nowcast">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">convert_input_url_to_nowcast</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#convert_input_url_to_nowcast"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.convert_input_url_to_nowcast" title="Permalink to this definition">¶</a></dt>
+<dd><p>Though one could call this method using a nowcast url, occasionally we want to be able to
+only pass a forecast type url and, from that, figure out what the corresponding nowcast url might be.
+This assume a proper ASGS formatted url and makes no attempts to validate the 
+the constructed url. Either it exists or this methiod exits(1)</p>
+<p>To use this feature:
+We mandate that the url is used to access ASGS data. The “ensemble” information must be in position .split(‘/’)[-2]</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str) A list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str) with all ensmble values set to “nowcast”</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.first_true">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">first_true</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">iterable</span></em>, <em class="sig-param"><span class="n">default</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">pred</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#first_true"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.first_true" title="Permalink to this definition">¶</a></dt>
+<dd><p>itertools recipe found in the Python 3 docs
+Returns the first true value in the iterable.
+If no true value is found, returns <em>default</em>
+If <em>pred</em> is not None, returns the first item
+for which pred(item) is true.</p>
+<p>first_true([a,b,c], x) –&gt; a or b or c or x
+first_true([a,b], x, f) –&gt; a if f(a) else b if f(b) else x</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.format_data_frames">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">format_data_frames</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#format_data_frames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.format_data_frames" title="Permalink to this definition">¶</a></dt>
+<dd><p>A Common formatting used by all sources</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.get_adcirc_stations_fort61_style">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">get_adcirc_stations_fort61_style</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#get_adcirc_stations_fort61_style"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.get_adcirc_stations_fort61_style" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simply read a list of stations from a csv file. File MUST contain a stationid column
+Generally, we simply combine NOAA and Contrails into a single list. It is okay to include stations not likely to exist since
+the processing stage will simply remove them</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>fname: &lt;str&gt; full path to a valid stationid file</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame: stationid</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.get_adcirc_stations_fort63_style">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">get_adcirc_stations_fort63_style</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#get_adcirc_stations_fort63_style"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.get_adcirc_stations_fort63_style" title="Permalink to this definition">¶</a></dt>
+<dd><p>This style of data input is required when using the fort63_style methods. Simply read a list of stations from a csv file.
+This gets read into a DataFrame. File MUST contain at least Node and stationid columns</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>fname: &lt;str&gt; full path to a valid stationid file</p>
+</dd>
+<dt>Returns:</dt><dd><p>DataFrame: [stationid, Node]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.grab_first_url_from_urllist">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">grab_first_url_from_urllist</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#grab_first_url_from_urllist"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.grab_first_url_from_urllist" title="Permalink to this definition">¶</a></dt>
+<dd><p>eg. ‘<a class="reference external" href="http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc">http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc</a>’</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>url: &lt;str&gt; . Fetch first available, valid url in the list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.grab_gridname_from_url">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">grab_gridname_from_url</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#grab_gridname_from_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.grab_gridname_from_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>We mandate that the URLs input to this fetcher are those used to access the ASGS data. The “grid” information will be in position .split(‘/’)[-2]
+eg. ‘<a class="reference external" href="http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc">http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc</a>’</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>grid.upper(): &lt;str&gt;</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.main">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>We require the provided URL is using the typical ASGS nomenclature and that the timestamp is in (‘/’) position -6
+Moreover, This time stamp behaves a little differently if fetching a nowcast versus a forecast (pre vs post). For now, we will
+annotate final .csv files with _TIME_ corresponding to the actual url data starttime.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.process_adcirc_stations">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">process_adcirc_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em>, <em class="sig-param"><span class="n">adcirc_stations</span></em>, <em class="sig-param"><span class="n">gridname</span></em>, <em class="sig-param"><span class="n">ensemble</span></em>, <em class="sig-param"><span class="n">sitename</span></em>, <em class="sig-param"><span class="n">data_product</span><span class="o">=</span><span class="default_value">'water_level'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">fort63_style</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">variable_name</span><span class="o">=</span><span class="default_value">'zeta'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#process_adcirc_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.process_adcirc_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list&lt;str&gt;. Previously generated list of urls that span the desired time range 
+stations: list(str). List of desired stations
+gridname: &lt;str&gt; gridname of the urls (opt)
+ensemble: &lt;str&gt; ensemble (opt)
+sitename &lt;str&gt;: sitename (opt)
+data_product: &lt;str&gt; (def data_product). An AST named data product (Not the True data product name) 
+resample_mins: &lt;int&gt; Returned time series with a sampling of resample_mins
+fort63_style: &lt;bool&gt; Request fetching water levels from fort.63.nc/swan_HS.63.nc. Requires compatible station dataframe 
+variable_nme: &lt;str&gt;  If wanting swan results,must pass in the correct NC4 data varable name of ‘swan_HS’</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_adcirc_data: DataFrame (time x station)
+df_adcirc_meta: DataFrame (station x metadata)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.strip_ensemble_from_url">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">strip_ensemble_from_url</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#strip_ensemble_from_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.strip_ensemble_from_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>We mandate that the URLs input to this fetcher are those used to access the ASGS data. The “ensemble” information will be in position .split(‘/’)[-2]
+eg. ‘<a class="reference external" href="http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc">http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc</a>’</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>Ensemble: &lt;str&gt;</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.strip_instance_from_url">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">strip_instance_from_url</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#strip_instance_from_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.strip_instance_from_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>We mandate that the URLs input to this fetcher are those used to access the ASGS data. The “instance” information will be in position .split(‘/’)[-3]
+eg. ‘<a class="reference external" href="http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc">http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc</a>’</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>Instance: &lt;str&gt;</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.strip_sitename_from_url">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">strip_sitename_from_url</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em>, <em class="sig-param"><span class="n">fill</span><span class="o">=</span><span class="default_value">'NoSite'</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#strip_sitename_from_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.strip_sitename_from_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>Here we attempt to find which site the url was computed. We read the
+machine name from the url and lookup in the local dict for the predefined canonical site
+name. If no such name use the fill value
+The “machine name” information will be in position .split(‘/’)[-4]. It may consist of multiple words.
+eg. ‘<a class="reference external" href="http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc">http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc</a>’</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls
+fill: (str) manually specify the value for the sitename metadata</p>
+</dd>
+<dt>Returns:</dt><dd><p>canonical site name: (str) eg RENCI,PSC</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_adcirc_data.strip_time_from_url">
+<code class="sig-prename descclassname">harvester.fetch_adcirc_data.</code><code class="sig-name descname">strip_time_from_url</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_adcirc_data.html#strip_time_from_url"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_adcirc_data.strip_time_from_url" title="Permalink to this definition">¶</a></dt>
+<dd><p>We mandate that the URLs input to this fetcher are those used to access the ASGS data. The “time” information will be in position .split(‘/’)[-6]
+eg. ‘<a class="reference external" href="http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc">http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc</a>’</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>time: &lt;str&gt;: in either ASGS formatted ‘%Y%m%d%H’ or possibly as a hurricane advisory string (to be checked later)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvester.fetch_data">
+<span id="harvester-fetch-data-module"></span><h2>harvester.fetch_data module<a class="headerlink" href="#module-harvester.fetch_data" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="harvester.fetch_data.choose_common_header_name">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">choose_common_header_name</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">product</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#choose_common_header_name"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.choose_common_header_name" title="Permalink to this definition">¶</a></dt>
+<dd><p>For harvesting, we only want select common data names in the final data time series
+This is complicated by the fact that different sources use different product names. So here
+we manually construct a dictionary of current harvester supported data products</p>
+<dl class="simple">
+<dt>Input:</dt><dd><p>product: &lt;str&gt; input product name</p>
+</dd>
+<dt>Returns:</dt><dd><p>name: &lt;str &gt;selected common name</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.format_data_frames">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">format_data_frames</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">product</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_data.html#format_data_frames"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.format_data_frames" title="Permalink to this definition">¶</a></dt>
+<dd><p>A Common formatting used by all sources.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.get_contrails_stations">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">get_contrails_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#get_contrails_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.get_contrails_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simply read a CSV file containing stations under the header of stationid
+A convenience method to fetch river guage lists. 
+Contrails data</p>
+<dl class="simple">
+<dt>Expected format is</dt><dd><p>serial_nr, stationid</p>
+</dd>
+<dt>Parameters:</dt><dd><p>fname: &lt;str&gt; full path to a valid stationid file</p>
+</dd>
+<dt>Returns:</dt><dd><p>contrails_stations: list(str). List of valid contrails station ids</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.get_ndbc_buoys">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">get_ndbc_buoys</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#get_ndbc_buoys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.get_ndbc_buoys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Read a list of buoy data stations. These data are more complicated because
+the NDBC reader doesnt easily provide the location and state information. Thus
+we expect this input file to carry that infomration.</p>
+<dl class="simple">
+<dt>Expected format is</dt><dd><p>serial_nr, stationid, location, state</p>
+</dd>
+<dt>Parameters:</dt><dd><p>fname: &lt;str&gt; full path to a valid stationid file</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>a list of tuples:</dt><dd><p>station_tuples: [(station,location,state), (station, location, state), etc]</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.get_noaa_stations">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">get_noaa_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">fname</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#get_noaa_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.get_noaa_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Simply read a CSV file containing stations under the header of stationid
+Expected format is</p>
+<blockquote>
+<div><p>serial_nr, stationid</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>fname: &lt;str&gt; full path to a valid stationid file</p>
+</dd>
+<dt>Returns:</dt><dd><p>noaa_stations: list(str). List of valid noaa station ids</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.main">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generally we anticipate inputting a STOPTIME
+Then the STARTTIME is ndays on the past</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.process_contrails_stations">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">process_contrails_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em>, <em class="sig-param"><span class="n">contrails_stations</span></em>, <em class="sig-param"><span class="n">authentication_config</span></em>, <em class="sig-param"><span class="n">data_product</span><span class="o">=</span><span class="default_value">'river_water_level'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#process_contrails_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.process_contrails_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (‘%Y-%m-%dT%H:%M:%S)
+contrails_stations: list(str). List of desired Contrails stations
+authentication_config: &lt;dict&gt;. A Contrails specific authorization dict
+data_product: &lt;str&gt; (def river_water_level). A generic AST named data product ( Not the True Contrails data product name) 
+resample_mins: &lt;int&gt; Returned time series with a sampling of resample_mins</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_contrails_data: DataFrame (time x station)
+df_contrails_meta: DataFrame (station x metadata)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.process_ndbc_buoys">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">process_ndbc_buoys</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em>, <em class="sig-param"><span class="n">ndbc_buoys</span></em>, <em class="sig-param"><span class="n">data_product</span><span class="o">=</span><span class="default_value">'wave_height'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#process_ndbc_buoys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.process_ndbc_buoys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (‘%Y-%m-%dT%H:%M:%S)
+ndbc_buoys: list(str). List of desired NDBC buoys
+data_product: &lt;str&gt; (def wave_height). An AST named data product ( Not the True NDBC data product name) 
+resample_mins: (int) Returned time series with a sampling of resample_mins</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_ndbc_data: DataFrame (time x station)
+df_ndbc_meta: DataFrame (station x metadata)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.process_ndbc_historic_buoys">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">process_ndbc_historic_buoys</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em>, <em class="sig-param"><span class="n">ndbc_buoys</span></em>, <em class="sig-param"><span class="n">data_product</span><span class="o">=</span><span class="default_value">'wave_height'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#process_ndbc_historic_buoys"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.process_ndbc_historic_buoys" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (‘%Y-%m-%dT%H:%M:%S)
+ndbc_buoys: list(str). List of desired NDBC buoys
+data_product: &lt;str&gt; (def wave_height). An AST named data product ( Not the True NDBC data product name) 
+resample_mins: &lt;int&gt; Returned time series with a sampling of resample_mins</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_ndbc_data: DataFrame (time x station)
+df_ndbc_meta: DataFrame (station x metadata)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_data.process_noaa_stations">
+<code class="sig-prename descclassname">harvester.fetch_data.</code><code class="sig-name descname">process_noaa_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em>, <em class="sig-param"><span class="n">noaa_stations</span></em>, <em class="sig-param"><span class="n">interval</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">data_product</span><span class="o">=</span><span class="default_value">'water_level'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_data.html#process_noaa_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_data.process_noaa_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (‘%Y-%m-%dT%H:%M:%S)
+noaa_stations: list(str). List of desired NOAA stations
+interval: &lt;str&gt; (def=None) A NOAA specific interval setting
+data_product: &lt;str &gt;(def water_level). A generic AST named data product ( Not the True NOAA data product name) 
+resample_mins: &lt;int&gt; Returned time series with a sampling of resample_mins</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_noaa_data: DataFrame (time x station)
+df_noaa_meta: DataFrame (station x metadata)</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvester.fetch_station_data">
+<span id="harvester-fetch-station-data-module"></span><h2>harvester.fetch_station_data module<a class="headerlink" href="#module-harvester.fetch_station_data" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="harvester.fetch_station_data.adcirc_fetch_data">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">adcirc_fetch_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_id_list</span></em>, <em class="sig-param"><span class="n">periods</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'water_level'</span></em>, <em class="sig-param"><span class="n">datum</span><span class="o">=</span><span class="default_value">'MSL'</span></em>, <em class="sig-param"><span class="n">sitename</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">gridname</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">castType</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em>, <em class="sig-param"><span class="n">fort63_style</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">variable_name</span><span class="o">=</span><span class="default_value">'zeta'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#adcirc_fetch_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.adcirc_fetch_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#harvester.fetch_station_data.fetch_station_data" title="harvester.fetch_station_data.fetch_station_data"><code class="xref py py-class docutils literal notranslate"><span class="pre">harvester.fetch_station_data.fetch_station_data</span></code></a></p>
+<p>Fetching WL data from ADCIRC can be done in one of two ways. The default approach is based
+on the fort.61.nc type solution where lat/lons/WL are extracted from the ADCIRC netCDF4 fort.61.nc file. This
+approach simply requires a list of stationids for query. This returns WLs that are interpolations of the ADCIRC
+grid data.</p>
+<p>An alternative approach is based on using fort.63.nc data. To use the fort.63_style approach requires a more
+informative input list of stations.A dataframe with (at least) two columns with headers: stationid and nodeid where nodeid is the pre-established
+grid-specific ADCIRC nodeid corresponding to the station. Required minimum column headers: (stationid, Node)
+The nodeid indexing is that used by ADCIRC and is relative to starting at the value 1 !</p>
+<p>Currently available products:
+water_level (default)</p>
+<dl>
+<dt>Parameters:</dt><dd><p>station_id_list: list of station_ids to pass to ADCIRC
+periods: &lt;list&gt; of valid ADCIRC urls tuples (<em>63.nc,</em>.61.nc) for aggregation 
+fort63_style: &lt;bool&gt; If True use the fort.63-based approach</p>
+<blockquote>
+<div><p>If True then station_id_list: a CSV file containing columns of, at least, stationid and nodeid.</p>
+</div></blockquote>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="harvester.fetch_station_data.adcirc_fetch_data.fetch_single_metadata">
+<code class="sig-name descname">fetch_single_metadata</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_tuple</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#adcirc_fetch_data.fetch_single_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.adcirc_fetch_data.fetch_single_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>variables.key() are now checked to try and determine if the dataset has been transposed (and rechunked) or not.
+If so, then fetching of the timeseries will be much, much faster but also requires chaning the code here a little</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>station &lt;str&gt;. A valid station id</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of time (timestamps) vs values for the requested nodes</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.adcirc_fetch_data.fetch_single_product">
+<code class="sig-name descname">fetch_single_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_tuple</span></em>, <em class="sig-param"><span class="n">periods</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#adcirc_fetch_data.fetch_single_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.adcirc_fetch_data.fetch_single_product" title="Permalink to this definition">¶</a></dt>
+<dd><blockquote>
+<div><p>variables.key() are now checked to try and determine if the dataset has been transposed (and rechunked) or not.
+If so, then fetching of the timeseries will be much, much faster but also requires chaning the code here a little</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>station_tuple (&lt;str&gt;,&lt;int&gt;). A tuple that maps stationid to the current ADCIRC-grid nodeid
+periods &lt;list&gt;. A url-61 values.</p>
+</dd>
+</dl>
+</div></blockquote>
+<p>Returns: dataframe of time (timestamps) vs values for the requested stationid</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.fetch_station_data.adcirc_fetch_data.products">
+<code class="sig-name descname">products</code><em class="property"> = {'water_level': 'water_level'}</em><a class="headerlink" href="#harvester.fetch_station_data.adcirc_fetch_data.products" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.adcirc_fetch_data.type_ADCIRC_cast">
+<code class="sig-name descname">type_ADCIRC_cast</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">url</span></em>, <em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_station_data.html#adcirc_fetch_data.type_ADCIRC_cast"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.adcirc_fetch_data.type_ADCIRC_cast" title="Permalink to this definition">¶</a></dt>
+<dd><p>Attempt to determine if the input adcirc data (df) was a Forecast or a Nowcast type dataset by simply 
+examining the associated url. Ths method can assign hurricane or synoptic datasets. This method is generally
+used to build consistent metadata objects for AST</p>
+<p>Attempt to find the url starttime value from the url name. Ascertain if this starttime is &lt; or &gt; the actual entry time in the df.
+Simply compare the last timeseries value to the url starttime. if timeseries &gt; starttime than it is a forecast else a nowcast</p>
+<p>url TIME are expected to reside in url.split(‘/’)[-6]. If that entry cannot be assigned to a datetime (ValueError), 
+it is checked if it could be an advisory (int) and thus a huricane.</p>
+<p>If the input url is a LOCAL data file, then [-6] probably doesn’t exist we can make no assumptions about length of name or nomenclature
+Just assume it is a FORECAST if indexing errors occur</p>
+<p>Assumes the times series are ordered.</p>
+<p>If the input url is a LOCAL data file, then we can make no assumptions about length of name or nomenclature
+Just assume it is a FORECAST if indexing errors occur</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>url: &lt;str&gt; The ADCIRC netCDG4 url to compare
+df: &lt;DataFrame&gt;. The ADCIRC WL read from the associated url</p>
+</dd>
+<dt>Returns:</dt><dd><p>Either NOWCAST or FORECAST</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="harvester.fetch_station_data.contrails_fetch_data">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">contrails_fetch_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_id_list</span></em>, <em class="sig-param"><span class="n">periods</span></em>, <em class="sig-param"><span class="n">config</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'river_water_level'</span></em>, <em class="sig-param"><span class="n">owner</span><span class="o">=</span><span class="default_value">'NCEM'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#contrails_fetch_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#harvester.fetch_station_data.fetch_station_data" title="harvester.fetch_station_data.fetch_station_data"><code class="xref py py-class docutils literal notranslate"><span class="pre">harvester.fetch_station_data.fetch_station_data</span></code></a></p>
+<dl>
+<dt>Parameters:</dt><dd><p>station_id_list: list of station_ids &lt;str&gt;
+a tuple of (time_start, time_end) &lt;str&gt;,&lt;str&gt; format %Y-%m-%d %H:%M:%S
+a valid OWNER for Contrails &lt;str&gt;: One of NCDOT,Lake Lure,Asheville,Carolina Beach,</p>
+<blockquote>
+<div><p>Town of Cary,NCEM Synthetic,Wake County,
+USFWS,Morrisville,NCEM,USGS,NOAA,Currituck County,Duke Energy</p>
+</div></blockquote>
+<p>config: a dict containing values for domain &lt;str&gt;, method &lt;str&gt;, systemkey &lt;str&gt;
+a valid PRODUCT id &lt;str&gt;: See CLASSDICT definitions for specifics</p>
+<p>NOTE: Defaults to using imperial units. Manually correct them</p>
+<p>Two dicts are used to manage jobs. The first (products) maps generic product names used by high level codes
+to the specific product names in NOAA/NOS, The second (CLASSDICT) is used here internally map names to
+the data index used by Contrails</p>
+<p>Moreover, river guages and coastal guages get treated differently</p>
+<p>Currently tested input products:
+river_water_level 
+coastal_water_level
+air_pressure</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt id="harvester.fetch_station_data.contrails_fetch_data.CLASSDICT">
+<code class="sig-name descname">CLASSDICT</code><em class="property"> = {'ALERT Wind': 47, 'Air Temperature': 30, 'Average Voltage': 200, 'Barometric Pressure': 53, 'Battery': 199, 'Binary Status': 197, 'Evapotranspiration Rate': 84, 'Flow Volume': 25, 'Fuel Moisture': 52, 'Fuel Temperature': 38, 'Msg Count': 246, 'Net Solar Radiation': 60, 'Rain Accumulation': 11, 'Rain Increment': 10, 'Relative Humidity': 50, 'Repeater Pass List': 240, 'Repeater Status': 198, 'Soil Moisture': 51, 'Stage': 20, 'Water Elevation': 94, 'Wind Direction': 44, 'Wind Velocity': 40, 'Wind Velocity, maximum': 41}</em><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data.CLASSDICT" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.contrails_fetch_data.build_url_for_contrails_station">
+<code class="sig-name descname">build_url_for_contrails_station</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">domain</span></em>, <em class="sig-param"><span class="n">systemkey</span></em>, <em class="sig-param"><span class="n">indict</span></em><span class="sig-paren">)</span> &#x2192; str<a class="reference internal" href="_modules/harvester/fetch_station_data.html#contrails_fetch_data.build_url_for_contrails_station"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data.build_url_for_contrails_station" title="Permalink to this definition">¶</a></dt>
+<dd><p>Build a simple query for a single gauge and the product level values
+Parameters:</p>
+<blockquote>
+<div><p>domain: &lt;str&gt; contrails domain
+systemkey: &lt;str&gt; contrails authorization key
+indict: &lt;dict&gt; of parameters for the the final url</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>full_url: &lt;str&gt; A fully formatted Contrails URL</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.contrails_fetch_data.convert_to_metric">
+<code class="sig-name descname">convert_to_metric</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#contrails_fetch_data.convert_to_metric"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data.convert_to_metric" title="Permalink to this definition">¶</a></dt>
+<dd><p>Contrails returns moost (all?) data in imperial units
+Here we convert valid productsa to metric
+The product selection is based on the native Contrails product names
+which is carried by self.product</p>
+<dl class="simple">
+<dt>arbitrary_min = 600. Contrails can return pressures in mb OR inHg with little warning.</dt><dd><p>depending on the station. We can’t check here so try to deduce which units the data are in</p>
+</dd>
+</dl>
+<p>Dataframe is updated inplace</p>
+<dl class="simple">
+<dt>Parameters</dt><dd><p>df: &lt;dataframe&gt; Data of tmes x product for a specific station</p>
+</dd>
+<dt>Returns:</dt><dd><p>df: &lt;dataframe&gt; Data of times x product in metric units</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.contrails_fetch_data.fetch_single_metadata">
+<code class="sig-name descname">fetch_single_metadata</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#contrails_fetch_data.fetch_single_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data.fetch_single_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single Contrails site_id fetch the associated metadata.
+Need to perform multiple queries to get the desired set of data. This is optional
+The caller will check the DB to see if this a new station requiring metadata</p>
+<dl>
+<dt>Parameters:</dt><dd><p>A valid station id &lt;str&gt;</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of preselected metadata for a single station in the (keys,values) orientation</p>
+<p>This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+to our preferred orientation with stations as index</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.contrails_fetch_data.fetch_single_product">
+<code class="sig-name descname">fetch_single_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station</span></em>, <em class="sig-param"><span class="n">time_range</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#contrails_fetch_data.fetch_single_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data.fetch_single_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single Contrails site_id, process all tuples from the input periods list
+and aggregate them into a dataframe with index pd.timestamps and a single column
+containing the desired CLASSDICT[…] values. Rename the column to station id</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>station &lt;str&gt;. A valid station id
+time_range &lt;tuple&gt;. Start and end times (&lt;str&gt;,&lt;str&gt;) denoting time ranges</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of time (timestamps) vs values for the requested station</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.fetch_station_data.contrails_fetch_data.products">
+<code class="sig-name descname">products</code><em class="property"> = {'air_pressure': 'Barometric Pressure', 'coastal_water_level': 'Water Elevation', 'river_water_level': 'Stage'}</em><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data.products" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.contrails_fetch_data.return_list_of_daily_timeranges">
+<code class="sig-name descname">return_list_of_daily_timeranges</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_tuple</span></em><span class="sig-paren">)</span> &#x2192; <span class="p">]</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#contrails_fetch_data.return_list_of_daily_timeranges"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.contrails_fetch_data.return_list_of_daily_timeranges" title="Permalink to this definition">¶</a></dt>
+<dd><p>Take an arbitrary start and endtime (inclusive) in the format of %Y-%m-%d %H:%M:%S. Break up into a list of tuples which 
+are at most a day in length AND break along day boundaries. [ {day1,day1),(day2,day2)..]
+The first tuple and the last tuple can be partial days. All intervening tuples will be full days.</p>
+<p>Assume an HOURLY stepping even though non-zero minute offsets may be in effect.</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>A tuple consisting of:
+start_time: &lt;str&gt; Time of format %Y-%m-%d %H:%M:%S
+end_time: &lt;str&gt; Time of format %Y-%m-%d %H:%M:%S</p>
+</dd>
+<dt>Returns:</dt><dd><p>periods: List of daily tuple ranges</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="harvester.fetch_station_data.fetch_station_data">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">fetch_station_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">stations</span></em>, <em class="sig-param"><span class="n">periods</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#fetch_station_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.fetch_station_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<blockquote>
+<div><p>We expect upon entry to this class a list of station ids. The content of this list can
+vary depending on chosen data source. But usually this is simply a list of (str) station ids. If
+an ADCIRC Fort63_style lookup is requested, Then the elements of this list are tuples (stations,node)</p>
+<p>A list of times (periods) is required. The list contents can vary with data source. Generally, this is
+a list of one element; a tuple such as [(time1,time2)]. However, the caller could gang together multiple tuple ranges.
+For calling ADCIRC data, periods is a list of ASGS URLs (which imply a range of times)</p>
+<p>The output data are aggregated station products into a dataframe: (TIME vs PRODUCT)
+with TIME as datetime timestamps and a column of data of the desired units and with a column
+name of the station</p>
+</div></blockquote>
+<p>Default return products wil be on the sampling_mins frequency</p>
+<dl class="py method">
+<dt id="harvester.fetch_station_data.fetch_station_data.aggregate_station_data">
+<code class="sig-name descname">aggregate_station_data</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#fetch_station_data.aggregate_station_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.fetch_station_data.aggregate_station_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loop over the list of stations and fetch the products using the method of the relevant subclasses. Then concatenate them info single dataframe
+nans now get converted to the value in GLOBAL_FILL_VALUE</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Aggregated results: A dataframe (times x stations) for all periods and input stations</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.fetch_station_data.aggregate_station_metadata">
+<code class="sig-name descname">aggregate_station_metadata</code><span class="sig-paren">(</span><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#fetch_station_data.aggregate_station_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.fetch_station_data.aggregate_station_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loop over the list of stations and aggregate the metadata using the method of the relevant subclasses. Then concatenate info single dataframe
+Transpose final data to have stations as index
+nans now get converted to the value in GLOBAL_FILL_VALUE</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>Aggregated meadata: A dataframe (stations x metacolumns) for all input stations</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_station_data.map_product_to_harvester_units">
+<code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">map_product_to_harvester_units</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">product</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#map_product_to_harvester_units"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.map_product_to_harvester_units" title="Permalink to this definition">¶</a></dt>
+<dd><p>The harvester dataset should be returning consistent metric units 
+for all sources. This dictionary performs the translation for supported 
+data products to known units This is mosty used for metadata construction</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>product: (str) The generic data product name (water_level, wind_speed, etc)</p>
+</dd>
+<dt>Returns:</dt><dd><p>units: (str) The chosen data unit for the specified product</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="harvester.fetch_station_data.ndbc_fetch_data">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">ndbc_fetch_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_id_list</span></em>, <em class="sig-param"><span class="n">periods</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'wave_height'</span></em>, <em class="sig-param"><span class="n">units</span><span class="o">=</span><span class="default_value">'metric'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#ndbc_fetch_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#harvester.fetch_station_data.fetch_station_data" title="harvester.fetch_station_data.fetch_station_data"><code class="xref py py-class docutils literal notranslate"><span class="pre">harvester.fetch_station_data.fetch_station_data</span></code></a></p>
+<p>Invoke the NDBC subclass</p>
+<blockquote>
+<div><p>This class develops the realtime data
+Realtime data goes back now()-45days.</p>
+</div></blockquote>
+<dl>
+<dt>Parameters:</dt><dd><p>station_id_list: list of NDBC buoy ids &lt;str&gt;
+a tuple of (time_start, time_end) &lt;str&gt;,&lt;str&gt; format %Y-%m-%d %H:%M:%S
+a valid PRODUCT id &lt;str&gt;: wave_height,pressure, wind_speed</p>
+<p>One dict is used to manage jobs. The products dict maps generic product names used by high level codes
+(keys) to the specific product names in NDBC</p>
+<p>UNITS: Based on an examinination of the data and comparison to plots on the NDBC website, it appears that
+at least for the tested stations:</p>
+<blockquote>
+<div><p>wave_height: meters
+pressure: mbars 
+wind_speed: m/s</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Currently tested input products:</dt><dd><p>wave_heigh
+pressure
+wind_speed</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="harvester.fetch_station_data.ndbc_fetch_data.fetch_single_metadata">
+<code class="sig-name descname">fetch_single_metadata</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">buoy</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#ndbc_fetch_data.fetch_single_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_data.fetch_single_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single NDBC site_id fetch the associated metadata.
+The choice of metadata is highly subjective at this time.</p>
+<dl>
+<dt>Parameters:</dt><dd><p>A valid buoy id &lt;str&gt;</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of preselected metadata for a single station in the (keys,values) orientation</p>
+<p>This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+to our preferred orientation with stations as index</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.ndbc_fetch_data.fetch_single_product">
+<code class="sig-name descname">fetch_single_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">buoy</span></em>, <em class="sig-param"><span class="n">time_range</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#ndbc_fetch_data.fetch_single_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_data.fetch_single_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single NDBC site_id, process the tuple from the input period.
+Aggregate them into a dataframe with index pd.timestamps and a single column
+containing the desired product values. Rename the column to station id</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>station &lt;str&gt;. A valid NDBC buoy id
+time_range &lt;tuple&gt;. Start and end times (&lt;str&gt;,&lt;str&gt;) denoting time ranges</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of time (timestamps) vs values for the requested station</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.fetch_station_data.ndbc_fetch_data.products">
+<code class="sig-name descname">products</code><em class="property"> = {'air_pressure': 'PRES', 'wave_height': 'WVHT', 'wind_speed': 'WSPD'}</em><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_data.products" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="harvester.fetch_station_data.ndbc_fetch_historic_data">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">ndbc_fetch_historic_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_id_list</span></em>, <em class="sig-param"><span class="n">periods</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'wave_height'</span></em>, <em class="sig-param"><span class="n">units</span><span class="o">=</span><span class="default_value">'metric'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#ndbc_fetch_historic_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_historic_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#harvester.fetch_station_data.fetch_station_data" title="harvester.fetch_station_data.fetch_station_data"><code class="xref py py-class docutils literal notranslate"><span class="pre">harvester.fetch_station_data.fetch_station_data</span></code></a></p>
+<dl>
+<dt>Invoke the NDBC historical subclass</dt><dd><p>This class develops the historical data
+Historical data will not return data from the current year.</p>
+</dd>
+<dt>Parameters:</dt><dd><p>station_id_list: list of NDBC buoy ids &lt;str&gt;
+a tuple of (time_start, time_end) &lt;str&gt;,&lt;str&gt; format %Y-%m-%d %H:%M:%S
+a valid PRODUCT id &lt;str&gt;: wave_height,pressure, wind_speed</p>
+<p>One dict is used to manage jobs. The products dict maps generic product names used by high level codes
+(keys) to the specific product names in NDBC</p>
+<p>UNITS: Based on an examinination of the data and comparison to plots on the NDBC website, it appears that
+at least for the tested stations:</p>
+<blockquote>
+<div><p>wave_height: meters
+pressure: mbars 
+wind_speed: m/s</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Currently tested input products:</dt><dd><p>wave_height
+pressure
+wind_speed</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="harvester.fetch_station_data.ndbc_fetch_historic_data.fetch_single_metadata">
+<code class="sig-name descname">fetch_single_metadata</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">buoy</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#ndbc_fetch_historic_data.fetch_single_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_historic_data.fetch_single_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single NDBC site_id fetch the associated metadata.
+The choice of data is highly subjective at this time.</p>
+<dl>
+<dt>Parameters:</dt><dd><p>A valid buoy id &lt;str&gt;</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of preselected metadata for a single station in the (keys,values) orientation</p>
+<p>This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+to our preferred orientation with stations as index</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.ndbc_fetch_historic_data.fetch_single_product">
+<code class="sig-name descname">fetch_single_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">buoy</span></em>, <em class="sig-param"><span class="n">time_range</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#ndbc_fetch_historic_data.fetch_single_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_historic_data.fetch_single_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single NDBC site_id, process the tuple from the input period.
+Aggregate them into a dataframe with index pd.timestamps and a single column
+containing the desired product values. Rename the column to station id</p>
+<p>As of this writing, it is unclear if the time_range argument to buoypy 
+works. So I build this year_list approach to be sure</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>station &lt;str&gt;. A valid NDBC buoy id
+time_range &lt;tuple&gt;. Start and end times (&lt;str&gt;,&lt;str&gt;) denoting time ranges</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of time (timestamps) vs values for the requested station</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.ndbc_fetch_historic_data.get_year_list_from_timerange">
+<code class="sig-name descname">get_year_list_from_timerange</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#ndbc_fetch_historic_data.get_year_list_from_timerange"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_historic_data.get_year_list_from_timerange" title="Permalink to this definition">¶</a></dt>
+<dd><p>The input time_range tuple is queried to determine what year we are interested in.
+No checks are made to ensure the CURRENT year is excluded. If it is included,
+then the subsequent historical data call will fail</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>input time tuple: (&lt;str&gt;,&lt;str&gt;) formats are ‘%Y-%m-%d %H:%M:%S’</p>
+</dd>
+<dt>Returns:</dt><dd><p>year_list: list sorted range of years</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.fetch_station_data.ndbc_fetch_historic_data.products">
+<code class="sig-name descname">products</code><em class="property"> = {'air_pressure': 'PRES', 'wave_height': 'WVHT', 'wind_speed': 'WSPD'}</em><a class="headerlink" href="#harvester.fetch_station_data.ndbc_fetch_historic_data.products" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="harvester.fetch_station_data.noaanos_fetch_data">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">noaanos_fetch_data</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_id_list</span></em>, <em class="sig-param"><span class="n">periods</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'water_level'</span></em>, <em class="sig-param"><span class="n">interval</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">units</span><span class="o">=</span><span class="default_value">'metric'</span></em>, <em class="sig-param"><span class="n">datum</span><span class="o">=</span><span class="default_value">'MSL'</span></em>, <em class="sig-param"><span class="n">resample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#noaanos_fetch_data"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.noaanos_fetch_data" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#harvester.fetch_station_data.fetch_station_data" title="harvester.fetch_station_data.fetch_station_data"><code class="xref py py-class docutils literal notranslate"><span class="pre">harvester.fetch_station_data.fetch_station_data</span></code></a></p>
+<dl>
+<dt>Parameters:</dt><dd><p>station_id_list: list of NOAA station_ids &lt;str&gt;
+a tuple of (time_start, time_end) &lt;str&gt;,&lt;str&gt; format %Y-%m-%d %H:%M:%S
+a valid PRODUCT id &lt;str&gt;: hourly_height, water_level,predictions (tidal predictions)
+interval &lt;str&gt; set to ‘h’ return hourly data, else 6min data</p>
+<p>Note: hourly_height data only appear for station after some time period (not sure how long that is).</p>
+<p>NOTE: Default to using imperial units. Because the metadata that gets returned only reports
+the units for how the data were stored not fetched. So it wouid be easy for the calling program to get confused.
+Let the caller choose to update units and modify the df_meta structure prior to DB uploads</p>
+<p>Two dicts are used to manage jobs. The first (products) maps generic product names used by high level codes
+to the specific product names in NOAA/NOS, The second (noaa_data_column_names) is used here internally to properly select 
+the column name of the data</p>
+<p>UNITS listed as: <a class="reference external" href="https://api.tidesandcurrents.noaa.gov/api/prod/#units">https://api.tidesandcurrents.noaa.gov/api/prod/#units</a>. Note this implies a hybrid MKS/CGS system and not MKS.</p>
+<p>Currently tested input products:
+water_level (default)
+predictions (Tidal predictions) 
+air_pressure
+hourly_height
+wind_speed</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="harvester.fetch_station_data.noaanos_fetch_data.check_duplicate_time_entries">
+<code class="sig-name descname">check_duplicate_time_entries</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station</span></em>, <em class="sig-param"><span class="n">stationdata</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#noaanos_fetch_data.check_duplicate_time_entries"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.noaanos_fetch_data.check_duplicate_time_entries" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sometimes station data comes back with multiple entries for a single time.
+Here we search for such dups and keep the FIRST one (Same as for ADDA)
+Choosing first was based on a single station and looking at the noaa coops website</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>station: &lt;str&gt; an individual stationID to check
+stationData: &lt;dataframe&gt;. Current list of all station product levels (from detailedIDlist)</p>
+</dd>
+<dt>Returns:</dt><dd><p>New dataframe containing no duplicate values
+multivalue. bool: True if duplicates were found</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.noaanos_fetch_data.fetch_single_metadata">
+<code class="sig-name descname">fetch_single_metadata</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#noaanos_fetch_data.fetch_single_metadata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.noaanos_fetch_data.fetch_single_metadata" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single NOAA site_id fetch the associated metadata.
+The choice of data is highly subjective at this time.</p>
+<dl>
+<dt>Parameters:</dt><dd><p>A valid station id &lt;str&gt;</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of preselected metadata for a single station in the (keys,values) orientation</p>
+<p>This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+to our preferred orientation with stations as index</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.fetch_station_data.noaanos_fetch_data.fetch_single_product">
+<code class="sig-name descname">fetch_single_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station</span></em>, <em class="sig-param"><span class="n">time_range</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#noaanos_fetch_data.fetch_single_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.noaanos_fetch_data.fetch_single_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>For a single NOAA NOS site_id, process all the tuples from the input periods list
+and aggregate them into a dataframe with index pd.timestamps and a single column
+containing the desired product values. Rename the column to station id</p>
+<p>NOAA COOPS does not have the same time range constraints as Contrails. So this tuple list
+can, in fact, simply be the start and end time.</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>station &lt;str&gt;. A valid station id
+time_range &lt;tuple&gt;. Start and end times (&lt;str&gt;,&lt;str&gt;) denoting time ranges</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe of time (timestamps) vs values for the requested station</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.fetch_station_data.noaanos_fetch_data.noaa_data_column_names">
+<code class="sig-name descname">noaa_data_column_names</code><em class="property"> = {'air_pressure': 'air_press', 'hourly_height': 'water_level', 'predictions': 'predicted_wl', 'water_level': 'water_level', 'wind': 'spd'}</em><a class="headerlink" href="#harvester.fetch_station_data.noaanos_fetch_data.noaa_data_column_names" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.fetch_station_data.noaanos_fetch_data.products">
+<code class="sig-name descname">products</code><em class="property"> = {'air_pressure': 'air_pressure', 'hourly_height': 'hourly_height', 'predictions': 'predictions', 'water_level': 'water_level', 'wind_speed': 'wind'}</em><a class="headerlink" href="#harvester.fetch_station_data.noaanos_fetch_data.products" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_station_data.replace_and_fill">
+<code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">replace_and_fill</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/fetch_station_data.html#replace_and_fill"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.replace_and_fill" title="Permalink to this definition">¶</a></dt>
+<dd><p>Replace all Nans with ‘None” values with GLOBAL_FILL_VALUE</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_station_data.stations_interpolate">
+<code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">stations_interpolate</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#stations_interpolate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.stations_interpolate" title="Permalink to this definition">¶</a></dt>
+<dd><p>Interpolate each station column in the dataframe. 
+Final aggregated data still have flanked nans for some stations. 
+Defaults to: method=’polynomial’, order=1, limit=1</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>df: A time series x stations data frame</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_out. New time series x stations</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.fetch_station_data.stations_resample">
+<code class="sig-prename descclassname">harvester.fetch_station_data.</code><code class="sig-name descname">stations_resample</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">sample_mins</span><span class="o">=</span><span class="default_value">15</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/fetch_station_data.html#stations_resample"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.fetch_station_data.stations_resample" title="Permalink to this definition">¶</a></dt>
+<dd><dl class="simple">
+<dt>Resample (all stations) on a pecified (eg 15min) basis. Setting sample_min</dt><dd><p>to zero retains full resolution. Defaults to 15min</p>
+</dd>
+</dl>
+<p>NOTE: Final aggregated data still have flanked nans for some stations because
+The reported times might have been differently staggered. Often the case with river and
+buoy data</p>
+<dl>
+<dt>Parameters:</dt><dd><p>df: A time series x stations dataframe
+sample_min. (Dafaut=15mins) A numerical value for the number of mins to resample</p>
+<blockquote>
+<div><p>setting to 0 disables any resampling and returns the raw data at full precision</p>
+</div></blockquote>
+</dd>
+<dt>Returns:</dt><dd><p>df_out. New time series every sample_mins x stations</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvester.generate_urls_from_times">
+<span id="harvester-generate-urls-from-times-module"></span><h2>harvester.generate_urls_from_times module<a class="headerlink" href="#module-harvester.generate_urls_from_times" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.construct_starttime_from_offset">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">construct_starttime_from_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">stoptime</span></em>, <em class="sig-param"><span class="n">ndays</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#construct_starttime_from_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.construct_starttime_from_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Construct an appropriate starttime given the stoptime and offset.
+NOTE if this is a Hurricane advisory, we return an appropriate  
+advisory assuming each advisory is 6 hoursa in duration. No
+negative advisories are returned</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>stoptime (str) (%Y-%m-%d %H:%M:%S)
+ndays: (int) number of 24 hours days to look back/forward</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.construct_url_from_yaml">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">construct_url_from_yaml</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">config</span></em>, <em class="sig-param"><span class="n">intime</span></em>, <em class="sig-param"><span class="n">instance</span></em>, <em class="sig-param"><span class="n">ensemble</span></em>, <em class="sig-param"><span class="n">gridname</span></em>, <em class="sig-param"><span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#construct_url_from_yaml"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.construct_url_from_yaml" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given a single time (%Y%m%d%H) or advisory, the gridname, instance, and ensemble values
+use the entries in config to build a proper URL
+If applying to Hurricanes, we need to also applyld_url_list_from_yaml_and_timest the values for hurricane_yaml_year, and
+hurricane_yaml_source</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.generate_list_of_instances">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_list_of_instances</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">list_of_times</span></em>, <em class="sig-param"><span class="n">in_gridname</span></em>, <em class="sig-param"><span class="n">in_instance</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_list_of_instances"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_list_of_instances" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function matches every entry in the list_of_times with an associated instance.
+The structure of this code is such that, in the future, we may have scenarios where
+the value of the instance may change for a given year.</p>
+<p>Currently, though, we will simply build a list of identical instances.
+The value of the selected instance may be passed in by the caller</p>
+<dl class="simple">
+<dt>Parameters: </dt><dd><p>list_of_times: list (str)(%Y%m%d%H) ordered set of instances from which to build new URLs
+in_gridname: current gridname from a representative INPUT url
+in_gridname: current instance from a representative INPUT url</p>
+</dd>
+<dt>Returns:</dt><dd><p>instance_list: ordered list of instances to use for building a set of new urls.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.generate_six_hour_time_advisories_from_offset">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_six_hour_time_advisories_from_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">strtime</span></em>, <em class="sig-param"><span class="n">offset</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_six_hour_time_advisories_from_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_six_hour_time_advisories_from_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start with the strtime and build a list of 6hour steps for up to offset days
+We expect the input time to bve an Advisory number (int)  We also anticipate offsets to be &lt; 0. 
+since offset &gt;0 would apply to Hurricane advisories not performed (but you could do it)</p>
+<p>Here we assume each index is a 6 hour time step. So we just need to decide how many to look back for.
+Harvester will quietly ignore urls that do not exist</p>
+<p>Save Advisories in a leading zero format: “{:02d}”.format(adv)</p>
+<dl class="simple">
+<dt>Parameters: </dt><dd><p>strvale: (str) time
+offset: (int) Number of DAYS to look back/forward from strvalue</p>
+</dd>
+<dt>Returns:</dt><dd><p>timelist: list of advisories in the a string format to build new urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.generate_six_hour_time_advisories_from_range">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_six_hour_time_advisories_from_range</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">advisory_range</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_six_hour_time_advisories_from_range"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_six_hour_time_advisories_from_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>Advisory range has no specific time meaning other than generally being every 6 hours
+So simply accept the range as fact. The INPUT advisory number is NOT retained in the
+generated list</p>
+<p>Save Advisories in a leading zero format: “{:02d}”.format(adv)</p>
+<dl class="simple">
+<dt>Parameters: </dt><dd><p>advisory_range: tuple (int,int)</p>
+</dd>
+<dt>Returns:</dt><dd><dl class="simple">
+<dt>list_of_advisories: list of times/advisories in the a string format to build new urls</dt><dd><p>includes the input time_step.advisory in the final list</p>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.generate_six_hour_time_castings_from_offset">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_six_hour_time_castings_from_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_value</span></em>, <em class="sig-param"><span class="n">offset</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_six_hour_time_castings_from_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_six_hour_time_castings_from_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Start with the strtime and build a list of 6hour steps for up to offset days
+We expect the input time to a stoptime and the offsets to be &lt; 0. But, though
+the overall code has not been tested for it, we simply reorder the times
+as necc and proceed</p>
+<dl class="simple">
+<dt>Parameters: </dt><dd><p>time_value: (datetime) start time
+offset: (int) Number of DAYS to look back/forward from strvalue</p>
+</dd>
+<dt>Returns:</dt><dd><p>timelist: list of times in a string format to build new urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.generate_six_hour_time_castings_from_range">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_six_hour_time_castings_from_range</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_six_hour_time_castings_from_range"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_six_hour_time_castings_from_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>A non-hurricane
+Advisory. We need to distinguish between the two. Note, we can be promiscuous here 
+with the URLs, since urls that do not exist will get trapped by Harvester
+Parameters:</p>
+<blockquote>
+<div><p>time_range: tuple (datetime,datetime)</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>list_of_times: list of times/advisories in the a string format to build new urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.generate_six_hour_time_steps_from_offset">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_six_hour_time_steps_from_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_value</span></em>, <em class="sig-param"><span class="n">offset</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_six_hour_time_steps_from_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_six_hour_time_steps_from_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>For an arbitrary URL, we could have a conventional now/forecast OR a Hurricane
+Advisory. We need to distinguish between the two. Note, we can be promiscuous here 
+with the URLs, since urls that do not exist will get trapped by Harvester
+Parameters:</p>
+<blockquote>
+<div><p>time_val: (datetime) Either the time or advisory value from a asgs url
+offset: (int) Number of DAYS to look back/forward from strvalue</p>
+<blockquote>
+<div><p>if strvalue is an Advisory then we look back a number of STEPS 
+corresponding to 6 hour intervals based on offset</p>
+</div></blockquote>
+</div></blockquote>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>timelist: list of times/advisories in the a string format to build new urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.generate_six_hour_time_steps_from_range">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_six_hour_time_steps_from_range</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_six_hour_time_steps_from_range"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_six_hour_time_steps_from_range" title="Permalink to this definition">¶</a></dt>
+<dd><p>Given the input time tuple, return the inclusive set of times that occur on
+the daily 6 hour mark. So on output we would have 00Z,06Z,12Z,18Z times only</p>
+<dl class="simple">
+<dt>Parameters: </dt><dd><p>time_range: Tuple (datetime,datetime) of the start and end times (datetime objects)</p>
+</dd>
+<dt>Returns:</dt><dd><p>list_of_times: list of (str) times in the format: %Y%m%d%H</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="harvester.generate_urls_from_times.generate_urls_from_times">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">generate_urls_from_times</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">url</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">timein</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">timeout</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">ndays</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">grid_name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">instance_name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">config_name</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_urls_from_times"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_urls_from_times" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class that attempts to create a list of valid ASGS Urls based on the input time conditions and possibly a YAML file
+that contains the URL structure
+This is NOT expected to be highly generalized and is intended for the ADDA/AST pipelines</p>
+<p>We hardwire the concept that hurricane data files timestep every 6 hours. It is okay to have one or two 
+“wrong” urls in the list as Harvester should be pretty resilient.</p>
+<p>If the caller elects to define output URLs based on times/ndays, then a YAML decribing the desired structure is required.
+If the caller elects to also supply a URL, then the output URL structure will be gleened from it.</p>
+<blockquote>
+<div><p>regardless of instance</p>
+</div></blockquote>
+<dl class="simple">
+<dt>Lastly, the final product data series may extend before or after the the stop/start times. As an example, </dt><dd><p>If grabbing a nowcast, the data series may begine 6 hours before the indicated url time.</p>
+</dd>
+</dl>
+<p>Pass in a URL and the instance, gridname,  are scraped from it
+If YAML you must specify these terms.</p>
+<dl>
+<dt>Possible scenarios: (options such as instance/ensemble can be applied to all)</dt><dd><ol class="arabic simple">
+<li><dl class="simple">
+<dt>Input timein/timeout and the config_name YML (nominal name is url_framework.yml). This will </dt><dd><p>generate a set of URLs between the two time ranges. This can work for a Hurricane BUT
+timein/timeout must be ADVISORY values</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Input timeout and offset and the config_name YML (nominal name is url_framework.yml). This will </dt><dd><p>generate a set of URLs between the two time ranges. This can work for a Hurricane BUT
+timeout must be ADVISORY values</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>Input URL and offset only. This will scrape the time/advisory from the URL and offset it in 6 hour steps</dt><dd><p>generate a set of URLs between the two time/advisory ranges. This can work for a Hurricanes</p>
+</dd>
+</dl>
+</li>
+</ol>
+</dd>
+<dt>Parameters: </dt><dd><p>url: (str) A single URL from which more URLs may be built
+ndays: (int) Number of look back/ahead days from the stoptime value 
+starttime: (str) Selected time to begin the building of the list (YYYY-mm-dd HH:MM:SS)
+stoptime: (str) Selected time to end the building of the list (YYYY-mm-dd HH:MM:SS)
+config_name: (str) path/filename to yaml file that contains the INSTANCE mappings
+hurricane_yaml_source=None: (str) This is a special case. If you want to build Hurricane URLs from a YAML,</p>
+<blockquote>
+<div><p>then you will need to specify the subdir name directly, eg ‘al09’. This will replace the default value of nam.</p>
+</div></blockquote>
+<dl class="simple">
+<dt>hurricane_yaml_year: (str) is part of the Hurricane special case. No way to dig out the year directory name without the user specifying it</dt><dd><p>only needed for YAML based hurricane construction. Eg …/thredds/dodsC/2021/al09/11/ec95d/…</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_template_url_and_offset">
+<code class="sig-name descname">build_url_list_from_template_url_and_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ensemble</span><span class="o">=</span><span class="default_value">'nowcast'</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_urls_from_times.build_url_list_from_template_url_and_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_template_url_and_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>We seek to build a set of compatible URLs starting from the URL embedded time 
+and walking back/forward offset days while using the provided ensemble value.
+Eg, you might send in a forecast and want back a list of nowcasts for the same grid
+structure of the input URL. We expect the caller to provide a proper ensemble value
+for the new URLs. 
+We expect no changes in the grid name. Only change in the ensemble and times are expected</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>ensemble: (str)( def of “nowcast”) The desired ensemble word for the resultant urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). List of valid URLs for processing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_template_url_and_times">
+<code class="sig-name descname">build_url_list_from_template_url_and_times</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ensemble</span><span class="o">=</span><span class="default_value">'nowcast'</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_urls_from_times.build_url_list_from_template_url_and_times"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_template_url_and_times" title="Permalink to this definition">¶</a></dt>
+<dd><p>We seek to build a set of compatible URLs spanning the input time range based on the
+structure of the input URL. We expect the caller to provide a proper ensemble value
+for the new URLs. 
+We expect no changes in the grid name. Only change in the ensemble and times are expected</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>ensemble: (str) Caller specified ensemble. This way one could input a namforecast url but request nowcasts, eg.</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). List of valid URLs for processing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_yaml_and_offset">
+<code class="sig-name descname">build_url_list_from_yaml_and_offset</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ensemble</span><span class="o">=</span><span class="default_value">'nowcast'</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_urls_from_times.build_url_list_from_yaml_and_offset"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_yaml_and_offset" title="Permalink to this definition">¶</a></dt>
+<dd><p>We seek to build a set of compatible URLs spanning the input time range based on the
+structure of asgs urls in the config_name. The structure of the output URLs will be based on the 
+entries in the associated yaml file. Since, no url will be provided, we must ask the caller to provide
+the gridname, ensemble, and instance. We expect the caller to provide a proper Instance value
+for the new URLs. 
+We REQUIRE the grid name. Only change in the ensemble and times are expected</p>
+<p>Uses the following class variables:
+offset: (int). Offset in days
+instance: (str) if set then used for all urls
+gridname: (str) name for the grid
+ensemble: (str) ensemble name (dafaults to nowcast)</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>ensemble: (str) ensemble name (dafaults to nowcast)</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). List of valid URLs for processing</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_yaml_and_times">
+<code class="sig-name descname">build_url_list_from_yaml_and_times</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">ensemble</span><span class="o">=</span><span class="default_value">'nowcast'</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#generate_urls_from_times.build_url_list_from_yaml_and_times"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_yaml_and_times" title="Permalink to this definition">¶</a></dt>
+<dd><p>We seek to build a set of compatible URLs spanning the input time range based on the
+structure of asgs urls in the config_name. The structure of the output URLs will be based on the 
+entries in the associated yaml file. Since, no url will be provided, we must ask the caller to provide
+the gridname, ensemble, and instance. We expect the caller to provide a proper Instance value
+for the new URLs. 
+We REQUIRE the grid name. Only change in the ensemble and times are expected</p>
+<p>Uses the following class variables:
+time_range: (tuple) (datetime,datetime). Time range inclusive (could also be hurricane advisories)
+instance: (str) if set the used for all urls. If not, attempt to find it in the yaml
+gridname: (str) name for the grid</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>ensemble: (str) ensemble name (dafaults to nowcast)</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). List of valid URLs for processing</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.grab_years_from_time_list">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">grab_years_from_time_list</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">list_of_times</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#grab_years_from_time_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.grab_years_from_time_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process the input time list to extract a list of Years (str)
+Note: This could be a list of Advisories as well. If so, 
+simply return the advisory number, though it will probably not be used</p>
+<dl class="simple">
+<dt>Parameters: </dt><dd><p>list_of_times: List of (str) time in the format %Y%m%d%H</p>
+</dd>
+<dt>Returns:</dt><dd><p>list of years values</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.is_hurricane">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">is_hurricane</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">test_val</span></em><span class="sig-paren">)</span> &#x2192; bool<a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#is_hurricane"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.is_hurricane" title="Permalink to this definition">¶</a></dt>
+<dd><p>Determine of the input test val is a Date, an Int or something else
+Parameters:</p>
+<blockquote>
+<div><dl class="simple">
+<dt>test_val: For a valid time enter a str with dformat %Y-%m-%d %H:%M:%S or %Y%m%d%H</dt><dd><p>For a valid hurricane enter an int</p>
+</dd>
+</dl>
+</div></blockquote>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.generate_urls_from_times.main">
+<code class="sig-prename descclassname">harvester.generate_urls_from_times.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/generate_urls_from_times.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.generate_urls_from_times.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple main method to demonstrate the use of this class</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvester.get_adcirc_stations">
+<span id="harvester-get-adcirc-stations-module"></span><h2>harvester.get_adcirc_stations module<a class="headerlink" href="#module-harvester.get_adcirc_stations" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="harvester.get_adcirc_stations.convert_urls_to_61style">
+<code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">convert_urls_to_61style</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#convert_urls_to_61style"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.convert_urls_to_61style" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a list of ASGS urls and mandate filename to be fort.61.nc</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). list of converted urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.get_adcirc_stations.convert_urls_to_63style">
+<code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">convert_urls_to_63style</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#convert_urls_to_63style"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.convert_urls_to_63style" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a list of ASGS urls and mandate filename to be fort.63.nc</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). list of converted urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.get_adcirc_stations.convert_urls_to_63style_customfilename">
+<code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">convert_urls_to_63style_customfilename</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em>, <em class="sig-param"><span class="n">filename</span><span class="o">=</span><span class="default_value">'fort.63.nc'</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#convert_urls_to_63style_customfilename"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.convert_urls_to_63style_customfilename" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a list of ASGS urls and mandate filename to be fort.63.nc
+Make a slight change. It is possible we may want to explore a SWAN file instead.
+So put a check in here</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). list of converted urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.get_adcirc_stations.convert_urls_to_swan_63style">
+<code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">convert_urls_to_swan_63style</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span> &#x2192; list<a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#convert_urls_to_swan_63style"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.convert_urls_to_swan_63style" title="Permalink to this definition">¶</a></dt>
+<dd><p>Process a list of ASGS urls and mandate filename to be swan_HS.63.nc
+So put a check in here</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: list(str). list of valid urls</p>
+</dd>
+<dt>Returns:</dt><dd><p>urls: list(str). list of converted urls</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.get_adcirc_stations.extract_adcirc_grid_coords">
+<code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">extract_adcirc_grid_coords</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls_63</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#extract_adcirc_grid_coords"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.extract_adcirc_grid_coords" title="Permalink to this definition">¶</a></dt>
+<dd><p>The input URLs is a list. But we only check one of them
+You MUST pass in URLs that point to fort.63.nc/swan_HS.63
+as the fort.61 style files do not carry the grid coordinates</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls_63: list(str). THe current list if fort63_style urls from which to get the grid coordinates</p>
+</dd>
+<dt>Returns:</dt><dd><p>adc_coords: Dictionary with the keys [‘LON’,’LAT’]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.get_adcirc_stations.first_available_netCDF4">
+<code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">first_available_netCDF4</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#first_available_netCDF4"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.first_available_netCDF4" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method seeks to find and test access the first valid netCDF4 in a list of netCDF4 urls.
+So we loop over all and simply test for the existance of the x variable</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls. List of urls to netCDF4 files</p>
+</dd>
+<dt>Returns:</dt><dd><p>url: A single url value</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="harvester.get_adcirc_stations.get_adcirc_stations">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">get_adcirc_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span><span class="o">=</span><span class="default_value">'ASGS'</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'water_level'</span></em>, <em class="sig-param"><span class="n">knockout_dict</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">fort63_style</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">station_list_file</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#get_adcirc_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.get_adcirc_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to establish connection to the asgs servers and acquire a WL for the set
+of input stations</p>
+<p>Input station IDs must be stationids or tuples of (statiods/nodeids) depending on the
+callers choice of fort63_style.</p>
+<p>Parameters:</p>
+<dl class="simple">
+<dt>Returns:</dt><dd><p>product: (‘water_level’).
+metadata (‘Nometadata’): Applied to all output filenames to create user-tagged names</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt id="harvester.get_adcirc_stations.get_adcirc_stations.ASGS_PRODUCTS">
+<code class="sig-name descname">ASGS_PRODUCTS</code><em class="property"> = ['water_level']</em><a class="headerlink" href="#harvester.get_adcirc_stations.get_adcirc_stations.ASGS_PRODUCTS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.get_adcirc_stations.get_adcirc_stations.SOURCES">
+<code class="sig-name descname">SOURCES</code><em class="property"> = ['ASGS']</em><a class="headerlink" href="#harvester.get_adcirc_stations.get_adcirc_stations.SOURCES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_adcirc_stations.get_adcirc_stations.fetch_station_product">
+<code class="sig-name descname">fetch_station_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">urls</span></em>, <em class="sig-param"><span class="n">return_sample_min</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">fort63_style</span><span class="o">=</span><span class="default_value">False</span></em>, <em class="sig-param"><span class="n">variable_name</span><span class="o">=</span><span class="default_value">'zeta'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#get_adcirc_stations.fetch_station_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.get_adcirc_stations.fetch_station_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch the desired data. The main information is part of the class (sources, products, etc.). However, one must still specify the return_sample_minutes
+to sample the data. The harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn’t pad nans), and then
+resample the data at the desired freq (in minutes)</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>urls: List (str). ASGS format. 
+return_sample_min: &lt;int &gt;sampling frequency of the returned, interpolated, data set
+variable_name: &lt;str&gt; (usually ‘zeta’ or ‘swan_HS’) Name of the actual variable in the netCDF4 file to query</p>
+</dd>
+<dt>Returns:</dt><dd><p>data: &lt;dataframe&gt; Sampled data of dims (time x stations)
+meta: &lt;dataframe&gt; associated metadata</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_adcirc_stations.get_adcirc_stations.override_station_IDs">
+<code class="sig-name descname">override_station_IDs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_list</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#get_adcirc_stations.override_station_IDs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.get_adcirc_stations.override_station_IDs" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method allows the user to override the current list of stations to process
+They will be subject to the usual validity testing. We overwrite any station data fetched in the class</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>stationlist: list (str) of stationIDs. Overrides any existing list.</p>
+</dd>
+<dt>Returns:</dt><dd><p>self.station_list: list(str) of stations in the class variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_adcirc_stations.get_adcirc_stations.remove_knockout_stations">
+<code class="sig-name descname">remove_knockout_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df_station</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#get_adcirc_stations.remove_knockout_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.get_adcirc_stations.remove_knockout_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Input should be adata frame of time indexing and stations as columns.
+The time ranges as specified in the args.knockout will be set to Nans inclusively.
+This method can be useful when the indicated station has historically shown 
+poor unexplained performance over a large window of time</p>
+<p>Uses the class variables:
+self.knockout</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>df_station: &lt;daraframe&gt;  time x stations.</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_station: &lt;dataframe&gt; (time x stations) with self.knockout stations removed</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.get_adcirc_stations.main">
+<code class="sig-prename descclassname">harvester.get_adcirc_stations.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_adcirc_stations.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_adcirc_stations.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple main method to demonstrate the use of this class
+It assumes the existance of a proper main.yml to get IO information
+It assumes the existance of a proper url_framework.yml which can be used to create URLs</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvester.get_observations_stations">
+<span id="harvester-get-observations-stations-module"></span><h2>harvester.get_observations_stations module<a class="headerlink" href="#module-harvester.get_observations_stations" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="harvester.get_observations_stations.get_obs_stations">
+<em class="property">class </em><code class="sig-prename descclassname">harvester.get_observations_stations.</code><code class="sig-name descname">get_obs_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">source</span><span class="o">=</span><span class="default_value">'NOAA'</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'water_level'</span></em>, <em class="sig-param"><span class="n">contrails_yamlname</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">knockout_dict</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">station_list_file</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_observations_stations.html#get_obs_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Class to establish connection to the lower level code to access noaa, ncbc, or contrails servers and acquire a range of product levels for the set
+of stations input stations</p>
+<p>Input station IDs must be stationids and they are treated as string values.</p>
+<p>This is the Harvester layer that would nornmally be called by ADDA,APSVIZ,Reanalysis work</p>
+<dl class="py attribute">
+<dt id="harvester.get_observations_stations.get_obs_stations.CONTRAILS_PRODUCTS">
+<code class="sig-name descname">CONTRAILS_PRODUCTS</code><em class="property"> = ['river_water_level', 'coastal_water_level', 'air_pressure']</em><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.CONTRAILS_PRODUCTS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.get_observations_stations.get_obs_stations.NDBC_PRODUCTS">
+<code class="sig-name descname">NDBC_PRODUCTS</code><em class="property"> = ['wave_height', 'air_pressure', 'wind_speed']</em><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.NDBC_PRODUCTS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.get_observations_stations.get_obs_stations.NOAA_PRODUCTS">
+<code class="sig-name descname">NOAA_PRODUCTS</code><em class="property"> = ['water_level', 'hourly_height', 'predictions', 'air_pressure', 'wind_speed']</em><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.NOAA_PRODUCTS" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt id="harvester.get_observations_stations.get_obs_stations.SOURCES">
+<code class="sig-name descname">SOURCES</code><em class="property"> = ['NOAA', 'CONTRAILS', 'NDBC', 'NDBC_HISTORIC']</em><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.SOURCES" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_observations_stations.get_obs_stations.fetch_smoothed_station_product">
+<code class="sig-name descname">fetch_smoothed_station_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df_in</span></em>, <em class="sig-param"><span class="n">return_sample_min</span><span class="o">=</span><span class="default_value">60</span></em>, <em class="sig-param"><span class="n">window</span><span class="o">=</span><span class="default_value">11</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/get_observations_stations.html#get_obs_stations.fetch_smoothed_station_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.fetch_smoothed_station_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>Takes the provided input df, smooths using the indicated window and resamples on the
+input return_sample_min (usually set to an hourly). Lastly, interpolated using a linear model</p>
+<p>CENTERED window rolling average.</p>
+<dl>
+<dt>Parameters:</dt><dd><p>df_in: &lt;dataframe&gt; of times x stations.
+window: &lt;int&gt; (def=11) width of window.
+return_sample_min: &lt;int&gt; (def=60) Number of mins to sample on the output product</p>
+<blockquote>
+<div><p>upsampling will pad with Nans. Values &lt;=0 indicates no sampling returning
+raw averaged data</p>
+</div></blockquote>
+</dd>
+<dt>Returns:</dt><dd><p>df_smoothed: dataframe (time x stations) smoothed and possibly resampled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_observations_stations.get_obs_stations.fetch_station_product">
+<code class="sig-name descname">fetch_station_product</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">time_range</span></em>, <em class="sig-param"><span class="n">return_sample_min</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">interval</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_observations_stations.html#get_obs_stations.fetch_station_product"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.fetch_station_product" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fetch the desire data. The main information is part of the class (sources, products, etc.). However, one must still specify the return_sample_minutes
+to sample the data. This harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn’t pad nans), and then
+resample the data at the desired freq (in minutes)</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>time_range: &lt;Tuple&gt; (str,str). Starttime,endtime,inclusive. format=’%Y-%m-%d %H:%M:%S’ 
+return_sample_min: &lt;int&gt; sampling frequency of the returned, interpolated, data set
+interval: &lt;str&gt;: Values of None or ‘h’. Only applied to NOAA. None gives full avail freq</p>
+</dd>
+<dt>Returns:</dt><dd><p>data: &lt;dataframe&gt; Sampled data of dims (time x stations)
+meta: &lt;dataframe&gt; associated metadata</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_observations_stations.get_obs_stations.override_station_IDs">
+<code class="sig-name descname">override_station_IDs</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">station_list</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_observations_stations.html#get_obs_stations.override_station_IDs"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.override_station_IDs" title="Permalink to this definition">¶</a></dt>
+<dd><p>This method allows the user to override the current list of stations to process
+They will be subject to the usual validity testing. We overwrite any station data fetched in the class</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>stationlist: list(str) of stationIDs. Overrides any existing list.</p>
+</dd>
+<dt>Returns:</dt><dd><p>self.station_list: list(str) of stations in the class variable</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_observations_stations.get_obs_stations.remove_columns_with_onevalue">
+<code class="sig-name descname">remove_columns_with_onevalue</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_observations_stations.html#get_obs_stations.remove_columns_with_onevalue"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.remove_columns_with_onevalue" title="Permalink to this definition">¶</a></dt>
+<dd><p>Depending on the starttime,stoptime and the selection of the missinglness thresholds (esp==100%)
+It is possible a station may only retain a single value. When this happens, if that station is passed to an interpolator
+it will cause a failure. Instead of try/except trapping the interpolation failure, we do a check here to remove
+the offending station as a station with a single value is of little benefit
+Alternatively, the caller could explore changing the time range OR tightening up the threshold</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_observations_stations.get_obs_stations.remove_knockout_stations">
+<code class="sig-name descname">remove_knockout_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df_station</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/get_observations_stations.html#get_obs_stations.remove_knockout_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.remove_knockout_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Occasionally, a station can report poor results for large ranges of times. This
+method allows the caller to nan those results
+Input should be a dataframe of time indexing and stations as columns.
+The time ranges specified in the args.knockout will be set to Nans inclusively.
+This method can be useful when the indicated statin has historically shown 
+poor unexplained performance over a large window of time</p>
+<p>Uses the class variables:
+self.knockout</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>dataframe: time x stations.
+knockout_dict: &lt;dict&gt; Class variable instantiated at class invocation</p>
+</dd>
+<dt>Returns:</dt><dd><p>dataframe (time x stations) with self.knockout stations removed</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="harvester.get_observations_stations.get_obs_stations.remove_missingness_stations">
+<code class="sig-name descname">remove_missingness_stations</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df_in</span></em>, <em class="sig-param"><span class="n">max_nan_percentage_cutoff</span><span class="o">=</span><span class="default_value">100</span></em><span class="sig-paren">)</span> &#x2192; pandas.core.frame.DataFrame<a class="reference internal" href="_modules/harvester/get_observations_stations.html#get_obs_stations.remove_missingness_stations"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.get_obs_stations.remove_missingness_stations" title="Permalink to this definition">¶</a></dt>
+<dd><p>maxmum percentage of allowable nans in any station. 
+max_nan_percentage_cutoff indicates the MINIMUM percent valid data per station. Corresponds to
+(100-max_nan_percentage_cutoff) as the rate of nans per station
+Note: This should generally only apply to high resolution data (eg 6 min NOAA)</p>
+<dl class="simple">
+<dt>Parameters:</dt><dd><p>df_in: Input dataframe (time x stations).
+max_nan_max_nan_percentage_cutoff: &lt;float&gt;. Percent of allowable nans. (dafault=100)</p>
+</dd>
+<dt>Returns:</dt><dd><p>df_out: dataframe (time x stationID) with stations kept</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="harvester.get_observations_stations.main">
+<code class="sig-prename descclassname">harvester.get_observations_stations.</code><code class="sig-name descname">main</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">args</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/harvester/get_observations_stations.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#harvester.get_observations_stations.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>A simple main method to demonstrate the use of this class
+It assumes the existance of a proper main.yml to get IO information
+It assumes the existance of a proper obs.yml 
+It assumes the existance of a proper contrails.yml (if needed) for accessing contrails</p>
+</dd></dl>
+
+</div>
+<div class="section" id="module-harvester">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-harvester" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">AST</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">harvester package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-harvester.fetch_adcirc_data">harvester.fetch_adcirc_data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-harvester.fetch_data">harvester.fetch_data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-harvester.fetch_station_data">harvester.fetch_station_data module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-harvester.generate_urls_from_times">harvester.generate_urls_from_times module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-harvester.get_adcirc_stations">harvester.get_adcirc_stations module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-harvester.get_observations_stations">harvester.get_observations_stations module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-harvester">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="processing.html">processing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utilities.html">utilities package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to AST’s documentation!</a></li>
+      <li>Next: <a href="processing.html" title="next chapter">processing package</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, AST: AdcircSupportTools: RENCI EDS.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/harvester.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

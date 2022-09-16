@@ -1,0 +1,561 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>harvester.fetch_data &#8212; AST  documentation</title>
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for harvester.fetch_data</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1"># SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># SPDX-License-Identifier: GPL-3.0-or-later</span>
+<span class="c1"># SPDX-License-Identifier: LicenseRef-RENCI</span>
+<span class="c1"># SPDX-License-Identifier: MIT</span>
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span><span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+<span class="kn">import</span> <span class="nn">math</span>
+
+<span class="kn">from</span> <span class="nn">harvester.fetch_station_data</span> <span class="k">import</span> <span class="n">noaanos_fetch_data</span><span class="p">,</span> <span class="n">contrails_fetch_data</span><span class="p">,</span> <span class="n">ndbc_fetch_data</span><span class="p">,</span> <span class="n">ndbc_fetch_historic_data</span>
+<span class="kn">from</span> <span class="nn">utilities.utilities</span> <span class="k">import</span> <span class="n">utilities</span> <span class="k">as</span> <span class="n">utilities</span>
+
+<span class="c1">##</span>
+<span class="c1">## Some basic functions that wrap the underlying calls</span>
+<span class="c1">##</span>
+
+<span class="c1"># Currently supported sources</span>
+<span class="n">SOURCES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NOAA&#39;</span><span class="p">,</span><span class="s1">&#39;CONTRAILS&#39;</span><span class="p">,</span><span class="s1">&#39;NDBC&#39;</span><span class="p">,</span><span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">]</span>
+
+<span class="c1">#def get_noaa_stations(fname=&#39;./config/noaa_stations.txt&#39;):</span>
+<div class="viewcode-block" id="get_noaa_stations"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.get_noaa_stations">[docs]</a><span class="k">def</span> <span class="nf">get_noaa_stations</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simply read a CSV file containing stations under the header of stationid</span>
+<span class="sd">    Expected format is</span>
+<span class="sd">        serial_nr, stationid</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        fname: &lt;str&gt; full path to a valid stationid file</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        noaa_stations: list(str). List of valid noaa station ids </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No NOAA station file assigned: Abort&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">noaa_stations_list</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span> 
+    <span class="n">noaa_stations</span><span class="o">=</span><span class="p">[</span><span class="n">word</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">noaa_stations_list</span><span class="p">]</span> 
+    <span class="k">return</span> <span class="n">noaa_stations</span></div>
+
+<div class="viewcode-block" id="get_contrails_stations"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.get_contrails_stations">[docs]</a><span class="k">def</span> <span class="nf">get_contrails_stations</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simply read a CSV file containing stations under the header of stationid</span>
+<span class="sd">    A convenience method to fetch river guage lists. </span>
+<span class="sd">    Contrails data</span>
+
+<span class="sd">    Expected format is</span>
+<span class="sd">        serial_nr, stationid</span>
+<span class="sd">    Parameters:</span>
+<span class="sd">        fname: &lt;str&gt; full path to a valid stationid file</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        contrails_stations: list(str). List of valid contrails station ids </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No Contrails station file assigned: Abort&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">df</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">contrails_stations_list</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="n">contrails_stations</span><span class="o">=</span><span class="p">[</span><span class="n">word</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span> <span class="k">for</span> <span class="n">word</span> <span class="ow">in</span> <span class="n">contrails_stations_list</span><span class="p">]</span> 
+    <span class="k">return</span> <span class="n">contrails_stations</span></div>
+
+<div class="viewcode-block" id="get_ndbc_buoys"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.get_ndbc_buoys">[docs]</a><span class="k">def</span> <span class="nf">get_ndbc_buoys</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Read a list of buoy data stations. These data are more complicated because</span>
+<span class="sd">    the NDBC reader doesnt easily provide the location and state information. Thus</span>
+<span class="sd">    we expect this input file to carry that infomration.</span>
+<span class="sd">    </span>
+<span class="sd">    Expected format is</span>
+<span class="sd">        serial_nr, stationid, location, state</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">        fname: &lt;str&gt; full path to a valid stationid file</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">     a list of tuples:</span>
+<span class="sd">        station_tuples: [(station,location,state), (station, location, state), etc]</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No NDBC station file assigned: Abort&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df_buoys</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span><span class="n">index_col</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">skiprows</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">df_buoys</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_buoys</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>
+    <span class="c1"># Many buoys have NO STATE affiliation to replace nans with NONE</span>
+    <span class="n">df_buoys</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">df_buoys</span><span class="p">[</span><span class="s1">&#39;state&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s1">&#39;NONE&#39;</span><span class="p">)</span>
+    <span class="n">list_stations</span> <span class="o">=</span> <span class="n">df_buoys</span><span class="p">[</span><span class="s2">&quot;stationid&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">list_locations</span> <span class="o">=</span> <span class="n">df_buoys</span><span class="p">[</span><span class="s2">&quot;location&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">list_states</span> <span class="o">=</span> <span class="n">df_buoys</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="n">station_tuples</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">list_stations</span><span class="p">,</span> <span class="n">list_locations</span><span class="p">,</span> <span class="n">list_states</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">station_tuples</span></div>
+
+<div class="viewcode-block" id="choose_common_header_name"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.choose_common_header_name">[docs]</a><span class="k">def</span> <span class="nf">choose_common_header_name</span><span class="p">(</span><span class="n">product</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    For harvesting, we only want select common data names in the final data time series</span>
+<span class="sd">    This is complicated by the fact that different sources use different product names. So here</span>
+<span class="sd">    we manually construct a dictionary of current harvester supported data products</span>
+
+<span class="sd">    Input:</span>
+<span class="sd">        product: &lt;str&gt; input product name</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        name: &lt;str &gt;selected common name</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">product_name_maps</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;water_level&#39;</span><span class="p">:</span> <span class="s1">&#39;water_level&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;wave_height&#39;</span><span class="p">:</span> <span class="s1">&#39;wave_height&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;predictions&#39;</span><span class="p">:</span> <span class="s1">&#39;water_level&#39;</span><span class="p">,</span> 
+        <span class="s1">&#39;hourly_height&#39;</span><span class="p">:</span> <span class="s1">&#39;water_level&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;river_water_level&#39;</span><span class="p">:</span> <span class="s1">&#39;water_level&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;coastal_water_level&#39;</span><span class="p">:</span> <span class="s1">&#39;water_level&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;air_pressure&#39;</span><span class="p">:</span><span class="s1">&#39;air_pressure&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;pressure&#39;</span><span class="p">:</span><span class="s1">&#39;pressure&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;wind_speed&#39;</span><span class="p">:</span><span class="s1">&#39;wind_speed&#39;</span>
+        <span class="p">}</span>
+
+    <span class="k">if</span> <span class="n">product</span> <span class="ow">in</span> <span class="n">product_name_maps</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">product_name_maps</span><span class="p">[</span><span class="n">product</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">name</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;choose_common_header_name. No such product name </span><span class="si">{product}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="format_data_frames"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.format_data_frames">[docs]</a><span class="k">def</span> <span class="nf">format_data_frames</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">product</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A Common formatting used by all sources. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">T%H:%M:%S&#39;</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">df_out</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">melt</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">id_vars</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;TIME&#39;</span><span class="p">])</span>
+    <span class="n">df_out</span><span class="o">.</span><span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;TIME&#39;</span><span class="p">,</span><span class="s1">&#39;STATION&#39;</span><span class="p">,</span><span class="n">choose_common_header_name</span><span class="p">(</span><span class="n">product</span><span class="p">))</span>
+    <span class="n">df_out</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;TIME&#39;</span><span class="p">,</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_out</span></div>
+
+<span class="c1">##</span>
+<span class="c1">## End functions</span>
+<span class="c1">##</span>
+
+<span class="c1">##</span>
+<span class="c1">## Globals</span>
+<span class="c1">##</span>
+
+<span class="n">dformat</span><span class="o">=</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span>
+<span class="n">GLOBAL_TIMEZONE</span><span class="o">=</span><span class="s1">&#39;gmt&#39;</span> <span class="c1"># Every source is set or presumed to return times in the zone</span>
+
+<span class="c1">#TODO abstract this</span>
+<span class="c1">#PRODUCT=&#39;water_level&#39; # Used by all sources regardless of specifici data product selected</span>
+<span class="c1"># wave_height</span>
+<span class="c1"># pressure&quot;</span>
+<span class="c1"># wind speed&quot;</span>
+
+<span class="c1">##</span>
+<span class="c1">## Run stations</span>
+<span class="c1">##</span>
+
+<div class="viewcode-block" id="process_noaa_stations"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.process_noaa_stations">[docs]</a><span class="k">def</span> <span class="nf">process_noaa_stations</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">noaa_stations</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="s1">&#39;water_level&#39;</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="mi">15</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (&#39;%Y-%m-%dT%H:%M:%S)</span>
+<span class="sd">        noaa_stations: list(str). List of desired NOAA stations</span>
+<span class="sd">        interval: &lt;str&gt; (def=None) A NOAA specific interval setting</span>
+<span class="sd">        data_product: &lt;str &gt;(def water_level). A generic AST named data product ( Not the True NOAA data product name) </span>
+<span class="sd">        resample_mins: &lt;int&gt; Returned time series with a sampling of resample_mins</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df_noaa_data: DataFrame (time x station)</span>
+<span class="sd">        df_noaa_meta: DataFrame (station x metadata)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Fetch the data</span>
+    <span class="n">noaa_products</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;water_level&#39;</span><span class="p">,</span> <span class="s1">&#39;predictions&#39;</span><span class="p">,</span> <span class="s1">&#39;hourly_height&#39;</span><span class="p">,</span> <span class="s1">&#39;air_pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_product</span> <span class="ow">in</span> <span class="n">noaa_products</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NOAA: data product can only be </span><span class="si">{noaa_products}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="c1">#sys.exit(1)</span>
+        <span class="n">noaanos</span> <span class="o">=</span> <span class="n">noaanos_fetch_data</span><span class="p">(</span><span class="n">noaa_stations</span><span class="p">,</span> <span class="n">time_range</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="n">data_product</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="n">interval</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">resample_mins</span><span class="p">)</span>
+        <span class="n">df_noaa_data</span> <span class="o">=</span> <span class="n">noaanos</span><span class="o">.</span><span class="n">aggregate_station_data</span><span class="p">()</span>
+        <span class="n">df_noaa_meta</span> <span class="o">=</span> <span class="n">noaanos</span><span class="o">.</span><span class="n">aggregate_station_metadata</span><span class="p">()</span>
+        <span class="n">df_noaa_meta</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;STATION&#39;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: NOAA: </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_noaa_data</span><span class="p">,</span> <span class="n">df_noaa_meta</span></div>
+
+<div class="viewcode-block" id="process_contrails_stations"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.process_contrails_stations">[docs]</a><span class="k">def</span> <span class="nf">process_contrails_stations</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">contrails_stations</span><span class="p">,</span> <span class="n">authentication_config</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="s1">&#39;river_water_level&#39;</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="mi">15</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (&#39;%Y-%m-%dT%H:%M:%S)</span>
+<span class="sd">        contrails_stations: list(str). List of desired Contrails stations</span>
+<span class="sd">        authentication_config: &lt;dict&gt;. A Contrails specific authorization dict</span>
+<span class="sd">        data_product: &lt;str&gt; (def river_water_level). A generic AST named data product ( Not the True Contrails data product name) </span>
+<span class="sd">        resample_mins: &lt;int&gt; Returned time series with a sampling of resample_mins</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df_contrails_data: DataFrame (time x station)</span>
+<span class="sd">        df_contrails_meta: DataFrame (station x metadata)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Fetch the data</span>
+    <span class="n">contrails_product</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;river_water_level&#39;</span><span class="p">,</span><span class="s1">&#39;coastal_water_level&#39;</span><span class="p">,</span> <span class="s1">&#39;air_pressure&#39;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">data_product</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">contrails_product</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Contrails data product can only be: </span><span class="si">{contrails_product}</span><span class="s1"> was </span><span class="si">{data_product}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="c1">#sys.exit(1)</span>
+        <span class="n">contrails</span> <span class="o">=</span> <span class="n">contrails_fetch_data</span><span class="p">(</span><span class="n">contrails_stations</span><span class="p">,</span> <span class="n">time_range</span><span class="p">,</span> <span class="n">authentication_config</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="n">data_product</span><span class="p">,</span> <span class="n">owner</span><span class="o">=</span><span class="s1">&#39;NCEM&#39;</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">resample_mins</span><span class="p">)</span>
+        <span class="n">df_contrails_data</span> <span class="o">=</span> <span class="n">contrails</span><span class="o">.</span><span class="n">aggregate_station_data</span><span class="p">()</span>
+        <span class="n">df_contrails_meta</span> <span class="o">=</span> <span class="n">contrails</span><span class="o">.</span><span class="n">aggregate_station_metadata</span><span class="p">()</span>
+        <span class="n">df_contrails_meta</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;STATION&#39;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: CONTRAILS: </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_contrails_data</span><span class="p">,</span> <span class="n">df_contrails_meta</span></div>
+
+<div class="viewcode-block" id="process_ndbc_buoys"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.process_ndbc_buoys">[docs]</a><span class="k">def</span> <span class="nf">process_ndbc_buoys</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">ndbc_buoys</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="s1">&#39;wave_height&#39;</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="mi">15</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">        time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (&#39;%Y-%m-%dT%H:%M:%S)</span>
+<span class="sd">        ndbc_buoys: list(str). List of desired NDBC buoys</span>
+<span class="sd">        data_product: &lt;str&gt; (def wave_height). An AST named data product ( Not the True NDBC data product name) </span>
+<span class="sd">        resample_mins: (int) Returned time series with a sampling of resample_mins</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df_ndbc_data: DataFrame (time x station)</span>
+<span class="sd">        df_ndbc_meta: DataFrame (station x metadata)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Fetch the data</span>
+    <span class="n">ndbc_products</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;wave_height&#39;</span><span class="p">,</span> <span class="s1">&#39;air_pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_product</span> <span class="ow">in</span> <span class="n">ndbc_products</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC: data product can only be </span><span class="si">{ndbc_products}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="c1">#sys.exit(1)</span>
+        <span class="n">ndbc</span> <span class="o">=</span> <span class="n">ndbc_fetch_data</span><span class="p">(</span><span class="n">ndbc_buoys</span><span class="p">,</span> <span class="n">time_range</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="n">data_product</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">resample_mins</span><span class="p">)</span>
+        <span class="n">df_ndbc_data</span> <span class="o">=</span> <span class="n">ndbc</span><span class="o">.</span><span class="n">aggregate_station_data</span><span class="p">()</span>
+        <span class="n">df_ndbc_meta</span> <span class="o">=</span> <span class="n">ndbc</span><span class="o">.</span><span class="n">aggregate_station_metadata</span><span class="p">()</span>
+        <span class="n">df_ndbc_meta</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;STATION&#39;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: NEW NDBC: </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_ndbc_data</span><span class="p">,</span> <span class="n">df_ndbc_meta</span></div>
+
+<div class="viewcode-block" id="process_ndbc_historic_buoys"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.process_ndbc_historic_buoys">[docs]</a><span class="k">def</span> <span class="nf">process_ndbc_historic_buoys</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">ndbc_buoys</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="s1">&#39;wave_height&#39;</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="mi">15</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">        time_range: &lt;tuple&gt; (&lt;str&gt;,&lt;str&gt;). Input time range (&#39;%Y-%m-%dT%H:%M:%S)</span>
+<span class="sd">        ndbc_buoys: list(str). List of desired NDBC buoys</span>
+<span class="sd">        data_product: &lt;str&gt; (def wave_height). An AST named data product ( Not the True NDBC data product name) </span>
+<span class="sd">        resample_mins: &lt;int&gt; Returned time series with a sampling of resample_mins</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df_ndbc_data: DataFrame (time x station)</span>
+<span class="sd">        df_ndbc_meta: DataFrame (station x metadata)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Fetch the data</span>
+    <span class="n">ndbc_products</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;wave_height&#39;</span><span class="p">,</span> <span class="s1">&#39;air_pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">data_product</span> <span class="ow">in</span> <span class="n">ndbc_products</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC: data product can only be </span><span class="si">{ndbc_products}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="c1">#sys.exit(1)</span>
+        <span class="n">ndbc</span> <span class="o">=</span> <span class="n">ndbc_fetch_historic_data</span><span class="p">(</span><span class="n">ndbc_buoys</span><span class="p">,</span> <span class="n">time_range</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="n">data_product</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">resample_mins</span><span class="p">)</span>
+        <span class="n">df_ndbc_data</span> <span class="o">=</span> <span class="n">ndbc</span><span class="o">.</span><span class="n">aggregate_station_data</span><span class="p">()</span>
+        <span class="n">df_ndbc_meta</span> <span class="o">=</span> <span class="n">ndbc</span><span class="o">.</span><span class="n">aggregate_station_metadata</span><span class="p">()</span>
+        <span class="n">df_ndbc_meta</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;STATION&#39;</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: NEW NDBC HISTORIC: </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_ndbc_data</span><span class="p">,</span> <span class="n">df_ndbc_meta</span></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../harvester.html#harvester.fetch_data.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Generally we anticipate inputting a STOPTIME</span>
+<span class="sd">    Then the STARTTIME is ndays on the past</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">main_config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">init_logging</span><span class="p">(</span><span class="n">subdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_file</span><span class="o">=</span><span class="s1">&#39;../config/main.yml&#39;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">sources</span><span class="p">:</span>
+         <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Return list of sources&#39;</span><span class="p">)</span>
+         <span class="k">return</span> <span class="n">SOURCES</span>
+         <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">data_source</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">data_source</span>
+    <span class="n">data_product</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">data_product</span>
+
+    <span class="k">if</span> <span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">SOURCES</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Found selected data source </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_source</span><span class="p">))</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Invalid data source </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data_source</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Input product </span><span class="si">{data_product}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Setup times and ranges</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">stoptime</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time_stop</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">stoptime</span><span class="p">,</span><span class="n">dformat</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">time_stop</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+    <span class="c1"># Do we want a hard starttime?</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">starttime</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time_start</span><span class="o">=</span><span class="n">time_stop</span><span class="o">+</span><span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ndays</span><span class="p">)</span> <span class="c1"># How many days BACK</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">time_start</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">starttime</span><span class="p">,</span><span class="n">dformat</span><span class="p">)</span>
+
+    <span class="n">starttime</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">time_start</span><span class="p">,</span> <span class="n">dformat</span><span class="p">)</span>
+    <span class="n">endtime</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="n">time_stop</span><span class="p">,</span> <span class="n">dformat</span><span class="p">)</span>
+    <span class="c1">#starttime=&#39;2021-12-08 12:00:00&#39;</span>
+    <span class="c1">#endtime=&#39;2021-12-10 00:00:00&#39;</span>
+
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Selected time range is </span><span class="si">{starttime}</span><span class="s1"> to </span><span class="si">{endtime}</span><span class="s1">, ndays is </span><span class="si">{args.ndays}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="c1"># metadata are used to augment filename</span>
+    <span class="c1">#NOAA/NOS</span>
+    <span class="k">if</span> <span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;NOAA&#39;</span><span class="p">:</span>
+        <span class="n">excludedStations</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+        <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="n">starttime</span><span class="p">,</span><span class="n">endtime</span><span class="p">)</span> <span class="c1"># Can be directly used by NOAA </span>
+        <span class="c1"># Use default station list</span>
+        <span class="n">noaa_stations</span><span class="o">=</span><span class="n">get_noaa_stations</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">station_list</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">station_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">get_noaa_stations</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span><span class="s1">&#39;../supporting_data&#39;</span><span class="p">,</span><span class="s1">&#39;noaa_stations.csv&#39;</span><span class="p">))</span>
+        <span class="n">noaa_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span>  <span class="c1"># +&#39;_&#39;+starttime.replace(&#39; &#39;,&#39;T&#39;)</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">process_noaa_stations</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">noaa_stations</span><span class="p">,</span> <span class="n">data_product</span> <span class="o">=</span> <span class="n">data_product</span><span class="p">)</span>
+        <span class="n">df_noaa_data</span> <span class="o">=</span> <span class="n">format_data_frames</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data_product</span><span class="p">)</span> <span class="c1"># Melt the data :s Harvester default format</span>
+        <span class="c1"># Output</span>
+        <span class="c1"># If choosing non-default locations BOTH variables must be specified</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ofile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/noaa_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ofile</span><span class="p">,</span><span class="n">noaa_metadata</span><span class="p">)</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/noaa_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ometafile</span><span class="p">,</span><span class="n">noaa_metadata</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./noaa_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">noaa_metadata</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./noaa_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">noaa_metadata</span>
+            <span class="n">df_noaa_data</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">dataf</span><span class="p">)</span>
+            <span class="n">meta</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">metaf</span><span class="p">)</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NOAA data has been stored </span><span class="si">{dataf}</span><span class="s1">,</span><span class="si">{metaf}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: NOAA: Failed Write </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1">#Contrails</span>
+    <span class="k">if</span> <span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;CONTRAILS&#39;</span><span class="p">:</span>
+        <span class="c1"># Load contrails secrets</span>
+        <span class="n">conf_name</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">config_name</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">config_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span><span class="s1">&#39;../secrets&#39;</span><span class="p">,</span><span class="s1">&#39;contrails.yml&#39;</span><span class="p">)</span>
+        <span class="n">contrails_config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">load_config</span><span class="p">(</span><span class="n">conf_name</span><span class="p">)[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">]</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Got Contrails access information&#39;</span><span class="p">)</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;An exception of type </span><span class="si">{0}</span><span class="s2"> occurred.&quot;</span>
+        <span class="n">excludedStations</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">data_product</span><span class="o">==</span><span class="s1">&#39;river_water_level&#39;</span><span class="p">:</span>
+            <span class="n">fname</span><span class="o">=</span><span class="s1">&#39;../supporting_data/contrails_stations_rivers.csv&#39;</span>
+            <span class="n">meta</span><span class="o">=</span><span class="s1">&#39;_RIVERS&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">fname</span><span class="o">=</span><span class="s1">&#39;../supporting_data/contrails_stations_coastal.csv&#39;</span>
+            <span class="n">meta</span><span class="o">=</span><span class="s1">&#39;_COASTAL&#39;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="c1"># Build ranges for contrails ( and noaa/nos if you like)</span>
+            <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="n">starttime</span><span class="p">,</span><span class="n">endtime</span><span class="p">)</span> 
+            <span class="c1"># Get default station list</span>
+            <span class="n">contrails_stations</span><span class="o">=</span><span class="n">get_contrails_stations</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">station_list</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">station_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">get_contrails_stations</span><span class="p">(</span><span class="n">fname</span><span class="p">)</span>
+            <span class="n">contrails_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{meta}</span><span class="s2">_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span> <span class="c1"># +&#39;_&#39;+starttime.replace(&#39; &#39;,&#39;T&#39;)</span>
+            <span class="n">data</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">process_contrails_stations</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">contrails_stations</span><span class="p">,</span> <span class="n">contrails_config</span><span class="p">,</span> <span class="n">data_product</span> <span class="o">=</span> <span class="n">data_product</span> <span class="p">)</span>
+            <span class="n">df_contrails_data</span> <span class="o">=</span> <span class="n">format_data_frames</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data_product</span><span class="p">)</span> <span class="c1"># Melt: Harvester default format</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;CONTRAILS error {type(ex).__name__}, </span><span class="si">{ex.args}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="c1"># If choosing non-default locations BOTH variables must be specified</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ofile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/contrails_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ofile</span><span class="p">,</span><span class="n">contrails_metadata</span><span class="p">)</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/contrails_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ometafile</span><span class="p">,</span><span class="n">contrails_metadata</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./contrails_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">contrails_metadata</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./contrails_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">contrails_metadata</span>
+            <span class="n">df_contrails_data</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">dataf</span><span class="p">)</span>
+            <span class="n">meta</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">metaf</span><span class="p">)</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;CONTRAILS data has been stored </span><span class="si">{dataf}</span><span class="s1">,</span><span class="si">{metaf}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: CONTRAILS: Failed Write </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1">#NDBC</span>
+    <span class="k">if</span> <span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;NDBC&#39;</span><span class="p">:</span>
+        <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="n">starttime</span><span class="p">,</span><span class="n">endtime</span><span class="p">)</span> <span class="c1"># Can be directly used by NDBC</span>
+        <span class="c1"># Use default station list</span>
+        <span class="n">ndbc_stations</span><span class="o">=</span><span class="n">get_ndbc_buoys</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">station_list</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">station_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">get_ndbc_buoys</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span><span class="s1">&#39;../supporting_data&#39;</span><span class="p">,</span><span class="s1">&#39;ndbc_buoys.csv&#39;</span><span class="p">))</span>
+        <span class="n">ndbc_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span> <span class="c1"># +&#39;_&#39;+starttime.replace(&#39; &#39;,&#39;T&#39;)</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">meta</span>  <span class="o">=</span> <span class="n">process_ndbc_buoys</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">ndbc_stations</span><span class="p">,</span> <span class="n">data_product</span> <span class="o">=</span> <span class="n">data_product</span><span class="p">)</span>
+        <span class="n">df_ndbc_data</span> <span class="o">=</span> <span class="n">format_data_frames</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data_product</span><span class="p">)</span> <span class="c1"># Melt the data :s Harvester default format</span>
+        <span class="c1"># Output</span>
+        <span class="c1"># If choosing non-default locations BOTH variables must be specified</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ofile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/ndbc_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ofile</span><span class="p">,</span><span class="n">ndbc_metadata</span><span class="p">)</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/ndbc_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ometafile</span><span class="p">,</span><span class="n">ndbc_metadata</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./ndbc_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">ndbc_metadata</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./ndbc_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">ndbc_metadata</span>
+            <span class="n">df_ndbc_data</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">dataf</span><span class="p">)</span>
+            <span class="n">meta</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">metaf</span><span class="p">)</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC data has been stored </span><span class="si">{dataf}</span><span class="s1">,</span><span class="si">{metaf}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: NDBC: Failed Write </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">:</span>
+        <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="n">starttime</span><span class="p">,</span><span class="n">endtime</span><span class="p">)</span> <span class="c1"># Can be directly used by NDBC</span>
+        <span class="c1"># Use default station list</span>
+        <span class="n">ndbc_stations</span><span class="o">=</span><span class="n">get_ndbc_buoys</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">station_list</span><span class="p">)</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">station_list</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">get_ndbc_buoys</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span><span class="s1">&#39;../supporting_data&#39;</span><span class="p">,</span><span class="s1">&#39;ndbc_buoys.csv&#39;</span><span class="p">))</span>
+        <span class="n">ndbc_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span> <span class="c1"># +&#39;_&#39;+starttime.replace(&#39; &#39;,&#39;T&#39;)</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">meta</span>  <span class="o">=</span> <span class="n">process_ndbc_historic_buoys</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">ndbc_stations</span><span class="p">,</span> <span class="n">data_product</span> <span class="o">=</span> <span class="n">data_product</span><span class="p">)</span>
+        <span class="n">df_ndbc_data</span> <span class="o">=</span> <span class="n">format_data_frames</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">data_product</span><span class="p">)</span> <span class="c1"># Melt the data :s Harvester default format</span>
+        <span class="c1"># Output</span>
+        <span class="c1"># If choosing non-default locations BOTH variables must be specified</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">ofile</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/ndbc_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ofile</span><span class="p">,</span><span class="n">ndbc_metadata</span><span class="p">)</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">/ndbc_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span> <span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">ometafile</span><span class="p">,</span><span class="n">ndbc_metadata</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dataf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./ndbc_stationdata</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">ndbc_metadata</span>
+                <span class="n">metaf</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;./ndbc_stationdata_meta</span><span class="si">%s</span><span class="s1">.csv&#39;</span><span class="o">%</span><span class="n">ndbc_metadata</span>
+            <span class="n">df_ndbc_data</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">dataf</span><span class="p">)</span>
+            <span class="n">meta</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">metaf</span><span class="p">)</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC data has been stored </span><span class="si">{dataf}</span><span class="s1">,</span><span class="si">{metaf}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Error: NDBC: Failed Write </span><span class="si">{e}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Finished with data source </span><span class="si">{data_source}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Finished&#39;</span><span class="p">)</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">ArgumentParser</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ndays&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;ndays&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=-</span><span class="mi">2</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Number of look-back days from stoptime (or now): default -2&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--stoptime&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;stoptime&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Desired stoptime YYYY-mm-dd HH:MM:SS. Default=now&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--starttime&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;starttime&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Desired starttime YYYY-mm-dd HH:MM:SS. Default=None&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--sources&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;List currently supported data sources&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--data_source&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;data_source&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;choose supported data source (case independant) eg NOAA or CONTRAILS&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--data_product&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;data_product&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;water_level&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;choose supported data product eg river_water_level: Only required for Contrails&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--station_list&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;station_list&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Choose a non-default location/filename for a stationlist&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--config_name&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;config_name&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Choose a non-default contrails auth config_name&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ofile&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;ofile&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Choose a non-default data product output directory&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ometafile&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;ometafile&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Choose a non-default metadata output directory&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">AST</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../harvester.html">harvester package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../processing.html">processing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utilities.html">utilities package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, AST: AdcircSupportTools: RENCI EDS.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

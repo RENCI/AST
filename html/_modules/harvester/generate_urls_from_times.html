@@ -1,0 +1,704 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>harvester.generate_urls_from_times &#8212; AST  documentation</title>
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for harvester.generate_urls_from_times</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1"># SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># SPDX-License-Identifier: GPL-3.0-or-later</span>
+<span class="c1"># SPDX-License-Identifier: LicenseRef-RENCI</span>
+<span class="c1"># SPDX-License-Identifier: MIT</span>
+
+<span class="c1">#</span>
+<span class="c1"># This helper set of functions takes times,offsets,urls as possible inputs and returns a list of URLs that may be passed</span>
+<span class="c1"># to the fetch_adcirc_data methods. If the Caller wants to process a LIST of Urls, just call this repeatedly</span>
+<span class="c1"># then aggregate and check duplicates </span>
+<span class="c1"># </span>
+
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span><span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+
+<span class="kn">from</span> <span class="nn">utilities.utilities</span> <span class="k">import</span> <span class="n">utilities</span> <span class="k">as</span> <span class="n">utilities</span>
+<span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">ArgumentParser</span>
+
+<div class="viewcode-block" id="is_hurricane"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.is_hurricane">[docs]</a><span class="k">def</span> <span class="nf">is_hurricane</span><span class="p">(</span><span class="n">test_val</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">bool</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Determine of the input test val is a Date, an Int or something else</span>
+<span class="sd">    Parameters: </span>
+<span class="sd">        test_val: For a valid time enter a str with dformat %Y-%m-%d %H:%M:%S or %Y%m%d%H</span>
+<span class="sd">                  For a valid hurricane enter an int</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">is_hurricane</span><span class="o">=</span><span class="kc">False</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">test</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">test_val</span><span class="p">,</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span> <span class="c1"># If fails then not a datetime</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ValueError</span><span class="p">,</span><span class="ne">TypeError</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">test</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">test_val</span><span class="p">,</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H&#39;</span><span class="p">)</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">outid</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">test_val</span><span class="p">)</span>
+                <span class="n">is_hurricane</span><span class="o">=</span><span class="kc">True</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;test indicates not a hurricane nor a casting. Perhaps a format issue ?.  Got </span><span class="si">{}</span><span class="s1">: Abort&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">test_val</span><span class="p">))</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">is_hurricane</span></div>
+
+<div class="viewcode-block" id="generate_six_hour_time_steps_from_range"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_six_hour_time_steps_from_range">[docs]</a><span class="k">def</span> <span class="nf">generate_six_hour_time_steps_from_range</span><span class="p">(</span><span class="n">time_range</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Given the input time tuple, return the inclusive set of times that occur on</span>
+<span class="sd">    the daily 6 hour mark. So on output we would have 00Z,06Z,12Z,18Z times only </span>
+
+<span class="sd">    Parameters: </span>
+<span class="sd">        time_range: Tuple (datetime,datetime) of the start and end times (datetime objects)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        list_of_times: list of (str) times in the format: %Y%m%d%H</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_hurricane</span><span class="p">(</span><span class="n">time_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Determined input time_range URL is a Hurricane&#39;</span><span class="p">)</span>
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_advisories_from_range</span><span class="p">(</span><span class="n">time_range</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_castings_from_range</span><span class="p">(</span><span class="n">time_range</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">list_of_times</span></div>
+
+<div class="viewcode-block" id="generate_six_hour_time_castings_from_range"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_six_hour_time_castings_from_range">[docs]</a><span class="k">def</span> <span class="nf">generate_six_hour_time_castings_from_range</span><span class="p">(</span><span class="n">time_range</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A non-hurricane</span>
+<span class="sd">    Advisory. We need to distinguish between the two. Note, we can be promiscuous here </span>
+<span class="sd">    with the URLs, since urls that do not exist will get trapped by Harvester</span>
+<span class="sd">    Parameters: </span>
+<span class="sd">        time_range: tuple (datetime,datetime)</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        list_of_times: list of times/advisories in the a string format to build new urls</span>
+<span class="sd">   &quot;&quot;&quot;</span>
+    <span class="n">keep_hours</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">18</span><span class="p">]</span>
+    <span class="n">starttime</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">time_range</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+    <span class="n">stoptime</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">time_range</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+    <span class="n">pdtime</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="o">=</span><span class="n">starttime</span><span class="p">,</span> <span class="n">end</span><span class="o">=</span><span class="n">stoptime</span><span class="p">,</span><span class="n">freq</span><span class="o">=</span><span class="s1">&#39;H&#39;</span><span class="p">)</span> <span class="c1"># Doesnt land on 00,06,12,18</span>
+    <span class="n">list_of_times</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">pdtime</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">time</span><span class="o">.</span><span class="n">hour</span> <span class="ow">in</span> <span class="n">keep_hours</span><span class="p">:</span>
+            <span class="n">list_of_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H&#39;</span><span class="p">))</span>
+    <span class="c1"># Keep input entry as well ?</span>
+    <span class="n">list_of_times</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stoptime</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H&#39;</span><span class="p">))</span>
+    <span class="n">list_of_times</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">list_of_times</span></div>
+
+<div class="viewcode-block" id="generate_six_hour_time_advisories_from_range"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_six_hour_time_advisories_from_range">[docs]</a><span class="k">def</span> <span class="nf">generate_six_hour_time_advisories_from_range</span><span class="p">(</span><span class="n">advisory_range</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Advisory range has no specific time meaning other than generally being every 6 hours</span>
+<span class="sd">    So simply accept the range as fact. The INPUT advisory number is NOT retained in the</span>
+<span class="sd">    generated list</span>
+
+<span class="sd">    Save Advisories in a leading zero format: &quot;{:02d}&quot;.format(adv)</span>
+
+<span class="sd">    Parameters: </span>
+<span class="sd">        advisory_range: tuple (int,int)</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        list_of_advisories: list of times/advisories in the a string format to build new urls</span>
+<span class="sd">                            includes the input time_step.advisory in the final list</span>
+<span class="sd">   &quot;&quot;&quot;</span>
+    <span class="c1"># How many 6 hour periods can we identify? We need to choose a startpoint. Use the highest time and look back</span>
+    <span class="n">startadv</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">advisory_range</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">stopadv</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">advisory_range</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">startadv</span> <span class="o">&gt;</span> <span class="n">stopadv</span><span class="p">:</span>
+        <span class="n">startadv</span><span class="p">,</span><span class="n">stopadv</span> <span class="o">=</span> <span class="n">stopadv</span><span class="p">,</span> <span class="n">startadv</span>
+    <span class="n">list_of_advisories</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">inc</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">startadv</span><span class="p">,</span> <span class="n">stopadv</span><span class="p">):</span>
+        <span class="n">list_of_advisories</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">inc</span><span class="p">))</span>
+    <span class="n">list_of_advisories</span><span class="o">=</span><span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">list_of_advisories</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Should we retain the input value ?</span>
+    <span class="n">list_of_advisories</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">stopadv</span><span class="p">))</span>
+    <span class="c1"># A last ditch sort to to be sure</span>
+    <span class="n">list_of_advisories</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">list_of_advisories</span></div>
+
+<span class="c1"># Generates a proper list-time/advisories depending if its a Hurricane or not</span>
+<div class="viewcode-block" id="generate_six_hour_time_steps_from_offset"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_six_hour_time_steps_from_offset">[docs]</a><span class="k">def</span> <span class="nf">generate_six_hour_time_steps_from_offset</span><span class="p">(</span><span class="n">time_value</span><span class="p">,</span> <span class="n">offset</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;  </span>
+<span class="sd">    For an arbitrary URL, we could have a conventional now/forecast OR a Hurricane</span>
+<span class="sd">    Advisory. We need to distinguish between the two. Note, we can be promiscuous here </span>
+<span class="sd">    with the URLs, since urls that do not exist will get trapped by Harvester</span>
+<span class="sd">    Parameters: </span>
+<span class="sd">        time_val: (datetime) Either the time or advisory value from a asgs url</span>
+<span class="sd">        offset: (int) Number of DAYS to look back/forward from strvalue</span>
+<span class="sd">            if strvalue is an Advisory then we look back a number of STEPS </span>
+<span class="sd">            corresponding to 6 hour intervals based on offset</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        timelist: list of times/advisories in the a string format to build new urls</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_hurricane</span><span class="p">(</span><span class="n">time_value</span><span class="p">):</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Determined input URL is a Hurricane&#39;</span><span class="p">)</span>
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_advisories_from_offset</span><span class="p">(</span><span class="n">time_value</span><span class="p">,</span><span class="n">offset</span><span class="p">)</span> 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_castings_from_offset</span><span class="p">(</span><span class="n">time_value</span><span class="p">,</span><span class="n">offset</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">list_of_times</span></div>
+
+<div class="viewcode-block" id="generate_six_hour_time_castings_from_offset"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_six_hour_time_castings_from_offset">[docs]</a><span class="k">def</span> <span class="nf">generate_six_hour_time_castings_from_offset</span><span class="p">(</span><span class="n">time_value</span><span class="p">,</span><span class="n">offset</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Start with the strtime and build a list of 6hour steps for up to offset days</span>
+<span class="sd">    We expect the input time to a stoptime and the offsets to be &lt; 0. But, though</span>
+<span class="sd">    the overall code has not been tested for it, we simply reorder the times</span>
+<span class="sd">    as necc and proceed</span>
+
+<span class="sd">    Parameters: </span>
+<span class="sd">       time_value: (datetime) start time</span>
+<span class="sd">       offset: (int) Number of DAYS to look back/forward from strvalue</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        timelist: list of times in a string format to build new urls</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">keep_hours</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">12</span><span class="p">,</span><span class="mi">18</span><span class="p">]</span>
+    <span class="n">stoptime</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">time_value</span><span class="p">,</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+    <span class="n">starttime</span> <span class="o">=</span> <span class="n">stoptime</span> <span class="o">+</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">offset</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">starttime</span> <span class="o">&gt;</span> <span class="n">stoptime</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Stoptime &lt; starttime. Suypplied offset was </span><span class="si">{}</span><span class="s1">days: Reordering&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">offset</span><span class="p">))</span>
+        <span class="n">starttime</span><span class="p">,</span><span class="n">stoptime</span> <span class="o">=</span> <span class="n">stoptime</span><span class="p">,</span><span class="n">starttime</span>
+    <span class="k">return</span> <span class="n">generate_six_hour_time_steps_from_range</span><span class="p">(</span> <span class="p">(</span><span class="n">starttime</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">),</span> <span class="n">stoptime</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">))</span> <span class="p">)</span></div>
+    
+<div class="viewcode-block" id="generate_six_hour_time_advisories_from_offset"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_six_hour_time_advisories_from_offset">[docs]</a><span class="k">def</span> <span class="nf">generate_six_hour_time_advisories_from_offset</span><span class="p">(</span><span class="n">strtime</span><span class="p">,</span><span class="n">offset</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Start with the strtime and build a list of 6hour steps for up to offset days</span>
+<span class="sd">    We expect the input time to bve an Advisory number (int)  We also anticipate offsets to be &lt; 0. </span>
+<span class="sd">    since offset &gt;0 would apply to Hurricane advisories not performed (but you could do it)</span>
+
+<span class="sd">    Here we assume each index is a 6 hour time step. So we just need to decide how many to look back for.</span>
+<span class="sd">    Harvester will quietly ignore urls that do not exist </span>
+
+<span class="sd">    Save Advisories in a leading zero format: &quot;{:02d}&quot;.format(adv)</span>
+
+<span class="sd">    Parameters: </span>
+<span class="sd">       strvale: (str) time</span>
+<span class="sd">       offset: (int) Number of DAYS to look back/forward from strvalue</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        timelist: list of advisories in the a string format to build new urls</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">list_of_advisories</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+    <span class="n">stop_advisory</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">strtime</span><span class="p">)</span>
+    <span class="n">num_6hour_look_asides</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">24</span><span class="o">*</span><span class="n">offset</span><span class="o">/</span><span class="mi">6</span><span class="p">)</span>
+    <span class="n">range_values</span><span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="n">num_6hour_look_asides</span><span class="p">]</span>
+    <span class="n">range_values</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span> <span class="c1"># sorts ascending order</span>
+    <span class="k">for</span> <span class="n">inc</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">*</span><span class="n">range_values</span><span class="p">):</span>
+        <span class="n">list_of_advisories</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">stop_advisory</span><span class="o">+</span><span class="n">inc</span><span class="p">))</span>
+    <span class="n">list_of_advisories</span><span class="o">=</span><span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">list_of_advisories</span> <span class="k">if</span> <span class="nb">int</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># Keep the inoput value ?</span>
+    <span class="n">list_of_advisories</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{:02d}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">stop_advisory</span><span class="p">))</span>
+    <span class="c1"># A last ditch sort to to be sure</span>
+    <span class="n">list_of_advisories</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">list_of_advisories</span></div>
+
+<div class="viewcode-block" id="grab_years_from_time_list"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.grab_years_from_time_list">[docs]</a><span class="k">def</span> <span class="nf">grab_years_from_time_list</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Process the input time list to extract a list of Years (str)</span>
+<span class="sd">    Note: This could be a list of Advisories as well. If so, </span>
+<span class="sd">    simply return the advisory number, though it will probably not be used</span>
+
+<span class="sd">    Parameters: </span>
+<span class="sd">        list_of_times: List of (str) time in the format %Y%m%d%H</span>
+<span class="sd">    Returns:</span>
+<span class="sd">        list of years values</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">list_of_years</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">list_of_times</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">value</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">time</span><span class="p">,</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">year</span>
+        <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+            <span class="n">value</span><span class="o">=</span><span class="n">time</span> 
+        <span class="n">list_of_years</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">list_of_years</span></div>
+
+<div class="viewcode-block" id="generate_list_of_instances"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_list_of_instances">[docs]</a><span class="k">def</span> <span class="nf">generate_list_of_instances</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span> <span class="n">in_gridname</span><span class="p">,</span> <span class="n">in_instance</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function matches every entry in the list_of_times with an associated instance.</span>
+<span class="sd">    The structure of this code is such that, in the future, we may have scenarios where</span>
+<span class="sd">    the value of the instance may change for a given year. </span>
+
+<span class="sd">    Currently, though, we will simply build a list of identical instances.</span>
+<span class="sd">    The value of the selected instance may be passed in by the caller</span>
+
+<span class="sd">    Parameters: </span>
+<span class="sd">       list_of_times: list (str)(%Y%m%d%H) ordered set of instances from which to build new URLs</span>
+<span class="sd">       in_gridname: current gridname from a representative INPUT url</span>
+<span class="sd">       in_gridname: current instance from a representative INPUT url</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        instance_list: ordered list of instances to use for building a set of new urls. </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">num_entries</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">)</span>
+    <span class="n">gridname</span> <span class="o">=</span> <span class="n">in_gridname</span> <span class="c1"># Get default values</span>
+    <span class="n">instance</span> <span class="o">=</span> <span class="n">in_instance</span>
+
+    <span class="n">instance_list</span> <span class="o">=</span> <span class="n">num_entries</span><span class="o">*</span><span class="p">[</span><span class="n">instance</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">instance_list</span> </div>
+
+<span class="c1"># Expect this to be part of a looped  list of times from which appending will be applied</span>
+<div class="viewcode-block" id="construct_url_from_yaml"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.construct_url_from_yaml">[docs]</a><span class="k">def</span> <span class="nf">construct_url_from_yaml</span><span class="p">(</span> <span class="n">config</span><span class="p">,</span> <span class="n">intime</span><span class="p">,</span> <span class="n">instance</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">,</span> <span class="n">gridname</span><span class="p">,</span> <span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="kc">None</span> <span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;    </span>
+<span class="sd">    Given a single time (%Y%m%d%H) or advisory, the gridname, instance, and ensemble values</span>
+<span class="sd">    use the entries in config to build a proper URL</span>
+<span class="sd">    If applying to Hurricanes, we need to also applyld_url_list_from_yaml_and_timest the values for hurricane_yaml_year, and</span>
+<span class="sd">    hurricane_yaml_source</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># hurricane_yaml_source is a special case scenario</span>
+    <span class="k">if</span> <span class="n">is_hurricane</span><span class="p">(</span><span class="n">intime</span><span class="p">):</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Request for YAML build of Hurricane URL. subdir is </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">hurricane_yaml_source</span><span class="p">))</span>
+        <span class="n">intime</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">intime</span><span class="p">)</span>
+        <span class="n">subdir</span> <span class="o">=</span> <span class="n">hurricane_yaml_year</span> <span class="c1"># This is certainly NOT generalized</span>
+        <span class="n">source</span><span class="o">=</span><span class="n">hurricane_yaml_source</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">subdir</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">intime</span><span class="p">,</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">year</span>
+        <span class="n">source</span><span class="o">=</span><span class="s1">&#39;nam&#39;</span>
+    <span class="n">cfg</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;ADCIRC&#39;</span><span class="p">]</span>
+    <span class="n">url</span> <span class="o">=</span> <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;baseurl&quot;</span><span class="p">]</span> <span class="o">+</span> \
+          <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;dodsCpart&quot;</span><span class="p">]</span> <span class="o">%</span> <span class="p">(</span><span class="n">subdir</span><span class="p">,</span>
+          <span class="n">source</span><span class="p">,</span> <span class="n">intime</span><span class="p">,</span>
+          <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;AdcircGrid&quot;</span><span class="p">]</span> <span class="o">%</span> <span class="p">(</span><span class="n">gridname</span><span class="p">),</span>
+          <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;Machine&quot;</span><span class="p">],</span>
+          <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;Instance&quot;</span><span class="p">]</span> <span class="o">%</span> <span class="p">(</span><span class="n">instance</span><span class="p">),</span>
+          <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;Ensemble&quot;</span><span class="p">]</span> <span class="o">%</span> <span class="p">(</span><span class="n">ensemble</span><span class="p">),</span>
+          <span class="n">cfg</span><span class="p">[</span><span class="s2">&quot;fortNumber&quot;</span><span class="p">]</span>
+          <span class="p">)</span>
+    <span class="k">return</span> <span class="n">url</span></div>
+
+<div class="viewcode-block" id="construct_starttime_from_offset"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.construct_starttime_from_offset">[docs]</a><span class="k">def</span> <span class="nf">construct_starttime_from_offset</span><span class="p">(</span><span class="n">stoptime</span><span class="p">,</span><span class="n">ndays</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Construct an appropriate starttime given the stoptime and offset.</span>
+<span class="sd">    NOTE if this is a Hurricane advisory, we return an appropriate  </span>
+<span class="sd">    advisory assuming each advisory is 6 hoursa in duration. No</span>
+<span class="sd">    negative advisories are returned</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        stoptime (str) (%Y-%m-%d %H:%M:%S)</span>
+<span class="sd">        ndays: (int) number of 24 hours days to look back/forward</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">is_hurricane</span><span class="p">(</span><span class="n">stoptime</span><span class="p">):</span>
+        <span class="n">num_6hour_look_asides</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">24</span><span class="o">*</span><span class="n">ndays</span><span class="o">/</span><span class="mi">6</span><span class="p">)</span>
+        <span class="n">stopadv</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">stoptime</span><span class="p">)</span>
+        <span class="n">startadv</span><span class="o">=</span><span class="n">stopadv</span><span class="o">+</span><span class="n">num_6hour_look_asides</span> <span class="c1"># We normally assueme offset is negative but that is not enforced</span>
+        <span class="k">return</span> <span class="n">startadv</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tstop</span> <span class="o">=</span> <span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">stoptime</span><span class="p">,</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+        <span class="n">tstart</span> <span class="o">=</span> <span class="n">tstop</span> <span class="o">+</span> <span class="n">dt</span><span class="o">.</span><span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="n">ndays</span><span class="p">)</span>
+        <span class="n">starttime</span> <span class="o">=</span> <span class="n">tstart</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">starttime</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Fell out the bottom of construct_starttime_from_offset: Abort&#39;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="generate_urls_from_times"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_urls_from_times">[docs]</a><span class="k">class</span> <span class="nc">generate_urls_from_times</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Class that attempts to create a list of valid ASGS Urls based on the input time conditions and possibly a YAML file</span>
+<span class="sd">    that contains the URL structure</span>
+<span class="sd">    This is NOT expected to be highly generalized and is intended for the ADDA/AST pipelines</span>
+
+<span class="sd">    We hardwire the concept that hurricane data files timestep every 6 hours. It is okay to have one or two </span>
+<span class="sd">    &quot;wrong&quot; urls in the list as Harvester should be pretty resilient.  </span>
+
+<span class="sd">    If the caller elects to define output URLs based on times/ndays, then a YAML decribing the desired structure is required.</span>
+<span class="sd">    If the caller elects to also supply a URL, then the output URL structure will be gleened from it.</span>
+<span class="sd">        regardless of instance</span>
+
+<span class="sd">    Lastly, the final product data series may extend before or after the the stop/start times. As an example, </span>
+<span class="sd">        If grabbing a nowcast, the data series may begine 6 hours before the indicated url time. </span>
+
+<span class="sd">    Pass in a URL and the instance, gridname,  are scraped from it</span>
+<span class="sd">    If YAML you must specify these terms.</span>
+
+<span class="sd">    Possible scenarios: (options such as instance/ensemble can be applied to all)</span>
+<span class="sd">        1) Input timein/timeout and the config_name YML (nominal name is url_framework.yml). This will </span>
+<span class="sd">               generate a set of URLs between the two time ranges. This can work for a Hurricane BUT</span>
+<span class="sd">               timein/timeout must be ADVISORY values</span>
+<span class="sd">        2) Input timeout and offset and the config_name YML (nominal name is url_framework.yml). This will </span>
+<span class="sd">               generate a set of URLs between the two time ranges. This can work for a Hurricane BUT</span>
+<span class="sd">               timeout must be ADVISORY values</span>
+<span class="sd">        3) Input URL and offset only. This will scrape the time/advisory from the URL and offset it in 6 hour steps</span>
+<span class="sd">               generate a set of URLs between the two time/advisory ranges. This can work for a Hurricanes </span>
+
+<span class="sd">    Parameters: </span>
+<span class="sd">        url: (str) A single URL from which more URLs may be built</span>
+<span class="sd">        ndays: (int) Number of look back/ahead days from the stoptime value </span>
+<span class="sd">        starttime: (str) Selected time to begin the building of the list (YYYY-mm-dd HH:MM:SS)</span>
+<span class="sd">        stoptime: (str) Selected time to end the building of the list (YYYY-mm-dd HH:MM:SS)</span>
+<span class="sd">        config_name: (str) path/filename to yaml file that contains the INSTANCE mappings</span>
+<span class="sd">        hurricane_yaml_source=None: (str) This is a special case. If you want to build Hurricane URLs from a YAML, </span>
+<span class="sd">            then you will need to specify the subdir name directly, eg &#39;al09&#39;. This will replace the default value of nam. </span>
+<span class="sd">        hurricane_yaml_year: (str) is part of the Hurricane special case. No way to dig out the year directory name without the user specifying it</span>
+<span class="sd">            only needed for YAML based hurricane construction. Eg .../thredds/dodsC/2021/al09/11/ec95d/...</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timein</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">ndays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">grid_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">instance_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="c1"># The Hurricane special terms are only usedY if you are requesting to build from a YAML AND the caller wants Hurricane data</span>
+        <span class="c1"># If a URL passed in, then gridname and instance can be gotten from it. ensembles values are expected to be changed by the user</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">config_name</span> <span class="o">=</span> <span class="n">config_name</span>
+        <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">words</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">ensemble</span><span class="o">=</span><span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="o">=</span><span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="o">=</span><span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">stoptime</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">],</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span> <span class="c1"># Can be overridden by args.stoptime</span>
+            <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span> <span class="c1"># Must be a hurricane</span>
+                <span class="n">stoptime</span><span class="o">=</span><span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">url</span><span class="o">=</span><span class="n">url</span>
+        <span class="c1"># If No url, then build URLs from a YAML. This requires the caller to specify gridname, instance, and ensemble</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span> <span class="o">=</span> <span class="n">instance_name</span> <span class="c1"># This is for potentially mapping new instances to urls</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span> <span class="o">=</span> <span class="n">grid_name</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Must specify an instance value if building URLs based on a YAML. None specified: Abort&#39;</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Must specify a grid_name if building URLs based on a YAML. None specified: Abort&#39;</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="n">hurricane_yaml_source</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="n">hurricane_yaml_year</span> <span class="c1"># Cannot span multiple years using Hurricane-YAML construction</span>
+
+        <span class="c1"># timeout MUST be supplied somehow</span>
+        <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">stoptime</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;timeout is not set and no URL provided: Abort&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">timeout</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">stoptime</span><span class="o">=</span><span class="n">timeout</span>
+
+        <span class="c1"># Find timein</span>
+        <span class="k">if</span> <span class="n">timein</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">ndays</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;No timein or ndays specified.&#39;</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">starttime</span> <span class="o">=</span> <span class="n">construct_starttime_from_offset</span><span class="p">(</span><span class="n">stoptime</span><span class="p">,</span><span class="n">ndays</span><span class="p">)</span> <span class="c1"># Will return an advisory value if appropriate</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">starttime</span> <span class="o">=</span> <span class="n">timein</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">starttime</span><span class="o">=</span><span class="n">starttime</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stoptime</span><span class="o">=</span><span class="n">stoptime</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ndays</span><span class="o">=</span><span class="n">ndays</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Current time (or advisory) range is </span><span class="si">{}</span><span class="s1"> to </span><span class="si">{}</span><span class="s1">. Specified ndays is </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">starttime</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">stoptime</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndays</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+           <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Current estimated ensemble </span><span class="si">{}</span><span class="s1">, instance </span><span class="si">{}</span><span class="s1">, and gridname </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ensemble</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="p">))</span>
+
+<div class="viewcode-block" id="generate_urls_from_times.build_url_list_from_template_url_and_times"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_template_url_and_times">[docs]</a>    <span class="k">def</span> <span class="nf">build_url_list_from_template_url_and_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ensemble</span><span class="o">=</span><span class="s1">&#39;nowcast&#39;</span><span class="p">)</span><span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        We seek to build a set of compatible URLs spanning the input time range based on the</span>
+<span class="sd">        structure of the input URL. We expect the caller to provide a proper ensemble value</span>
+<span class="sd">        for the new URLs. </span>
+<span class="sd">        We expect no changes in the grid name. Only change in the ensemble and times are expected</span>
+<span class="sd">   </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">            ensemble: (str) Caller specified ensemble. This way one could input a namforecast url but request nowcasts, eg.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            urls: list(str). List of valid URLs for processing</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span>
+        <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">starttime</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">stoptime</span><span class="p">)</span> <span class="c1"># This could also be an advisory range</span>
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_steps_from_range</span><span class="p">(</span><span class="n">time_range</span><span class="p">)</span>
+        <span class="n">list_of_instances</span> <span class="o">=</span> <span class="n">generate_list_of_instances</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="p">)</span>
+        <span class="n">urls</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">time</span><span class="p">,</span><span class="n">instance</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span><span class="n">list_of_instances</span><span class="p">):</span>
+            <span class="n">words</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+            <span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">=</span><span class="n">ensemble</span>
+            <span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span>
+            <span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">]</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="p">)</span> <span class="c1"># Need to ensure because we could have an advisory come in </span>
+            <span class="n">urls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">words</span><span class="p">))</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Constructed </span><span class="si">{}</span><span class="s1"> urls of ensemble </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">),</span><span class="n">ensemble</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">urls</span></div>
+
+<div class="viewcode-block" id="generate_urls_from_times.build_url_list_from_template_url_and_offset"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_template_url_and_offset">[docs]</a>    <span class="k">def</span> <span class="nf">build_url_list_from_template_url_and_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ensemble</span><span class="o">=</span><span class="s1">&#39;nowcast&#39;</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        We seek to build a set of compatible URLs starting from the URL embedded time </span>
+<span class="sd">        and walking back/forward offset days while using the provided ensemble value.</span>
+<span class="sd">        Eg, you might send in a forecast and want back a list of nowcasts for the same grid</span>
+<span class="sd">        structure of the input URL. We expect the caller to provide a proper ensemble value</span>
+<span class="sd">        for the new URLs. </span>
+<span class="sd">        We expect no changes in the grid name. Only change in the ensemble and times are expected</span>
+<span class="sd">   </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">            ensemble: (str)( def of &quot;nowcast&quot;) The desired ensemble word for the resultant urls</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            urls: list(str). List of valid URLs for processing</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">url</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">url</span>
+        <span class="n">time_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stoptime</span>  <span class="c1"># Could also be an advisory</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndays</span>
+        <span class="k">if</span> <span class="n">offset</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Offset &gt;0 specified: Behavior is not tested&#39;</span><span class="p">)</span>
+        <span class="c1">#timein = url.split(&#39;/&#39;)[-6] # Maybe need to check for a Hurricane Advisory also </span>
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_steps_from_offset</span><span class="p">(</span><span class="n">time_value</span><span class="p">,</span><span class="n">offset</span><span class="p">)</span>
+        <span class="n">list_of_instances</span> <span class="o">=</span> <span class="n">generate_list_of_instances</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="p">)</span>
+        <span class="n">urls</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">time</span><span class="p">,</span><span class="n">instance</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span><span class="n">list_of_instances</span><span class="p">):</span>
+            <span class="n">words</span><span class="o">=</span><span class="n">url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+            <span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">]</span><span class="o">=</span><span class="n">ensemble</span>
+            <span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">]</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span>
+            <span class="n">words</span><span class="p">[</span><span class="o">-</span><span class="mi">6</span><span class="p">]</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">time</span><span class="p">)</span> <span class="c1"># Need this in case its an advisory value</span>
+            <span class="n">urls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">words</span><span class="p">))</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Constructed </span><span class="si">{}</span><span class="s1"> urls of ensemble </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">),</span><span class="n">ensemble</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">urls</span></div>
+
+<span class="c1"># Approach Used by ADDA</span>
+<div class="viewcode-block" id="generate_urls_from_times.build_url_list_from_yaml_and_times"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_yaml_and_times">[docs]</a>    <span class="k">def</span> <span class="nf">build_url_list_from_yaml_and_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ensemble</span><span class="o">=</span><span class="s1">&#39;nowcast&#39;</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        We seek to build a set of compatible URLs spanning the input time range based on the</span>
+<span class="sd">        structure of asgs urls in the config_name. The structure of the output URLs will be based on the </span>
+<span class="sd">        entries in the associated yaml file. Since, no url will be provided, we must ask the caller to provide</span>
+<span class="sd">        the gridname, ensemble, and instance. We expect the caller to provide a proper Instance value</span>
+<span class="sd">        for the new URLs. </span>
+<span class="sd">        We REQUIRE the grid name. Only change in the ensemble and times are expected</span>
+<span class="sd">   </span>
+<span class="sd">        Uses the following class variables:</span>
+<span class="sd">        time_range: (tuple) (datetime,datetime). Time range inclusive (could also be hurricane advisories)</span>
+<span class="sd">        instance: (str) if set the used for all urls. If not, attempt to find it in the yaml</span>
+<span class="sd">        gridname: (str) name for the grid</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            ensemble: (str) ensemble name (dafaults to nowcast)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            urls: list(str). List of valid URLs for processing</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;self.config_name is None. Cannot use the YAML generators: Abort&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">load_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span> <span class="c1"># OSError:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No URL structural config  yml file found.</span><span class="si">{}</span><span class="s1">: Abort&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_name</span><span class="p">))</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        
+        <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">starttime</span><span class="p">,</span><span class="bp">self</span><span class="o">.</span><span class="n">stoptime</span><span class="p">)</span> <span class="c1"># Could also be a range of advisories</span>
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_steps_from_range</span><span class="p">(</span><span class="n">time_range</span><span class="p">)</span>
+        <span class="n">list_of_instances</span> <span class="o">=</span> <span class="n">generate_list_of_instances</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="p">)</span>
+        <span class="n">urls</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">list_of_instances</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">time</span><span class="p">,</span><span class="n">instance</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span><span class="n">list_of_instances</span><span class="p">):</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">construct_url_from_yaml</span><span class="p">(</span> <span class="n">config</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span> <span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hurricane_yaml_year</span><span class="p">,</span> <span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hurricane_yaml_source</span> <span class="p">)</span>
+            <span class="n">urls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Constructed </span><span class="si">{}</span><span class="s1"> urls of ensemble </span><span class="si">{}</span><span class="s1"> based on the YML&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">),</span><span class="n">ensemble</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">urls</span></div>
+
+<span class="c1"># Approach Used by ADDA</span>
+<div class="viewcode-block" id="generate_urls_from_times.build_url_list_from_yaml_and_offset"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.generate_urls_from_times.build_url_list_from_yaml_and_offset">[docs]</a>    <span class="k">def</span> <span class="nf">build_url_list_from_yaml_and_offset</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ensemble</span><span class="o">=</span><span class="s1">&#39;nowcast&#39;</span><span class="p">)</span><span class="o">-&gt;</span><span class="nb">list</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        We seek to build a set of compatible URLs spanning the input time range based on the</span>
+<span class="sd">        structure of asgs urls in the config_name. The structure of the output URLs will be based on the </span>
+<span class="sd">        entries in the associated yaml file. Since, no url will be provided, we must ask the caller to provide</span>
+<span class="sd">        the gridname, ensemble, and instance. We expect the caller to provide a proper Instance value</span>
+<span class="sd">        for the new URLs. </span>
+<span class="sd">        We REQUIRE the grid name. Only change in the ensemble and times are expected</span>
+<span class="sd">   </span>
+<span class="sd">        Uses the following class variables:</span>
+<span class="sd">        offset: (int). Offset in days</span>
+<span class="sd">        instance: (str) if set then used for all urls</span>
+<span class="sd">        gridname: (str) name for the grid</span>
+<span class="sd">        ensemble: (str) ensemble name (dafaults to nowcast)</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            ensemble: (str) ensemble name (dafaults to nowcast)</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            urls: list(str). List of valid URLs for processing</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;self.config_name is None. Cannot use the YAML generators: Abort&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">load_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_name</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No URL structural config  yml file found.</span><span class="si">{}</span><span class="s1">: Abort&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config_name</span><span class="p">))</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">time_value</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stoptime</span> <span class="c1"># Could also be an advisory</span>
+        <span class="n">offset</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ndays</span>
+        <span class="k">if</span> <span class="n">offset</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Offset &gt;0 specified: Behavior is not tested&#39;</span><span class="p">)</span>
+                 
+        <span class="n">list_of_times</span> <span class="o">=</span> <span class="n">generate_six_hour_time_steps_from_offset</span><span class="p">(</span><span class="n">time_value</span><span class="p">,</span><span class="n">offset</span><span class="p">)</span>
+        <span class="n">list_of_instances</span> <span class="o">=</span> <span class="n">generate_list_of_instances</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="p">)</span>
+        <span class="n">urls</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">time</span><span class="p">,</span><span class="n">instance</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">,</span><span class="n">list_of_instances</span><span class="p">):</span>
+            <span class="n">url</span> <span class="o">=</span> <span class="n">construct_url_from_yaml</span><span class="p">(</span> <span class="n">config</span><span class="p">,</span> <span class="n">time</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">instance_name</span><span class="p">,</span> <span class="n">ensemble</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span> <span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hurricane_yaml_year</span><span class="p">,</span> <span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hurricane_yaml_source</span> <span class="p">)</span>
+            <span class="n">urls</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Constructed </span><span class="si">{}</span><span class="s1"> urls of ensemble </span><span class="si">{}</span><span class="s1"> based on the YML and offset&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">list_of_times</span><span class="p">),</span><span class="n">ensemble</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">urls</span></div></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../harvester.html#harvester.generate_urls_from_times.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A simple main method to demonstrate the use of this class</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">main_config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">init_logging</span><span class="p">(</span><span class="n">subdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_file</span><span class="o">=</span><span class="s1">&#39;../config/main.yml&#39;</span><span class="p">)</span>
+
+    <span class="n">config_name</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;../config&#39;</span><span class="p">,</span> <span class="s1">&#39;url_framework.yml&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Set up IO env</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Product Level Working in </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()))</span>
+
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">instance_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Ignoring args.instance_name for the testing sequence&#39;</span><span class="p">)</span>
+
+    <span class="c1">#</span>
+    <span class="c1"># Need to specify precedence in the arguments provided for testing main</span>
+    <span class="c1">#</span>
+
+    <span class="k">if</span>  <span class="n">args</span><span class="o">.</span><span class="n">url</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Selecting a template-url generation method&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">timein</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Selecting a specific time-range procedure&#39;</span><span class="p">)</span>
+            <span class="n">rpl</span> <span class="o">=</span> <span class="n">generate_urls_from_times</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">url</span><span class="p">,</span><span class="n">timein</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timein</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="n">ndays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">grid_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">instance_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">new_urls</span> <span class="o">=</span> <span class="n">rpl</span><span class="o">.</span><span class="n">build_url_list_from_template_url_and_times</span><span class="p">(</span><span class="n">ensemble</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ensemble</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Selecting time+ndays procedure&#39;</span><span class="p">)</span>
+            <span class="n">rpl</span> <span class="o">=</span> <span class="n">generate_urls_from_times</span><span class="p">(</span><span class="n">url</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">url</span><span class="p">,</span><span class="n">timein</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="n">ndays</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ndays</span><span class="p">,</span> <span class="n">grid_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">instance_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+            <span class="n">new_urls</span> <span class="o">=</span> <span class="n">rpl</span><span class="o">.</span><span class="n">build_url_list_from_template_url_and_offset</span><span class="p">(</span><span class="n">ensemble</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ensemble</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Selecting a YAML generation method&#39;</span><span class="p">)</span> 
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">grid_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">instance_name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">config_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;YAML-based procedurs requires gridname, instance_name and config_name&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">hurricane_yaml_year</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">hurricane_yaml_source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Detected values required for building YAML-based Hurricane urls&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">timein</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Selecting a specific time-range procedure&#39;</span><span class="p">)</span>
+            <span class="n">rpl</span> <span class="o">=</span> <span class="n">generate_urls_from_times</span><span class="p">(</span><span class="n">timein</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timein</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="n">ndays</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">grid_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span> 
+                <span class="n">instance_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">instance_name</span><span class="p">,</span> <span class="n">config_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">config_name</span><span class="p">,</span> <span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">hurricane_yaml_year</span><span class="p">,</span><span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">hurricane_yaml_source</span><span class="p">)</span>
+            <span class="n">new_urls</span> <span class="o">=</span> <span class="n">rpl</span><span class="o">.</span><span class="n">build_url_list_from_yaml_and_times</span><span class="p">(</span><span class="n">ensemble</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ensemble</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Selecting time+ndays procedure&#39;</span><span class="p">)</span>
+            <span class="n">rpl</span> <span class="o">=</span> <span class="n">generate_urls_from_times</span><span class="p">(</span><span class="n">timein</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">timeout</span><span class="p">,</span> <span class="n">ndays</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ndays</span><span class="p">,</span> <span class="n">grid_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">grid_name</span><span class="p">,</span>
+                <span class="n">instance_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">instance_name</span><span class="p">,</span> <span class="n">config_name</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">config_name</span><span class="p">,</span> <span class="n">hurricane_yaml_year</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">hurricane_yaml_year</span><span class="p">,</span><span class="n">hurricane_yaml_source</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">hurricane_yaml_source</span><span class="p">)</span>
+            <span class="n">new_urls</span> <span class="o">=</span> <span class="n">rpl</span><span class="o">.</span><span class="n">build_url_list_from_yaml_and_times</span><span class="p">(</span><span class="n">ensemble</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">ensemble</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="n">new_urls</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--url&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;url&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Input URL that may be used to build new output urls&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ndays&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;ndays&#39;</span><span class="p">,</span><span class="n">help</span><span class="o">=</span><span class="s1">&#39;Day lag (usually &lt; 0)&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--timeout&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;timeout&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;YYYY-mm-dd HH:MM:SS. Latest day of analysis&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--timein&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;timein&#39;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;YYYY-mm-dd HH:MM:SS .Start day of analysis. &#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--config_name&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;config_name&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;String: yml config which contains URL structural information&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--instance_name&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;instance_name&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;String: Choose instance name. Required if using a YAML-based URL construction&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--grid_name&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;grid_name&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;String: Choose grid_name. Required if using a YAML-based URL construction&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--ensemble&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;ensemble&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;nowcast&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;String: Specify ensemble name &#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--hurricane_yaml_year&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;hurricane_yaml_year&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;String: Needed only for Hurricane/YML procedures&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--hurricane_yaml_source&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;hurricane_yaml_source&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;String: Needed only for Hurricane/YML procedures&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+<span class="c1"># cat ../config/local_instance.yml</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">AST</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../harvester.html">harvester package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../processing.html">processing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utilities.html">utilities package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, AST: AdcircSupportTools: RENCI EDS.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

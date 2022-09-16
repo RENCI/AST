@@ -1,0 +1,562 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>harvester.get_observations_stations &#8212; AST  documentation</title>
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for harvester.get_observations_stations</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1"># SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># SPDX-License-Identifier: GPL-3.0-or-later</span>
+<span class="c1"># SPDX-License-Identifier: LicenseRef-RENCI</span>
+<span class="c1"># SPDX-License-Identifier: MIT</span>
+
+<span class="c1">#</span>
+<span class="c1"># The get_stations methods for NOAA,NDBC and CONTRAILS are basically all the possible stations</span>
+<span class="c1"># that we might want to get. These are slowly varying lists. Station ids that do not or no longer</span>
+<span class="c1"># exist are quietly ignored.</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">os</span><span class="o">,</span><span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">datetime</span> <span class="k">as</span> <span class="nn">dt</span>
+
+<span class="kn">import</span> <span class="nn">harvester.fetch_data</span> <span class="k">as</span> <span class="nn">fetch_data</span>
+
+<span class="kn">from</span> <span class="nn">utilities.utilities</span> <span class="k">import</span> <span class="n">utilities</span> <span class="k">as</span> <span class="n">utilities</span>
+<span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">ArgumentParser</span>
+
+<div class="viewcode-block" id="get_obs_stations"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.get_obs_stations">[docs]</a><span class="k">class</span> <span class="nc">get_obs_stations</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; </span>
+<span class="sd">    Class to establish connection to the lower level code to access noaa, ncbc, or contrails servers and acquire a range of product levels for the set</span>
+<span class="sd">    of stations input stations</span>
+
+<span class="sd">    Input station IDs must be stationids and they are treated as string values.</span>
+
+<span class="sd">    This is the Harvester layer that would nornmally be called by ADDA,APSVIZ,Reanalysis work</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Currently supported sources and products</span>
+
+    <span class="n">SOURCES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;NOAA&#39;</span><span class="p">,</span><span class="s1">&#39;CONTRAILS&#39;</span><span class="p">,</span><span class="s1">&#39;NDBC&#39;</span><span class="p">,</span><span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">]</span>
+    <span class="n">NOAA_PRODUCTS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;water_level&#39;</span><span class="p">,</span><span class="s1">&#39;hourly_height&#39;</span><span class="p">,</span><span class="s1">&#39;predictions&#39;</span><span class="p">,</span><span class="s1">&#39;air_pressure&#39;</span><span class="p">,</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span>
+    <span class="n">CONTRAILS_PRODUCTS</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;river_water_level&#39;</span><span class="p">,</span><span class="s1">&#39;coastal_water_level&#39;</span><span class="p">,</span><span class="s1">&#39;air_pressure&#39;</span><span class="p">]</span>
+    <span class="n">NDBC_PRODUCTS</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;wave_height&#39;</span><span class="p">,</span><span class="s1">&#39;air_pressure&#39;</span><span class="p">,</span><span class="s1">&#39;wind_speed&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Default to NOAA/NOS WL run</span>
+
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">&#39;NOAA&#39;</span><span class="p">,</span><span class="n">product</span><span class="o">=</span><span class="s1">&#39;water_level&#39;</span><span class="p">,</span> 
+                <span class="n">contrails_yamlname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span><span class="n">knockout_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">station_list_file</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        get_obs_stations constructor</span>
+
+<span class="sd">        Parameters: </span>
+<span class="sd">            contrails_yamlname: &lt;str&gt; Location of the login info for Contrails (optional) Not used if source=NOAA)</span>
+<span class="sd">            source: &lt;str&gt; Named source. For now either NOAA or CONTRAILS</span>
+<span class="sd">            product: &lt;str&gt;, product type desired. Values are source-specific</span>
+<span class="sd">            knockout: &lt;dict&gt; used to remove ranges of time(s) for a given station</span>
+<span class="sd">            station_list_file: &lt;str&gt; file containing station id data </span>
+
+<span class="sd">         The input OBS.YML file is used only as a placeholder for future considerations</span>
+<span class="sd">   </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">source</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;NOAA&#39;</span><span class="p">:</span>
+            <span class="n">selected_products</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NOAA_PRODUCTS</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;CONTRAILS&#39;</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">contrails_yamlname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;For Contrails work an authentication yaml is required. It was missing: Abort&#39;</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">selected_products</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">CONTRAILS_PRODUCTS</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;NDBC&#39;</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">:</span>
+            <span class="n">selected_products</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">NDBC_PRODUCTS</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC request source is </span><span class="si">{self.source}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;No valid source specified </span><span class="si">{self.source}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Setup master list of stations. Can override with a list of stationIDs later if you must</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;NOAA&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">station_list</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">get_noaa_stations</span><span class="p">(</span><span class="n">station_list_file</span><span class="p">)</span>
+
+        <span class="c1"># It is up to the caller to differentiate river from coastal stations </span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;CONTRAILS&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">station_list</span><span class="o">=</span><span class="n">fetch_data</span><span class="o">.</span><span class="n">get_contrails_stations</span><span class="p">(</span><span class="n">station_list_file</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;NDBC&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">station_list</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">get_ndbc_buoys</span><span class="p">(</span><span class="n">station_list_file</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">station_list</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">get_ndbc_buoys</span><span class="p">(</span><span class="n">station_list_file</span><span class="p">)</span>
+       
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Fetched station list from </span><span class="si">{self.station_list}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Specify the desired products</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">product</span> <span class="o">=</span> <span class="n">product</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">product</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">selected_products</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Requested product not available </span><span class="si">{self.product}</span><span class="s1">, Possible choices </span><span class="si">{selected_products}</span><span class="s1">&#39;</span><span class="p">)</span> 
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># May Need to get Contrails secrets </span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">==</span><span class="s1">&#39;CONTRAILS&#39;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">contrails_yamlname</span><span class="o">=</span><span class="n">contrails_yamlname</span>  
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Got Contrails access information&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Specify up any knockout filename based exclusions as a Dict()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">knockout_dict</span> <span class="o">=</span> <span class="n">knockout_dict</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">knockout_dict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;A knockout dict has been specified&#39;</span><span class="p">)</span>
+
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;SOURCE to fetch from </span><span class="si">{self.source}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;PRODUCT to fetch is </span><span class="si">{self.product}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="get_obs_stations.remove_knockout_stations"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.get_obs_stations.remove_knockout_stations">[docs]</a>    <span class="k">def</span> <span class="nf">remove_knockout_stations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df_station</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Occasionally, a station can report poor results for large ranges of times. This</span>
+<span class="sd">        method allows the caller to nan those results</span>
+<span class="sd">        Input should be a dataframe of time indexing and stations as columns.</span>
+<span class="sd">        The time ranges specified in the args.knockout will be set to Nans inclusively.</span>
+<span class="sd">        This method can be useful when the indicated statin has historically shown </span>
+<span class="sd">        poor unexplained performance over a large window of time</span>
+
+<span class="sd">        Uses the class variables:</span>
+<span class="sd">        self.knockout</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">           dataframe: time x stations.</span>
+<span class="sd">           knockout_dict: &lt;dict&gt; Class variable instantiated at class invocation</span>
+<span class="sd">        Returns:</span>
+<span class="sd">           dataframe (time x stations) with self.knockout stations removed</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">stations</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">knockout_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="c1"># How many. We anticipate only one but multiple stations can be handled</span>
+        <span class="n">cols</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="nb">map</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span><span class="n">df_station</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_list</span><span class="p">()))</span>
+        <span class="c1"># 1 Do any stations exist? If not quietly leave</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">bool</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">stations</span><span class="p">)</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">cols</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="n">df_station</span>
+        <span class="c1"># 2 Okay for each station loop over time range(s) and NaN away</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Stations is </span><span class="si">{stations}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;dict </span><span class="si">{self.knockout_dict}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">df_station</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">station</span> <span class="ow">in</span> <span class="n">stations</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">knockout_dict</span><span class="p">[</span><span class="n">station</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">df_station</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">value</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span><span class="n">value</span><span class="p">[</span><span class="mi">1</span><span class="p">]][</span><span class="n">station</span><span class="p">]</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Knockout dict has been applied&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df_station</span></div>
+
+<div class="viewcode-block" id="get_obs_stations.override_station_IDs"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.get_obs_stations.override_station_IDs">[docs]</a>    <span class="k">def</span> <span class="nf">override_station_IDs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">station_list</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        This method allows the user to override the current list of stations to process</span>
+<span class="sd">        They will be subject to the usual validity testing. We overwrite any station data fetched in the class</span>
+<span class="sd">    </span>
+<span class="sd">        Parameters:</span>
+<span class="sd">            stationlist: list(str) of stationIDs. Overrides any existing list.</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            self.station_list: list(str) of stations in the class variable</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">station_list</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">station_list</span><span class="o">=</span><span class="n">station_list</span>
+            <span class="n">utility</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Manually resetting value of station_list </span><span class="si">{self.station_list}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">utility</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Manual station list can only be a list of ids </span><span class="si">{self.station_list}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="get_obs_stations.remove_missingness_stations"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.get_obs_stations.remove_missingness_stations">[docs]</a>    <span class="k">def</span> <span class="nf">remove_missingness_stations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df_in</span><span class="p">,</span> <span class="n">max_nan_percentage_cutoff</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span><span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        maxmum percentage of allowable nans in any station. </span>
+<span class="sd">        max_nan_percentage_cutoff indicates the MINIMUM percent valid data per station. Corresponds to</span>
+<span class="sd">        (100-max_nan_percentage_cutoff) as the rate of nans per station</span>
+<span class="sd">        Note: This should generally only apply to high resolution data (eg 6 min NOAA)</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            df_in: Input dataframe (time x stations).</span>
+<span class="sd">            max_nan_max_nan_percentage_cutoff: &lt;float&gt;. Percent of allowable nans. (dafault=100)</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            df_out: dataframe (time x stationID) with stations kept</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">num_times</span><span class="o">=</span><span class="n">df_in</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">df_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">()</span>
+        <span class="n">df_counts</span><span class="p">[</span><span class="s1">&#39;VALUES&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_in</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+        <span class="n">df_counts</span><span class="p">[</span><span class="s1">&#39;PERCENTAGE_VALUES&#39;</span><span class="p">]</span><span class="o">=</span><span class="mi">100</span><span class="o">*</span><span class="n">df_counts</span><span class="o">/</span><span class="n">num_times</span>
+        <span class="n">df_counts</span><span class="p">[</span><span class="s1">&#39;KEEP_STATION&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">df_counts</span><span class="p">[</span><span class="s1">&#39;PERCENTAGE_VALUES&#39;</span><span class="p">]</span><span class="o">&gt;=</span><span class="mi">100</span><span class="o">-</span><span class="n">max_nan_percentage_cutoff</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s1">&#39;Station thresholding status </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">df_counts</span><span class="p">))</span>
+        <span class="c1"># Now filter away</span>
+        <span class="n">df_out</span> <span class="o">=</span> <span class="n">df_in</span><span class="p">[</span> <span class="n">df_counts</span><span class="p">[</span> <span class="n">df_counts</span><span class="p">[</span><span class="s1">&#39;KEEP_STATION&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="kc">True</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span>
+        <span class="n">exclude_station_list</span> <span class="o">=</span> <span class="n">df_in</span><span class="p">[</span> <span class="n">df_counts</span><span class="p">[</span> <span class="n">df_counts</span><span class="p">[</span><span class="s1">&#39;KEEP_STATION&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="kc">True</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">tolist</span><span class="p">()]</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Remaining </span><span class="si">{df_out.shape[1]}</span><span class="s2"> stations based on a percent cutoff of </span><span class="si">{max_nan_percentage_cutoff}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Removing the following stations because of Max Nan %:</span><span class="si">{exclude_station_list}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df_out</span></div>
+
+<span class="c1"># Choosing a sampling min is non-trivial and depends on the data product selected. Underestimating is better than overestimating</span>
+<span class="c1"># Since we will do a rolling averager later followed by a final resampling at 1 hour freq.</span>
+
+<div class="viewcode-block" id="get_obs_stations.fetch_station_product"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.get_obs_stations.fetch_station_product">[docs]</a>    <span class="k">def</span> <span class="nf">fetch_station_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">time_range</span><span class="p">,</span> <span class="n">return_sample_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetch the desire data. The main information is part of the class (sources, products, etc.). However, one must still specify the return_sample_minutes</span>
+<span class="sd">        to sample the data. This harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn&#39;t pad nans), and then</span>
+<span class="sd">        resample the data at the desired freq (in minutes)</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            time_range: &lt;Tuple&gt; (str,str). Starttime,endtime,inclusive. format=&#39;%Y-%m-%d %H:%M:%S&#39; </span>
+<span class="sd">            return_sample_min: &lt;int&gt; sampling frequency of the returned, interpolated, data set</span>
+<span class="sd">            interval: &lt;str&gt;: Values of None or &#39;h&#39;. Only applied to NOAA. None gives full avail freq</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            data: &lt;dataframe&gt; Sampled data of dims (time x stations)</span>
+<span class="sd">            meta: &lt;dataframe&gt; associated metadata</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">starttime</span> <span class="o">=</span> <span class="n">time_range</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">endtime</span><span class="o">=</span><span class="n">time_range</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Attempt a product fetch for the time range </span><span class="si">{starttime}</span><span class="s1">-</span><span class="si">{endtime}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">template</span> <span class="o">=</span> <span class="s2">&quot;An exception of type </span><span class="si">{0}</span><span class="s2"> occurred.&quot;</span>
+
+        <span class="k">if</span> <span class="n">interval</span> <span class="ow">is</span> <span class="s1">&#39;None&#39;</span><span class="p">:</span>
+            <span class="n">interval</span> <span class="o">=</span> <span class="kc">None</span> <span class="c1"># Just double checking</span>
+
+        <span class="n">time_range</span><span class="o">=</span><span class="p">(</span><span class="n">starttime</span><span class="p">,</span><span class="n">endtime</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;NOAA&#39;</span><span class="p">:</span>
+            <span class="n">excludedStations</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+            <span class="c1"># Use default station list</span>
+            <span class="n">noaa_stations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">station_list</span>
+            <span class="n">noaa_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span> 
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">process_noaa_stations</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">noaa_stations</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">product</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="n">interval</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">return_sample_min</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NOAA error {template.format(type(ex).__name__, ex.args)}&#39;</span><span class="p">)</span>
+                <span class="c1">#sys.exit(1)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;CONTRAILS&#39;</span><span class="p">:</span>
+            <span class="n">contrails_config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">load_config</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">contrails_yamlname</span><span class="p">)[</span><span class="s1">&#39;DEFAULT&#39;</span><span class="p">]</span>
+            <span class="n">excludedStations</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+            <span class="n">meta</span><span class="o">=</span><span class="s1">&#39;_RIVERS&#39;</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">product</span><span class="o">==</span><span class="s1">&#39;river_water_level&#39;</span> <span class="k">else</span> <span class="s1">&#39;_COASTAL&#39;</span>
+            <span class="n">contrails_stations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">station_list</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="c1"># Get default station list</span>
+                <span class="n">contrails_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{meta}</span><span class="s2">_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span> 
+                <span class="n">data</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">process_contrails_stations</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">contrails_stations</span><span class="p">,</span> <span class="n">contrails_config</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">product</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">return_sample_min</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;CONTRAILS error {template.format(type(ex).__name__, ex.args)}&#39;</span><span class="p">)</span>
+                <span class="c1">#sys.exit(1)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;NDBC&#39;</span><span class="p">:</span>
+            <span class="n">excludedStations</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+            <span class="c1"># Use default station list</span>
+            <span class="n">ndbc_stations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">station_list</span>
+            <span class="n">ndbc_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">process_ndbc_buoys</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">ndbc_stations</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">product</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">return_sample_min</span><span class="p">)</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC data </span><span class="si">{data}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC process error {template.format(type(ex).__name__, ex.args)}&#39;</span><span class="p">)</span>
+                <span class="c1">#sys.exit(1)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">:</span>
+            <span class="n">excludedStations</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+            <span class="c1"># Use default station list</span>
+            <span class="n">ndbc_stations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">station_list</span>
+            <span class="n">ndbc_metadata</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;_{endtime.replace(&#39; &#39;,&#39;T&#39;)}&quot;</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">process_ndbc_historic_buoys</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">ndbc_stations</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">product</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">return_sample_min</span><span class="p">)</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC_HISTORIC data </span><span class="si">{data}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC_HISTORIC process error {template.format(type(ex).__name__, ex.args)}&#39;</span><span class="p">)</span>
+                <span class="c1">#sys.exit(1)</span>
+
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Finished with data source </span><span class="si">{self.source}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">knockout_dict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_knockout_stations</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing knockouts from acquired observational data&#39;</span><span class="p">)</span>
+
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Data file </span><span class="si">{}</span><span class="s1">, meta file </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">data</span><span class="p">,</span><span class="n">meta</span><span class="p">))</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Finished&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">meta</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span><span class="o">==</span><span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">:</span>
+            <span class="n">excludedStations</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+            <span class="c1"># Use default station list</span>
+            <span class="n">ndbc_stations</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">station_list</span>
+            <span class="n">ndbc_metadata</span><span class="o">=</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">endtime</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span><span class="s1">&#39;T&#39;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">data</span><span class="p">,</span> <span class="n">meta</span> <span class="o">=</span> <span class="n">fetch_data</span><span class="o">.</span><span class="n">process_ndbc_historic_buoys</span><span class="p">(</span><span class="n">time_range</span><span class="p">,</span> <span class="n">ndbc_stations</span><span class="p">,</span> <span class="n">data_product</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">product</span><span class="p">,</span> <span class="n">resample_mins</span><span class="o">=</span><span class="n">return_sample_min</span><span class="p">)</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC_HISTORIC data </span><span class="si">{data}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+                <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;NDBC_HISTORIC process error {template.format(type(ex).__name__, ex.args)}&#39;</span><span class="p">)</span>
+                <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Finished with data source </span><span class="si">{self.source}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">knockout_dict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_knockout_stations</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Removing knockouts from acquired observational data&#39;</span><span class="p">)</span>
+
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Data file </span><span class="si">{data}</span><span class="s1">, meta file </span><span class="si">{meta}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Finished&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">data</span><span class="p">,</span> <span class="n">meta</span></div>
+
+<div class="viewcode-block" id="get_obs_stations.fetch_smoothed_station_product"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.get_obs_stations.fetch_smoothed_station_product">[docs]</a>    <span class="k">def</span> <span class="nf">fetch_smoothed_station_product</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df_in</span><span class="p">,</span> <span class="n">return_sample_min</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Takes the provided input df, smooths using the indicated window and resamples on the</span>
+<span class="sd">        input return_sample_min (usually set to an hourly). Lastly, interpolated using a linear model </span>
+
+<span class="sd">        CENTERED window rolling average.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">            df_in: &lt;dataframe&gt; of times x stations.</span>
+<span class="sd">            window: &lt;int&gt; (def=11) width of window.</span>
+<span class="sd">            return_sample_min: &lt;int&gt; (def=60) Number of mins to sample on the output product</span>
+<span class="sd">                upsampling will pad with Nans. Values &lt;=0 indicates no sampling returning</span>
+<span class="sd">                raw averaged data</span>
+<span class="sd">        Returns:</span>
+<span class="sd">            df_smoothed: dataframe (time x stations) smoothed and possibly resampled.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Smoothing requested. Window of </span><span class="si">{window}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">df_smooth</span> <span class="o">=</span> <span class="n">df_in</span><span class="o">.</span><span class="n">rolling</span><span class="p">(</span><span class="n">window</span><span class="o">=</span><span class="n">window</span><span class="p">,</span> <span class="n">center</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="c1"># Double check if completely empty stations persist</span>
+        <span class="n">indlist</span> <span class="o">=</span> <span class="n">df_smooth</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df_smooth</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="mi">1</span><span class="p">)]</span><span class="o">.</span><span class="n">index</span> <span class="c1"># Only if ALL columns are nan</span>
+        <span class="n">df_smooth</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">indlist</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_in</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">indlist</span><span class="p">]</span> 
+        <span class="c1"># Optional Resample</span>
+        <span class="k">if</span> <span class="n">return_sample_min</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">timesampling</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{return_sample_min}</span><span class="s1">min&#39;</span>
+            <span class="c1">#df_smooth.interpolate(method=&#39;polynomial&#39;, order=1, limit=1, inplace=True)</span>
+            <span class="n">df_smooth</span><span class="o">=</span><span class="n">df_smooth</span><span class="o">.</span><span class="n">resample</span><span class="p">(</span><span class="n">timesampling</span><span class="p">)</span><span class="o">.</span><span class="n">asfreq</span><span class="p">()</span>
+            <span class="n">df_smooth</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">remove_columns_with_onevalue</span><span class="p">(</span><span class="n">df_smooth</span><span class="p">)</span>
+            <span class="n">df_smooth</span><span class="o">.</span><span class="n">interpolate</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;polynomial&#39;</span><span class="p">,</span> <span class="n">order</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;Averaged data has been resampled and then interpolated to </span><span class="si">{return_sample_min}</span><span class="s1">mins&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df_smooth</span></div>
+
+<div class="viewcode-block" id="get_obs_stations.remove_columns_with_onevalue"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.get_obs_stations.remove_columns_with_onevalue">[docs]</a>    <span class="k">def</span> <span class="nf">remove_columns_with_onevalue</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">df</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Depending on the starttime,stoptime and the selection of the missinglness thresholds (esp==100%)</span>
+<span class="sd">        It is possible a station may only retain a single value. When this happens, if that station is passed to an interpolator</span>
+<span class="sd">        it will cause a failure. Instead of try/except trapping the interpolation failure, we do a check here to remove</span>
+<span class="sd">        the offending station as a station with a single value is of little benefit</span>
+<span class="sd">        Alternatively, the caller could explore changing the time range OR tightening up the threshold</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">delete_stations</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">stationid</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_list</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">df</span><span class="p">[</span><span class="n">stationid</span><span class="p">]</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> <span class="o">&lt;=</span><span class="mi">1</span><span class="p">:</span>
+                <span class="n">delete_stations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stationid</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">delete_stations</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">f</span><span class="s1">&#39;remove_columns_with_onevalue: Some stations have too little data to inteprolate: Removing them </span><span class="si">{delete_stations}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">delete_stations</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span></div></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../harvester.html#harvester.get_observations_stations.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A simple main method to demonstrate the use of this class</span>
+<span class="sd">    It assumes the existance of a proper main.yml to get IO information</span>
+<span class="sd">    It assumes the existance of a proper obs.yml </span>
+<span class="sd">    It assumes the existance of a proper contrails.yml (if needed) for accessing contrails</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">main_config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">init_logging</span><span class="p">(</span><span class="n">subdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_file</span><span class="o">=</span><span class="s1">&#39;../config/main.yml&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Set up IO env</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;Product Level Working in {os.getcwd()}&quot;</span><span class="p">)</span>
+
+    <span class="n">interval</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">interval</span> <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">interval</span> <span class="ow">is</span> <span class="s1">&#39;None&#39;</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="c1"># Set up time ranges</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">starttime</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">args</span><span class="o">.</span><span class="n">stoptime</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">starttime</span><span class="o">=</span><span class="s1">&#39;2022-02-12 00:00:00&#39;</span> <span class="c1"># &#39;%Y-%m-%d %H:%M:%S&#39;</span>
+        <span class="n">endtime</span><span class="o">=</span><span class="s1">&#39;2022-02-14 00:00:00&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">starttime</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">starttime</span>
+        <span class="n">endtime</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">stoptime</span>
+
+    <span class="c1"># Build informative metadata for filenames</span>
+    <span class="n">timein</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">starttime</span><span class="p">,</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+    <span class="n">timeout</span><span class="o">=</span><span class="n">dt</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">endtime</span><span class="p">,</span> <span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span>
+    <span class="n">iometadata</span> <span class="o">=</span> <span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">timein</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H%M&#39;</span><span class="p">)</span><span class="o">+</span><span class="s1">&#39;_&#39;</span><span class="o">+</span><span class="n">timeout</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">%H%M&#39;</span><span class="p">)</span>
+    <span class="c1">#iometadata=&#39;&#39;</span>
+
+    <span class="n">station_list</span> <span class="o">=</span> <span class="n">args</span><span class="o">.</span><span class="n">station_list</span>
+
+    <span class="c1"># Invoke the class</span>
+    <span class="c1"># No longer use the obs.yml file inside the class. keep for future considerations</span>
+    <span class="k">if</span> <span class="n">args</span><span class="o">.</span><span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;NOAA&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">station_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">noaa_stations</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;../supporting_data&#39;</span><span class="p">,</span> <span class="s1">&#39;CERA_NOAA_HSOFS_stations_V3.1.csv&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">noaa_stations</span><span class="o">=</span><span class="n">station_list</span>
+        <span class="n">rpl</span> <span class="o">=</span> <span class="n">get_obs_stations</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data_source</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data_product</span><span class="p">,</span>
+                    <span class="n">contrails_yamlname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">knockout_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">station_list_file</span><span class="o">=</span><span class="n">noaa_stations</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;CONTRAILS&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">station_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> 
+            <span class="n">contrails_stations</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;../supporting_data&#39;</span><span class="p">,</span><span class="s1">&#39;contrails_stations.csv&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">contrails_stations</span><span class="o">=</span><span class="n">station_list</span>
+        <span class="n">contrails_yamlname</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span><span class="s1">&#39;../secrets&#39;</span><span class="p">,</span><span class="s1">&#39;contrails.yml&#39;</span><span class="p">)</span>
+        <span class="n">rpl</span> <span class="o">=</span> <span class="n">get_obs_stations</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data_source</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data_product</span><span class="p">,</span>
+                    <span class="n">contrails_yamlname</span><span class="o">=</span><span class="n">contrails_yamlname</span><span class="p">,</span>
+                    <span class="n">knockout_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">station_list_file</span><span class="o">=</span><span class="n">contrails_stations</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">args</span><span class="o">.</span><span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;NDBC&#39;</span> <span class="ow">or</span> <span class="n">args</span><span class="o">.</span><span class="n">data_source</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="o">==</span> <span class="s1">&#39;NDBC_HISTORIC&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">station_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ndbc_stations</span><span class="o">=</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="vm">__file__</span><span class="p">),</span> <span class="s1">&#39;../supporting_data&#39;</span><span class="p">,</span> <span class="s1">&#39;ndbc_buoys.csv&#39;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ndbc_stations</span><span class="o">=</span><span class="n">station_list</span>
+        <span class="n">rpl</span> <span class="o">=</span> <span class="n">get_obs_stations</span><span class="p">(</span><span class="n">source</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data_source</span><span class="p">,</span> <span class="n">product</span><span class="o">=</span><span class="n">args</span><span class="o">.</span><span class="n">data_product</span><span class="p">,</span>
+                    <span class="n">contrails_yamlname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">knockout_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">station_list_file</span><span class="o">=</span><span class="n">ndbc_stations</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;No source specified&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Fetch best resolution and no resampling</span>
+    <span class="n">data</span><span class="p">,</span><span class="n">meta</span><span class="o">=</span><span class="n">rpl</span><span class="o">.</span><span class="n">fetch_station_product</span><span class="p">((</span><span class="n">starttime</span><span class="p">,</span><span class="n">endtime</span><span class="p">),</span> <span class="n">return_sample_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="n">interval</span> <span class="p">)</span>
+
+    <span class="c1"># Revert Harvester filling of nans to -99999 back to nans</span>
+    <span class="n">data</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;-99999&#39;</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">meta</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;-99999&#39;</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">,</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="c1"># Remove stations with too many nans ( Note Harvester would have previously removed stations that are ALL NANS)</span>
+    <span class="n">data_thresholded</span> <span class="o">=</span> <span class="n">rpl</span><span class="o">.</span><span class="n">remove_missingness_stations</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">max_nan_percentage_cutoff</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span> <span class="c1"># (maxmum percentage of allowable nans)</span>
+
+    <span class="c1"># Because of the large number of ways for stationsa to get removed/have missingness, etc, AND weith pandas deprecations,</span>
+    <span class="c1"># This following intersection is required</span>
+    <span class="n">meta_list</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">data_thresholded</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">meta</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_list</span><span class="p">())</span>
+    <span class="n">meta_thresholded</span> <span class="o">=</span> <span class="n">meta</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">meta_list</span><span class="p">]</span>
+
+    <span class="c1"># Apply a moving average (smooth) the data performed the required resampling to the desire rate followed by interpolating</span>
+    <span class="n">data_smoothed</span> <span class="o">=</span> <span class="n">rpl</span><span class="o">.</span><span class="n">fetch_smoothed_station_product</span><span class="p">(</span><span class="n">data_thresholded</span><span class="p">,</span> <span class="n">return_sample_min</span><span class="o">=</span><span class="mi">60</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
+
+    <span class="c1"># Write the data to disk in a way that mimics ADDA</span>
+    <span class="c1"># Write selected in Pickle data </span>
+    <span class="n">metapkl</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;./obs_wl_metadata</span><span class="si">%s</span><span class="s1">.pkl&#39;</span><span class="o">%</span><span class="n">iometadata</span>
+    <span class="n">detailedpkl</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;./obs_wl_detailed</span><span class="si">%s</span><span class="s1">.pkl&#39;</span><span class="o">%</span><span class="n">iometadata</span>
+    <span class="n">smoothpkl</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;./obs_wl_smoothed</span><span class="si">%s</span><span class="s1">.pkl&#39;</span><span class="o">%</span><span class="n">iometadata</span>
+    <span class="n">meta_thresholded</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">metapkl</span><span class="p">)</span>
+    <span class="n">data_thresholded</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">detailedpkl</span><span class="p">)</span>
+    <span class="n">data_smoothed</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="n">smoothpkl</span><span class="p">)</span>
+
+    <span class="c1"># Write selected in JSON format</span>
+
+    <span class="c1"># Convert and write selected JSON data</span>
+    <span class="c1">#metajson = utilities.writePickle(meta_thresholded.index.strftime(&#39;%Y-%m-%d %H:%M:%S&#39;),rootdir=rpl.rootdir,subdir=rpl.iosubdir,fileroot=&#39;obs_wl_metadata&#39;,iometadata=rpl.iometadata)</span>
+    <span class="n">data_thresholded</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">data_thresholded</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+    <span class="n">data_smoothed</span><span class="o">.</span><span class="n">index</span> <span class="o">=</span> <span class="n">data_smoothed</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1"> %H:%M:%S&#39;</span><span class="p">)</span>
+
+    <span class="n">metajson</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;./obs_wl_metadata</span><span class="si">%s</span><span class="s1">.json&#39;</span><span class="o">%</span><span class="n">iometadata</span>
+    <span class="n">detailedjson</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;./obs_wl_detailed</span><span class="si">%s</span><span class="s1">.json&#39;</span><span class="o">%</span><span class="n">iometadata</span>
+    <span class="n">smoothjson</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;./obs_wl_smoothed</span><span class="si">%s</span><span class="s1">.json&#39;</span><span class="o">%</span><span class="n">iometadata</span>
+    <span class="n">meta_thresholded</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">metajson</span><span class="p">)</span>
+    <span class="n">data_thresholded</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">detailedjson</span><span class="p">)</span>
+    <span class="n">data_smoothed</span><span class="o">.</span><span class="n">to_json</span><span class="p">(</span><span class="n">smoothjson</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Finished&#39;</span><span class="p">)</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">ArgumentParser</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--starttime&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;starttime&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Desired stoptime YYYY-mm-dd HH:MM:SS&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--stoptime&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;stoptime&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Desired stoptime YYYY-mm-dd HH:MM:SS&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--sources&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_true&#39;</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;List currently supported data sources&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--data_source&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;data_source&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;NOAA&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;choose supported data source (case independant) eg NOAA or CONTRAILS&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--data_product&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;data_product&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;water_level&#39;</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;choose supported data product eg water_level&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--interval&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;interval&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Interval request to the fetcher (h or None): Only used by NOAA&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--station_list&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;station_list&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span>
+                        <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Choose a non-default location/filename for a stationlist&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">AST</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../harvester.html">harvester package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../processing.html">processing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utilities.html">utilities package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, AST: AdcircSupportTools: RENCI EDS.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

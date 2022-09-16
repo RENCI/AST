@@ -1,0 +1,243 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>utilities package &#8212; AST  documentation</title>
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="processing package" href="processing.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="utilities-package">
+<h1>utilities package<a class="headerlink" href="#utilities-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-utilities.utilities">
+<span id="utilities-utilities-module"></span><h2>utilities.utilities module<a class="headerlink" href="#module-utilities.utilities" title="Permalink to this headline">¶</a></h2>
+<dl class="py function">
+<dt id="utilities.utilities.AdcircCppForward">
+<code class="sig-prename descclassname">utilities.utilities.</code><code class="sig-name descname">AdcircCppForward</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">lon</span></em>, <em class="sig-param"><span class="n">lat</span></em>, <em class="sig-param"><span class="n">lon0</span><span class="o">=</span><span class="default_value">- 70</span></em>, <em class="sig-param"><span class="n">lat0</span><span class="o">=</span><span class="default_value">32</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#AdcircCppForward"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.AdcircCppForward" title="Permalink to this definition">¶</a></dt>
+<dd><p>Platte Carre Forward projection</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="utilities.utilities.AdcircCppInverse">
+<code class="sig-prename descclassname">utilities.utilities.</code><code class="sig-name descname">AdcircCppInverse</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">x</span></em>, <em class="sig-param"><span class="n">y</span></em>, <em class="sig-param"><span class="n">lon0</span><span class="o">=</span><span class="default_value">- 70</span></em>, <em class="sig-param"><span class="n">lat0</span><span class="o">=</span><span class="default_value">32</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#AdcircCppInverse"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.AdcircCppInverse" title="Permalink to this definition">¶</a></dt>
+<dd><p>Platte Carre Inverse projection</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="utilities.utilities.Utilities">
+<em class="property">class </em><code class="sig-prename descclassname">utilities.utilities.</code><code class="sig-name descname">Utilities</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">instanceid</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.convertTimeseriesToDICTdata">
+<code class="sig-name descname">convertTimeseriesToDICTdata</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">variables</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">product</span><span class="o">=</span><span class="default_value">'WL'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.convertTimeseriesToDICTdata"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.convertTimeseriesToDICTdata" title="Permalink to this definition">¶</a></dt>
+<dd><p>Reformat the df data into an APSVIZ dict with Stations as the main key
+Create the dict: self.df_merged_dict
+For this class we can anticipate either ADS/OBS/ERR data  or none 
+Must convert timestamp index to Strings YYYYMMDD HH:MM:SS</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.fetchBasedir">
+<code class="sig-name descname">fetchBasedir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">inconfig</span></em>, <em class="sig-param"><span class="n">basedirExtra</span><span class="o">=</span><span class="default_value">'None'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.fetchBasedir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.fetchBasedir" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.getSubdirectoryFileName">
+<code class="sig-name descname">getSubdirectoryFileName</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">basedir</span></em>, <em class="sig-param"><span class="n">subdir</span></em>, <em class="sig-param"><span class="n">fname</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.getSubdirectoryFileName"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.getSubdirectoryFileName" title="Permalink to this definition">¶</a></dt>
+<dd><p>Check and existance of and construct filenames for 
+storing the image data. basedir/subdir/filename 
+subdir is created as needed.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.get_adcirc_nodes">
+<code class="sig-name descname">get_adcirc_nodes</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.get_adcirc_nodes"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.get_adcirc_nodes" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.get_clamp_list">
+<code class="sig-name descname">get_clamp_list</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.get_clamp_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.get_clamp_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.get_station_list">
+<code class="sig-name descname">get_station_list</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.get_station_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.get_station_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.initialize_logging">
+<code class="sig-name descname">initialize_logging</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">instanceid</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.initialize_logging"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.initialize_logging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize project logging
+instanceid is a subdirectory to be created under LOG_PATH</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.load_config">
+<code class="sig-name descname">load_config</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">yaml_file</span><span class="o">=</span><span class="default_value">'/home/jtilson/ADCIRCDataAssimilation/utilities/../config/main.yml'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.load_config"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.load_config" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.print_dict">
+<code class="sig-name descname">print_dict</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">t</span></em>, <em class="sig-param"><span class="n">s</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.print_dict"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.print_dict" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.readConfigYml">
+<code class="sig-name descname">readConfigYml</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">yamlfilename</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.readConfigYml"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.readConfigYml" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.read_json_file">
+<code class="sig-name descname">read_json_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">filepath</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.read_json_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.read_json_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.reg_grid_params">
+<code class="sig-name descname">reg_grid_params</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.reg_grid_params"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.reg_grid_params" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.serializeMe">
+<code class="sig-name descname">serializeMe</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">o</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.serializeMe"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.serializeMe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.setBasedir">
+<code class="sig-name descname">setBasedir</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">indir</span></em>, <em class="sig-param"><span class="n">basedirExtra</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.setBasedir"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.setBasedir" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.writeCsv">
+<code class="sig-name descname">writeCsv</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">rootdir</span><span class="o">=</span><span class="default_value">'.'</span></em>, <em class="sig-param"><span class="n">subdir</span><span class="o">=</span><span class="default_value">'obspkl'</span></em>, <em class="sig-param"><span class="n">fileroot</span><span class="o">=</span><span class="default_value">'filename'</span></em>, <em class="sig-param"><span class="n">iometadata</span><span class="o">=</span><span class="default_value">'Nometadata'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.writeCsv"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.writeCsv" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out current self.excludeList to disk as a csv
+output to rootdir/obspkl/.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.writeDictToJson">
+<code class="sig-name descname">writeDictToJson</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">dictdata</span></em>, <em class="sig-param"><span class="n">rootdir</span><span class="o">=</span><span class="default_value">'.'</span></em>, <em class="sig-param"><span class="n">subdir</span><span class="o">=</span><span class="default_value">'errorfile'</span></em>, <em class="sig-param"><span class="n">fileroot</span><span class="o">=</span><span class="default_value">'filename'</span></em>, <em class="sig-param"><span class="n">iometadata</span><span class="o">=</span><span class="default_value">'Nometadata'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.writeDictToJson"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.writeDictToJson" title="Permalink to this definition">¶</a></dt>
+<dd><p>Write out current self.merged_dict as a Json. Must not use a datetime  as keys</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.writePickle">
+<code class="sig-name descname">writePickle</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">df</span></em>, <em class="sig-param"><span class="n">rootdir</span><span class="o">=</span><span class="default_value">'.'</span></em>, <em class="sig-param"><span class="n">subdir</span><span class="o">=</span><span class="default_value">'obspkl'</span></em>, <em class="sig-param"><span class="n">fileroot</span><span class="o">=</span><span class="default_value">'filename'</span></em>, <em class="sig-param"><span class="n">iometadata</span><span class="o">=</span><span class="default_value">'Nometadata'</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.writePickle"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.writePickle" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns full filename for capture</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="utilities.utilities.Utilities.write_json_file">
+<code class="sig-name descname">write_json_file</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">data</span></em>, <em class="sig-param"><span class="n">filepath</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utilities/utilities.html#Utilities.write_json_file"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#utilities.utilities.Utilities.write_json_file" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</div>
+<div class="section" id="module-utilities">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-utilities" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">AST</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="harvester.html">harvester package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="processing.html">processing package</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">utilities package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-utilities.utilities">utilities.utilities module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#module-utilities">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="processing.html" title="previous chapter">processing package</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, AST: AdcircSupportTools: RENCI EDS.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/utilities.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

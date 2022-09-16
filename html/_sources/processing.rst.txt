@@ -1,0 +1,29 @@
+processing package
+==================
+
+Submodules
+----------
+
+processing.compute\_error\_field module
+---------------------------------------
+
+.. automodule:: processing.compute_error_field
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+processing.interpolate\_scaled\_offset\_field module
+----------------------------------------------------
+
+.. automodule:: processing.interpolate_scaled_offset_field
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: processing
+   :members:
+   :undoc-members:
+   :show-inheritance:

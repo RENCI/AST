@@ -1,0 +1,535 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>processing.interpolate_scaled_offset_field &#8212; AST  documentation</title>
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for processing.interpolate_scaled_offset_field</h1><div class="highlight"><pre>
+<span></span><span class="ch">#!/usr/bin/env python</span>
+
+<span class="c1"># SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.</span>
+<span class="c1">#</span>
+<span class="c1"># SPDX-License-Identifier: GPL-3.0-or-later</span>
+<span class="c1"># SPDX-License-Identifier: LicenseRef-RENCI</span>
+<span class="c1"># SPDX-License-Identifier: MIT</span>
+
+<span class="kn">import</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">utilities.utilities</span> <span class="k">import</span> <span class="n">utilities</span>
+<span class="kn">from</span> <span class="nn">sklearn.neighbors</span> <span class="k">import</span> <span class="n">KNeighborsRegressor</span>
+<span class="kn">from</span> <span class="nn">sklearn.model_selection</span> <span class="k">import</span> <span class="n">KFold</span><span class="p">,</span> <span class="n">StratifiedKFold</span>
+<span class="kn">from</span> <span class="nn">sklearn.metrics</span> <span class="k">import</span> <span class="n">mean_squared_error</span>
+<span class="kn">from</span> <span class="nn">scipy</span> <span class="k">import</span> <span class="n">interpolate</span> <span class="k">as</span> <span class="n">sci</span>
+
+<span class="c1">############################################################################</span>
+<span class="c1"># Helper functions</span>
+
+<div class="viewcode-block" id="get_lon_lat_control_values"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.get_lon_lat_control_values">[docs]</a><span class="k">def</span> <span class="nf">get_lon_lat_control_values</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header_data</span><span class="o">=</span><span class="s1">&#39;val&#39;</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simply read the CSV file </span>
+<span class="sd">    Ensure the columns are all have the names: LON,LAT,VALUE</span>
+
+<span class="sd">    land/water control data are always lon,lat,val. </span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        fname: (str) Filename of the desired land/water control points</span>
+<span class="sd">        header_data: (str) Alternative name for the clamp/control node data header if not the default</span>
+<span class="sd">            Will be changed to VAL on exit</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df: DataFrame with the headers: LON,LAT,VAL </span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No lon_lat_val data file assigned: Abort interpolation&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">header_data</span><span class="p">:</span><span class="s1">&#39;val&#39;</span><span class="p">})</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> 
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="c1"># Check columns: MUST include LON,LAT,VAL</span>
+    <span class="n">col_headers</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_list</span><span class="p">():</span> <span class="c1"># Many times weve seen leading spaces in thes </span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">==</span><span class="s1">&#39;LON&#39;</span> <span class="ow">or</span> <span class="n">item</span><span class="o">==</span><span class="s1">&#39;LAT&#39;</span> <span class="ow">or</span> <span class="n">item</span><span class="o">==</span><span class="s1">&#39;VAL&#39;</span><span class="p">:</span> 
+            <span class="n">col_headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_headers</span><span class="p">)</span><span class="o">!=</span><span class="mi">3</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;get_lon_lat_control_values: control data file </span><span class="si">{}</span><span class="s1"> doesnt have all the needed headers. </span><span class="si">{}</span><span class="s1">: Abort&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span> 
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span><span class="p">[[</span><span class="s1">&#39;LON&#39;</span><span class="p">,</span><span class="s1">&#39;LAT&#39;</span><span class="p">,</span><span class="s1">&#39;VAL&#39;</span><span class="p">]]</span></div>
+
+<div class="viewcode-block" id="get_station_values"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.get_station_values">[docs]</a><span class="k">def</span> <span class="nf">get_station_values</span><span class="p">(</span><span class="n">fname</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">header_data</span><span class="o">=</span><span class="s1">&#39;mean&#39;</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simply read a proper CSV file </span>
+
+<span class="sd">    station (averaging) files can be more complicated than control point files</span>
+<span class="sd">    but we assume stationids are on the index and that each has lon,lat,mean (or header_data)</span>
+
+<span class="sd">    The INPUT headers are very specific to AST usage</span>
+<span class="sd">    examples of typical header_data could be &#39;mean&#39;,&#39;std&#39;</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        fname: (str) Filename of the desired station (averaging) file</span>
+<span class="sd">        header_data: (str) Alternative name for the input desired values. Eg if not mean it might be &quot;Period_-0&quot;</span>
+<span class="sd">            which by default is the mean of the most last period</span>
+<span class="sd">            Will be changed to VAL on exit</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df: In the format STATIONID(index),LON,LAT,VAL </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">fname</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No station (averaging) data file assigned: Abort interpolation&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span> <span class="n">header</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="n">header_data</span><span class="p">:</span><span class="s1">&#39;val&#39;</span><span class="p">})</span>
+    <span class="n">df</span><span class="p">[</span><span class="s1">&#39;STATION&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s1">&#39;STATION&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span>   <span class="c1"># Need to be sure</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39; &#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;STATION&#39;</span><span class="p">:</span><span class="s1">&#39;STATIONID&#39;</span><span class="p">})</span> <span class="c1"># Just a catch-all. No harm, no foul</span>
+    <span class="n">col_headers</span><span class="o">=</span><span class="nb">list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_list</span><span class="p">():</span> <span class="c1"># Many times weve seen leading spaces in thes </span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">==</span><span class="s1">&#39;STATIONID&#39;</span> <span class="ow">or</span> <span class="n">item</span><span class="o">==</span><span class="s1">&#39;LON&#39;</span> <span class="ow">or</span> <span class="n">item</span><span class="o">==</span><span class="s1">&#39;LAT&#39;</span> <span class="ow">or</span> <span class="n">item</span><span class="o">==</span><span class="s1">&#39;VAL&#39;</span><span class="p">:</span>
+            <span class="n">col_headers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">col_headers</span><span class="p">)</span><span class="o">!=</span><span class="mi">4</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;get_station_values: station data file </span><span class="si">{}</span><span class="s1"> doesnt have all the needed headers. </span><span class="si">{}</span><span class="s1">: Abort&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fname</span><span class="p">,</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="p">[[</span><span class="s1">&#39;STATIONID&#39;</span><span class="p">,</span><span class="s1">&#39;LON&#39;</span><span class="p">,</span><span class="s1">&#39;LAT&#39;</span><span class="p">,</span><span class="s1">&#39;VAL&#39;</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="s1">&#39;STATIONID&#39;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="randomly_select_dataframe_rows"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.randomly_select_dataframe_rows">[docs]</a><span class="k">def</span> <span class="nf">randomly_select_dataframe_rows</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">frac</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Intended for, but not restricted to, station (averaging) data</span>
+<span class="sd">    This is primarily used if the user wants to perform statistical testing on the</span>
+<span class="sd">    resulting interpolated fields. Setting frac==1 (default) returns the entire data set </span>
+<span class="sd">    with rows shuffled (potentially removing some order biases)</span>
+<span class="sd">    Setting to &lt; 1, returns a subset of the data randomly selected.</span>
+
+<span class="sd">    This method is a placeholder for more sophisticated splitting/subsampling</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">        df: DataFrame to reshuffle/resample</span>
+<span class="sd">        frac: (int) fraction of randomly selected rows to retain</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        dataFrame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">frac</span><span class="o">=</span><span class="n">frac</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="knn_fit_control_points"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.knn_fit_control_points">[docs]</a><span class="k">def</span> <span class="nf">knn_fit_control_points</span><span class="p">(</span><span class="n">df_source</span><span class="p">,</span> <span class="n">df_controls</span><span class="p">,</span> <span class="n">nearest_neighbors</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span><span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Fit the values of input control_points based on the KNN(k) of the input df_source DataFrame</span>
+<span class="sd">    indata errors. Then apply that model to predict the control point values</span>
+
+<span class="sd">    This is setup to use a kd_tree method with uniform weights. The default metric is minkowski</span>
+<span class="sd">         with a default of using manhattan_distance (l1),</span>
+
+<span class="sd">    The input df_source data are double checked for missingness which must be removed</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df_controls: DataFrame with the headers (&#39;LON&#39;,&#39;LAT&#39;,&#39;VAL&#39;)</span>
+<span class="sd">            Usually read by get_lon_lat_control_values()</span>
+
+<span class="sd">        df_source: DataFrame with (at least) the headers (&#39;LON&#39;,&#39;LAT&#39;,&#39;VAL&#39;)</span>
+<span class="sd">            Usually read by get_station_values()</span>
+<span class="sd">        nearest_neighbors: (int)  Number of neighbors to perform regression fit</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df_fit_controls: DatraFrame with the columns (&#39;LON&#39;,&#39;LAT&#39;,&#39;VAL&#39;)</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Must remove entries with nans as VAL</span>
+    <span class="n">before_missing</span> <span class="o">=</span> <span class="n">df_source</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">df_drop</span> <span class="o">=</span> <span class="n">df_source</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+    <span class="n">after_missing</span> <span class="o">=</span> <span class="n">df_drop</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;knn_fit_control_points: Input source rows </span><span class="si">{}</span><span class="s1">, after missingness check rows </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">before_missing</span><span class="p">,</span> <span class="n">after_missing</span><span class="p">))</span>
+
+    <span class="n">weight_value</span> <span class="o">=</span> <span class="s1">&#39;uniform&#39;</span> <span class="c1"># &#39;=distance&#39; #=&#39;uniform&#39;</span>
+    <span class="c1"># Grab the Lon,Lat from the source (station) data</span>
+    <span class="n">source_coords</span> <span class="o">=</span> <span class="n">df_drop</span><span class="p">[[</span><span class="s1">&#39;LON&#39;</span><span class="p">,</span><span class="s1">&#39;LAT&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">source_values</span> <span class="o">=</span>  <span class="n">df_drop</span><span class="p">[[</span><span class="s1">&#39;VAL&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="n">control_coords</span> <span class="o">=</span> <span class="n">df_controls</span><span class="p">[[</span><span class="s1">&#39;LON&#39;</span><span class="p">,</span><span class="s1">&#39;LAT&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="c1"># Build the KNN model</span>
+    <span class="n">neigh</span> <span class="o">=</span> <span class="n">KNeighborsRegressor</span><span class="p">(</span><span class="n">n_neighbors</span><span class="o">=</span><span class="n">nearest_neighbors</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s1">&#39;kd_tree&#39;</span><span class="p">,</span> <span class="n">weights</span><span class="o">=</span><span class="n">weight_value</span><span class="p">)</span>
+    <span class="n">neigh</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">source_coords</span><span class="p">,</span> <span class="n">source_values</span><span class="p">)</span>
+    <span class="c1"># predict on the control points</span>
+    <span class="n">control_values</span> <span class="o">=</span> <span class="n">neigh</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">control_coords</span><span class="p">)</span>
+    <span class="n">df_controls</span><span class="p">[</span><span class="s1">&#39;VAL&#39;</span><span class="p">]</span><span class="o">=</span><span class="n">control_values</span>
+    <span class="c1">#</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;KNN estimated control points using </span><span class="si">{}</span><span class="s1"> and a nearest_neighbors of </span><span class="si">{}</span><span class="s1"> Total source points were </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">weight_value</span><span class="p">,</span> <span class="n">nearest_neighbors</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">source_values</span><span class="p">)))</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Mean value of predicted control point values is </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">control_values</span><span class="p">)))</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Standard Deviation of predicted control point values is </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">control_values</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">df_controls</span></div>
+
+<div class="viewcode-block" id="combine_datasets_for_interpolation"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.combine_datasets_for_interpolation">[docs]</a><span class="k">def</span> <span class="nf">combine_datasets_for_interpolation</span><span class="p">(</span><span class="n">list_dfs</span><span class="p">)</span> <span class="o">-&gt;</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This method simply combines the provided list of DataFrames into a single DataFrame for passage to</span>
+<span class="sd">    the interpolation method. We use a list here, since, the caller may vary what data actually gets included</span>
+<span class="sd">    for interpolation. The list is unbound. Each dataframe MUST contain the headers:</span>
+<span class="sd">    (&#39;LON&#39;,&#39;LAT&#39;,&#39;VAL&#39;)</span>
+<span class="sd">    </span>
+<span class="sd">    Parameters:</span>
+<span class="sd">        list_dfs: list(dfs)</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df_combined: DataFrame containing only (&#39;LON&#39;,&#39;LAT&#39;,&#39;VAL&#39;)</span>
+<span class="sd">    &quot;&quot;&quot;</span> 
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;combine_datasets_for_interpolation: Combining </span><span class="si">{}</span><span class="s1"> dataframes&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">list_dfs</span><span class="p">)))</span>
+    <span class="n">filtered_dataframes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">list_dfs</span><span class="p">:</span>
+            <span class="n">filtered_dataframes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df</span><span class="p">[[</span><span class="s1">&#39;LON&#39;</span><span class="p">,</span><span class="s1">&#39;LAT&#39;</span><span class="p">,</span><span class="s1">&#39;VAL&#39;</span><span class="p">]])</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Failed df concat. Perhaps non-conforming header names?: msg </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">df_combined</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">filtered_dataframes</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_combined</span></div>
+
+<div class="viewcode-block" id="interpolation_model_fit"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.interpolation_model_fit">[docs]</a><span class="k">def</span> <span class="nf">interpolation_model_fit</span><span class="p">(</span><span class="n">df_combined</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">interpolation_type</span><span class="o">=</span><span class="s1">&#39;LinearNDInterpolator&#39;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Method to manage building interpolations of gauge (ADCIRC-Observational) errors (residuals)</span>
+<span class="sd">    The model is constructed by interpolation of the input error points</span>
+<span class="sd">    usually constrained with both zero-nodes positioned offcoast and land control points to better control</span>
+<span class="sd">    fluctuations at the coast. </span>
+
+<span class="sd">    The types of interpolation models that are supported are:</span>
+<span class="sd">        LinearNDInterpolator (default)</span>
+<span class="sd">        CloughTocher2DInterpolator</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df_combined (DatraFrame) is the DataFrame with columns: LON,LAT,VAL that contains all </span>
+<span class="sd">        source and clamp points. (DataFrame) It is expected the caller has already KNN processed the </span>
+<span class="sd">        land_control points and concatenated the water_control points</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        model: The actual model use for subsequent extrapolations</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">model_choices</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;LINEARNDINTERPOLATOR&#39;</span><span class="p">,</span><span class="s1">&#39;CLOUGHTOCHER2DINTERPOLATOR&#39;</span><span class="p">]</span> <span class="c1"># version 2, March 2022 </span>
+    <span class="k">if</span> <span class="n">interpolation_type</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="n">model_choices</span><span class="p">:</span>
+        <span class="n">interpolation_type</span> <span class="o">=</span> <span class="n">interpolation_type</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;No valid interpolation_type specified. Got </span><span class="si">{}</span><span class="s1">, Avail are </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">interpolation_type</span><span class="p">,</span><span class="n">model_choices</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="c1"># Must remove entries with nans as VAL</span>
+    <span class="n">before_missing</span> <span class="o">=</span> <span class="n">df_combined</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">df_drop</span> <span class="o">=</span> <span class="n">df_combined</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+    <span class="n">after_missing</span> <span class="o">=</span> <span class="n">df_drop</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;interpolation_model_fit: Input rows </span><span class="si">{}</span><span class="s1">, after missingness check rows </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">before_missing</span><span class="p">,</span> <span class="n">after_missing</span><span class="p">))</span>
+   
+    <span class="n">X</span> <span class="o">=</span> <span class="n">df_drop</span><span class="p">[</span><span class="s1">&#39;LON&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="n">Y</span> <span class="o">=</span> <span class="n">df_drop</span><span class="p">[</span><span class="s1">&#39;LAT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="n">V</span> <span class="o">=</span> <span class="n">df_drop</span><span class="p">[</span><span class="s1">&#39;VAL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">interpolation_type</span><span class="o">==</span><span class="s1">&#39;LINEARNDINTERPOLATOR&#39;</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">sci</span><span class="o">.</span><span class="n">LinearNDInterpolator</span><span class="p">((</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">),</span> <span class="n">V</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="n">fill_value</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">sci</span><span class="o">.</span><span class="n">CloughTocher2DInterpolator</span><span class="p">(</span> <span class="p">(</span><span class="n">X</span><span class="p">,</span><span class="n">Y</span><span class="p">),</span><span class="n">V</span><span class="p">,</span><span class="n">fill_value</span><span class="o">=</span><span class="n">fill_value</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="n">template</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Interpolation failed: msg </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">message</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Finished building interpolation model&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">model</span></div>
+    
+<span class="c1"># TODO Verify behavior if a point has a VAL=nan</span>
+<div class="viewcode-block" id="interpolation_model_transform"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.interpolation_model_transform">[docs]</a><span class="k">def</span> <span class="nf">interpolation_model_transform</span><span class="p">(</span><span class="n">adc_combined</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">input_grid_type</span><span class="o">=</span><span class="s1">&#39;points&#39;</span><span class="p">)</span><span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span> 
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply the precomputed model to the LON/LAT input points. These inputs usually</span>
+<span class="sd">    reflect the final grid of courtse such as an ADCIRC grid. The inputs can be of types points or grid.</span>
+<span class="sd">    If the LON/LAT lists are meant to be actual points to extrapolate on, then points. Else, if</span>
+<span class="sd">    that are INDEXES in the LON/LAT directions, then choose GRID.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        adc_combined: dict with keys &#39;LON&#39;:list,&#39;LAT&#39;:list</span>
+<span class="sd">        input_grid_type: (str) either points or grid.</span>
+<span class="sd">        model: Resuting from a prior &#39;fit&#39;</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        DataFrame: inteprolated grid</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;interpolation_model_transform: No model was supplied: Abort&#39;</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">gridx</span> <span class="o">=</span> <span class="n">adc_combined</span><span class="p">[</span><span class="s1">&#39;LON&#39;</span><span class="p">]</span>
+    <span class="n">gridy</span> <span class="o">=</span> <span class="n">adc_combined</span><span class="p">[</span><span class="s1">&#39;LAT&#39;</span><span class="p">]</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">xl</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gridx</span><span class="p">)</span>
+    <span class="n">yl</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">gridy</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">input_grid_type</span><span class="o">==</span><span class="s1">&#39;grid&#39;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">yl</span><span class="p">):</span>
+            <span class="n">gy</span> <span class="o">=</span> <span class="n">gridy</span><span class="p">[</span><span class="n">y</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">xl</span><span class="p">):</span>
+                <span class="n">gx</span><span class="o">=</span><span class="n">gridx</span><span class="p">[</span><span class="n">x</span><span class="p">]</span>
+                <span class="c1">#zval = z_krige[y] # ,x]</span>
+                <span class="n">zval</span><span class="o">=</span><span class="n">model</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span><span class="n">gy</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># Assume only a single item</span>
+                <span class="n">d</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="n">zval</span><span class="p">))</span> 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">y</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="n">yl</span><span class="p">):</span> <span class="c1"># Performing like this ensures proper Fortran style ordering</span>
+            <span class="n">gy</span> <span class="o">=</span> <span class="n">gridy</span><span class="p">[</span><span class="n">y</span><span class="p">]</span>
+            <span class="n">gx</span> <span class="o">=</span> <span class="n">gridx</span><span class="p">[</span><span class="n">y</span><span class="p">]</span>
+            <span class="n">zval</span><span class="o">=</span><span class="n">model</span><span class="p">(</span><span class="n">gx</span><span class="p">,</span><span class="n">gy</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="c1"># ONLY ONE VALUE</span>
+            <span class="n">d</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">gx</span><span class="p">,</span> <span class="n">gy</span><span class="p">,</span> <span class="n">zval</span><span class="p">))</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">d</span><span class="p">,</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;LON&#39;</span><span class="p">,</span><span class="s1">&#39;LAT&#39;</span><span class="p">,</span><span class="s1">&#39;VAL&#39;</span><span class="p">])</span> <span class="c1"># (Z is 500 by 400 in lat major order)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+<span class="c1">##</span>
+<span class="c1">## Potential use methods for quick testing of new interpolation models</span>
+<span class="c1">##</span>
+
+<div class="viewcode-block" id="generic_grid"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.generic_grid">[docs]</a><span class="k">def</span> <span class="nf">generic_grid</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build 2D grid for testing the interpolation_model_transform.</span>
+<span class="sd">    this is a style=grid type data set</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        df: DataFrame with columns [&#39;LON&#39;,&#39;LAT&#39;]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Using a default interpolation grid that is intended only for testing&#39;</span><span class="p">)</span>
+    <span class="n">lowerleft_x</span> <span class="o">=</span> <span class="o">-</span><span class="mi">90</span>
+    <span class="n">lowerleft_y</span> <span class="o">=</span> <span class="mi">20</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="o">.</span><span class="mi">05</span>  <span class="c1"># resolution in deg</span>
+    <span class="n">nx</span> <span class="o">=</span> <span class="mi">400</span>
+    <span class="n">ny</span> <span class="o">=</span> <span class="mi">500</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lowerleft_x</span><span class="p">,</span> <span class="n">lowerleft_x</span> <span class="o">+</span> <span class="n">nx</span> <span class="o">*</span> <span class="n">res</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">lowerleft_y</span><span class="p">,</span> <span class="n">lowerleft_y</span> <span class="o">+</span> <span class="n">ny</span> <span class="o">*</span> <span class="n">res</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
+    <span class="n">adc_coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;LON&#39;</span><span class="p">:</span><span class="n">x</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span> <span class="s1">&#39;LAT&#39;</span><span class="p">:</span><span class="n">y</span><span class="o">.</span><span class="n">tolist</span><span class="p">()}</span>
+    <span class="k">return</span> <span class="n">adc_coords</span> </div>
+
+<div class="viewcode-block" id="test_interpolation_fit"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.test_interpolation_fit">[docs]</a><span class="k">def</span> <span class="nf">test_interpolation_fit</span><span class="p">(</span><span class="n">df_source</span><span class="p">,</span> <span class="n">df_land_controls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">df_water_controls</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cv_splits</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">nearest_neighbors</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stratified_header_name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    df_source is the set of stationids and their values (errors)</span>
+
+<span class="sd">    If land_controls are provided then after the df_source training/testing splits, the KNN fits will be performed</span>
+<span class="sd">    on the full land_control set (training)</span>
+
+<span class="sd">    If df_water_controls are provided, they will be combined with the training set+(opt) land_controls prior to </span>
+<span class="sd">    the interpolation fit</span>
+
+<span class="sd">    The MEAN Squared Error computation is only performed using the test set of stations. If we included the water_controls</span>
+<span class="sd">    that would down-bias the statistics (they are always zero and always correct). The land_controls are also leftout but </span>
+<span class="sd">    tested separately</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">        df_source (DataFrame) stationds x errors</span>
+<span class="sd">        df_land_controls: (DataFrame) stationsids x values(==0). Will be updated using KNN</span>
+<span class="sd">        df_water_controls: (DataFrame) stationsids x values(==0) </span>
+<span class="sd">        cv_splits: (int) Type of Cross-validation splitting</span>
+<span class="sd">        nearest_neighbors: (int) How many gauges should be applied to KNN compute land_control nodes </span>
+<span class="sd">        stratified_header_name: (str) Name iof an existing header form which to stratify the KFolds. No checking is made</span>
+<span class="sd">            to enforce a minimum number of members to train and test</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        kf_dict: (dict) Statistical values for the full data set. Returns aveMSE, for each CV fold and overall best_cnt</span>
+<span class="sd">        kf_cntr_dict: (dict) Statistical values for the only the land control nodes. Returns aveCnrlMSE, for each CV fold and overall best_cnt</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Initiating the CV testing: Using station drop outs to check overfitting. cv_splits </span><span class="si">{}</span><span class="s1">, knn </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">cv_splits</span><span class="p">,</span> <span class="n">nearest_neighbors</span><span class="p">))</span>
+    <span class="n">df_source_drop</span> <span class="o">=</span> <span class="n">df_source</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+    <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;test_interpolation_fit: Nan Removal. Init </span><span class="si">{}</span><span class="s1">. after </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df_source</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">df_source_drop</span><span class="p">)))</span>
+
+    <span class="k">if</span> <span class="n">stratified_header_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">kf</span> <span class="o">=</span> <span class="n">KFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">cv_splits</span><span class="p">)</span>
+        <span class="n">kfs</span> <span class="o">=</span> <span class="n">kf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">df_source_drop</span><span class="p">)</span>
+        <span class="n">folds</span> <span class="o">=</span> <span class="n">kf</span><span class="o">.</span><span class="n">get_n_splits</span><span class="p">(</span><span class="n">df_source_drop</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">kf</span> <span class="o">=</span> <span class="n">StratifiedKFold</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="n">cv_splits</span><span class="p">)</span>
+            <span class="n">folds</span><span class="o">=</span><span class="n">kf</span><span class="o">.</span><span class="n">get_n_splits</span><span class="p">()</span>
+            <span class="n">kfs</span> <span class="o">=</span> <span class="n">kf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">df_source_drop</span><span class="p">,</span>  <span class="n">df_source_drop</span><span class="p">[</span><span class="n">stratified_header_name</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Stratified header_id error </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">kf_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="s2">&quot;fold_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,[])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">folds</span><span class="o">+</span><span class="mi">1</span><span class="p">)])</span>
+    <span class="n">kfcntl_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">([(</span><span class="s2">&quot;Cnrl_fold_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">,[])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">folds</span><span class="o">+</span><span class="mi">1</span><span class="p">)])</span>
+    <span class="n">fold</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">train_index</span><span class="p">,</span> <span class="n">test_index</span> <span class="ow">in</span> <span class="n">kfs</span><span class="p">:</span> <span class="c1"># kf.split(df_source_drop):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;TRAIN </span><span class="si">{}</span><span class="s1">, TEST </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">train_index</span><span class="p">,</span> <span class="n">test_index</span><span class="p">))</span>
+        <span class="n">train_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">()</span>
+        <span class="n">fold</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Fold: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fold</span><span class="p">))</span>
+        <span class="n">df_source_train</span><span class="p">,</span> <span class="n">df_source_test</span> <span class="o">=</span> <span class="n">df_source_drop</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_index</span><span class="p">],</span> <span class="n">df_source_drop</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_index</span><span class="p">]</span>
+        <span class="n">train_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_source_train</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">df_land_controls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">df_land_controls_train</span> <span class="o">=</span> <span class="n">knn_fit_control_points</span><span class="p">(</span><span class="n">df_source_train</span><span class="p">,</span> <span class="n">df_land_controls</span><span class="p">,</span> <span class="n">nearest_neighbors</span><span class="o">=</span><span class="n">nearest_neighbors</span><span class="p">)</span>
+            <span class="n">ktest</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df_source_test</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">df_source_test</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">nearest_neighbors</span> <span class="k">else</span> <span class="n">nearest_neighbors</span>
+            <span class="n">df_land_controls_test</span> <span class="o">=</span> <span class="n">knn_fit_control_points</span><span class="p">(</span><span class="n">df_source_test</span><span class="p">,</span> <span class="n">df_land_controls</span><span class="p">,</span> <span class="n">nearest_neighbors</span><span class="o">=</span><span class="n">ktest</span><span class="p">)</span>
+            <span class="n">train_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_land_controls_train</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">df_water_controls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">train_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">df_water_controls</span><span class="p">)</span>
+        <span class="n">utilities</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;test_interpolation_fit: Num of DFs to combined for fit </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">train_list</span><span class="p">)))</span>
+        <span class="n">df_Train</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">train_list</span><span class="p">,</span> <span class="n">ignore_index</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">df_Test</span><span class="o">=</span><span class="n">df_source_test</span> <span class="c1"># pd.concat(test_list, ignore_index=True)</span>
+
+        <span class="c1"># Start the computations</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">interpolation_model_fit</span><span class="p">(</span><span class="n">df_Train</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">interpolation_type</span><span class="o">=</span><span class="s1">&#39;LinearNDInterpolator&#39;</span><span class="p">)</span>
+        <span class="c1">#</span>
+        <span class="n">test_coords</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;LON&#39;</span><span class="p">:</span> <span class="n">df_Test</span><span class="p">[</span><span class="s1">&#39;LON&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">(),</span> <span class="s1">&#39;LAT&#39;</span><span class="p">:</span> <span class="n">df_Test</span><span class="p">[</span><span class="s1">&#39;LAT&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()}</span>
+        <span class="n">df_fit_test_coords</span> <span class="o">=</span> <span class="n">interpolation_model_transform</span><span class="p">(</span><span class="n">test_coords</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">input_grid_type</span><span class="o">=</span><span class="s1">&#39;points&#39;</span><span class="p">)</span> <span class="c1"># [&#39;LON&#39;,&#39;LAT&#39;,&#39;VAL&#39;])</span>
+        <span class="n">test_mse</span> <span class="o">=</span> <span class="n">mean_squared_error</span><span class="p">(</span><span class="n">df_Test</span><span class="p">[</span><span class="s1">&#39;VAL&#39;</span><span class="p">],</span> <span class="n">df_fit_test_coords</span><span class="p">[</span><span class="s1">&#39;VAL&#39;</span><span class="p">])</span>
+        <span class="n">kf_dict</span><span class="p">[</span><span class="s2">&quot;fold_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">fold</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">test_mse</span><span class="p">)</span>
+
+        <span class="c1"># Now check the fitting of just the land_controls using the main model: Exclude the stations and zero clamps</span>
+        <span class="k">if</span> <span class="n">df_land_controls</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">land_coords</span> <span class="o">=</span> <span class="n">df_land_controls_test</span><span class="p">[[</span><span class="s1">&#39;LAT&#39;</span><span class="p">,</span><span class="s1">&#39;LON&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+            <span class="n">df_fit_land_coords</span> <span class="o">=</span> <span class="n">interpolation_model_transform</span><span class="p">(</span><span class="n">land_coords</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">input_grid_type</span><span class="o">=</span><span class="s1">&#39;points&#39;</span><span class="p">)</span> 
+            <span class="n">testcntl_mse</span> <span class="o">=</span> <span class="n">mean_squared_error</span><span class="p">(</span><span class="n">df_land_controls_test</span><span class="p">[</span><span class="s1">&#39;VAL&#39;</span><span class="p">],</span><span class="n">df_fit_land_coords</span><span class="p">[</span><span class="s1">&#39;VAL&#39;</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+             <span class="n">testcntl_mse</span> <span class="o">=-</span><span class="mi">99999</span>
+        <span class="n">kfcntl_dict</span><span class="p">[</span><span class="s2">&quot;Cnrl_fold_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">fold</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">testcntl_mse</span><span class="p">)</span>
+
+    <span class="n">best_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">kf_dict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="n">bestcntl_score</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">kfcntl_dict</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="c1">#</span>
+    <span class="n">kf_dict</span><span class="p">[</span><span class="s2">&quot;best&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">best_score</span>
+    <span class="n">kf_dict</span><span class="p">[</span><span class="s2">&quot;avgMSE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">folds</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">kf_dict</span><span class="p">[</span><span class="s2">&quot;avgMSE&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">kf_dict</span><span class="p">[</span><span class="s2">&quot;fold_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">kf_dict</span><span class="p">[</span><span class="s2">&quot;avgMSE&quot;</span><span class="p">]</span> <span class="o">/=</span> <span class="nb">float</span><span class="p">(</span><span class="n">folds</span><span class="p">)</span>
+    <span class="n">kfcntl_dict</span><span class="p">[</span><span class="s2">&quot;best_cntl&quot;</span><span class="p">]</span><span class="o">=</span><span class="n">bestcntl_score</span>
+    <span class="n">kfcntl_dict</span><span class="p">[</span><span class="s2">&quot;avgCnrlMSE&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">folds</span><span class="o">+</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">kfcntl_dict</span><span class="p">[</span><span class="s2">&quot;avgCnrlMSE&quot;</span><span class="p">]</span> <span class="o">+=</span> <span class="n">kfcntl_dict</span><span class="p">[</span><span class="s2">&quot;Cnrl_fold_</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">kfcntl_dict</span><span class="p">[</span><span class="s2">&quot;avgCnrlMSE&quot;</span><span class="p">]</span> <span class="o">/=</span> <span class="nb">float</span><span class="p">(</span><span class="n">folds</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">kf_dict</span><span class="p">,</span> <span class="o">**</span><span class="n">kfcntl_dict</span><span class="p">},</span> <span class="n">best_score</span></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../processing.html#processing.interpolate_scaled_offset_field.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This reads pre-generated files containing station errors, land controls and water clamps. The land controls</span>
+<span class="sd">    have not been processed usng KNN.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">utilities</span><span class="o">.</span><span class="n">init_logging</span><span class="p">(</span><span class="n">subdir</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config_file</span><span class="o">=</span><span class="s1">&#39;../config/main.yml&#39;</span><span class="p">)</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">df_source</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">source_file</span><span class="p">)</span>
+        <span class="n">df_land_controls</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">land_control_file</span><span class="p">)</span>
+        <span class="n">df_water_controls</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_pickle</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">water_control_file</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;LOAD error </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ex</span><span class="o">.</span><span class="n">args</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">full_scores</span><span class="p">,</span> <span class="n">best_scores</span> <span class="o">=</span> <span class="n">test_interpolation_fit</span><span class="p">(</span><span class="n">df_source</span><span class="o">=</span><span class="n">df_source</span><span class="p">,</span> <span class="n">df_land_controls</span><span class="o">=</span><span class="n">df_land_controls</span><span class="p">,</span> <span class="n">df_water_controls</span><span class="o">=</span><span class="n">df_water_controls</span><span class="p">,</span> <span class="n">cv_splits</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">nearest_neighbors</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    
+    <span class="c1"># Example of using generic grid to get an interpolation surface</span>
+    <span class="n">df_combined</span><span class="o">=</span><span class="n">combine_datasets_for_interpolation</span><span class="p">([</span><span class="n">df_source</span><span class="p">,</span> <span class="n">df_land_controls</span><span class="p">,</span> <span class="n">df_water_controls</span><span class="p">])</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">interpolation_model_fit</span><span class="p">(</span><span class="n">df_combined</span><span class="p">,</span> <span class="n">fill_value</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span> <span class="n">interpolation_type</span><span class="o">=</span><span class="s1">&#39;LinearNDInterpolator&#39;</span><span class="p">)</span>
+    <span class="n">adc_plot_grid</span> <span class="o">=</span> <span class="n">generic_grid</span><span class="p">()</span>
+    <span class="n">df_plot_transformed</span> <span class="o">=</span> <span class="n">interpolation_model_transform</span><span class="p">(</span><span class="n">adc_plot_grid</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span> <span class="n">input_grid_type</span><span class="o">=</span><span class="s1">&#39;grid&#39;</span><span class="p">)</span>
+
+    <span class="c1"># Sabe the full scores for future reference</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Save scores&#39;</span><span class="p">)</span>
+    <span class="n">df_full_scores</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_dict</span><span class="p">(</span><span class="n">full_scores</span><span class="p">)</span>
+    <span class="n">df_full_scores</span><span class="o">.</span><span class="n">to_pickle</span><span class="p">(</span><span class="s1">&#39;full_scores.pkl&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Finished&#39;</span><span class="p">)</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">argparse</span> <span class="k">import</span> <span class="n">ArgumentParser</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">ArgumentParser</span><span class="p">()</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--source_file&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;source_file&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;../interpolate_testing/station_errors_test_interpolation.pkl&#39;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;PKL file with station errors&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--land_control_file&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;land_control_file&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;../interpolate_testing/land_controls_interpolation.pkl&#39;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;PKL file with land_control points - no KNN applied&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--water_control_file&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;water_control_file&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s1">&#39;../interpolate_testing/water_controls_interpolation.pkl&#39;</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;PKL file with water_control points&#39;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span><span class="s1">&#39;--stratified_header_name&#39;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="o">=</span><span class="s1">&#39;stratified_header_name&#39;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                        <span class="nb">type</span><span class="o">=</span><span class="nb">str</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s1">&#39;Header for performing stratified sampling&#39;</span><span class="p">)</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">()</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">main</span><span class="p">(</span><span class="n">args</span><span class="p">))</span>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">AST</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../harvester.html">harvester package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../processing.html">processing package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utilities.html">utilities package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, AST: AdcircSupportTools: RENCI EDS.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 3.4.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
