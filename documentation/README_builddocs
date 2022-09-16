@@ -1,0 +1,42 @@
+
+##
+## Brief sumary of how te documentation gets built
+## This presumes a clean gh-pages branch is available
+##
+
+cd ./AST
+sphinx-apidoc -F -A "AST: AdcircSupportTools: RENCI EDS" -o docs .
+
+# Need this to allow sphinx to perform imports
+export PYTHONPATH=$PWD
+
+# Start the html build
+cd docs
+
+1) Modify conf.py to use theme 'classic' instead of 'alabaster'
+2) Add the following to conf.py 
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join('..', '..')))
+
+# 3) Modify the Makefile to specify BUILDSDIR as ../../ASTDocs
+
+# Build the dcumentation
+make html
+
+# Build a clean gh-pages branch to the AST 
+# One can clone off the master and then delete everything..
+
+#Copy the contents of ASTDocs into the gh-pages, make sure the index.html
+#and .nojekyll files are present. Then commit and push
+
+#Copy the .nojeklly, index.htmp, html/, and doctrees/ to the gh-pages branch
+
+#Look for the data at: https://renci.github.io/AST/html/index.html
+
+
+
+
+
+
+
