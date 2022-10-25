@@ -184,10 +184,12 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     The model is constructed by interpolation of the input error points
     usually constrained with both zero-nodes positioned offcoast and land control points to better control
     fluctuations at the coast. 
+    The types LINEATNDINTERPOLATOR, NEARESTNDINTERPOLATOR,  and CLOUGHTOCHER2DINTERPOLATOR are both based on a QHull generation.
 
     The types of interpolation models that are supported are:
         LinearNDInterpolator (default)
         CloughTocher2DInterpolator
+        Inter2D
 
     Parameters:
         df_combined (DatraFrame) is the DataFrame with columns: LON,LAT,VAL that contains all 
@@ -197,7 +199,7 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     Returns:
         model: The actual model use for subsequent extrapolations
     """
-    model_choices=['LINEARNDINTERPOLATOR','CLOUGHTOCHER2DINTERPOLATOR'] # version 2, March 2022 
+    model_choices=['LINEARNDINTERPOLATOR','CLOUGHTOCHER2DINTERPOLATOR','NEARESTNDINTERPOLATOR'] # version 2, March 2022 
     if interpolation_type.upper() in model_choices:
         interpolation_type = interpolation_type.upper()
     else:
@@ -216,8 +218,13 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     try:
         if interpolation_type=='LINEARNDINTERPOLATOR':
             model = sci.LinearNDInterpolator((X,Y), V, fill_value=fill_value)
-        else:
+        elif interpolation_type=='NEARESTNDINTERPOLATOR':
+            model = sci.NearestNDInterpolator((X,Y), V)
+        elif interpolation_type=='CLOUGHTOCHER2DINTERPOLATOR':
             model = sci.CloughTocher2DInterpolator( (X,Y),V,fill_value=fill_value)
+        else:
+            utilities.log.info(f'Incorrect interpolator specified {interpolation_type}')
+            sys.exit(1)
     except Exception as ex:
         message = template.format(type(ex).__name__, ex.args)
         utilities.log.warn('Interpolation failed: msg {}'.format(message))
