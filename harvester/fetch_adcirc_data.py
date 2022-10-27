@@ -41,9 +41,8 @@ def get_adcirc_stations_fort63_style(fname=None)->pd.DataFrame:
     if fname is None:
         utilities.log.error('No Fort63_style ADCIRC station file assigned: Abort')
         sys.exit(1)
-    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1], sep=',')
+    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1], sep=',',dtype=str)
     try:
-        df["stationid"]=df["stationid"].astype(str)
         df["Node"]=df["Node"].astype(int)
     except IndexError as e:
         utilities.log.error(f'Unsuccessful fort63_station read. Perhaps no Node column ? {e}')
@@ -64,8 +63,7 @@ def get_adcirc_stations_fort61_style(fname=None):
     if fname is None:
         utilities.log.error('No Fort63_style ADCIRC station file assigned: Abort')
         sys.exit(1)
-    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1])
-    df["stationid"]=df["stationid"].astype(str)
+    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1],dtype=str)
     adcirc_stations_list = df["stationid"].to_list()
     adcirc_stations=[word.rstrip() for word in adcirc_stations_list]
     return adcirc_stations

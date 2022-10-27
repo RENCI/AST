@@ -37,8 +37,7 @@ def get_noaa_stations(fname=None):
     if fname is None:
         utilities.log.error('No NOAA station file assigned: Abort')
         sys.exit(1)
-    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1])
-    df["stationid"]=df["stationid"].astype(str)
+    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1],dtype=str)
     noaa_stations_list = df["stationid"].to_list() 
     noaa_stations=[word.rstrip() for word in noaa_stations_list] 
     return noaa_stations
@@ -60,8 +59,7 @@ def get_contrails_stations(fname=None):
     if fname is None:
         utilities.log.error('No Contrails station file assigned: Abort')
         sys.exit(1)
-    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1])
-    df["stationid"]=df["stationid"].astype(str)
+    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1],dtype=str)
     contrails_stations_list = df["stationid"].to_list()
     contrails_stations=[word.rstrip() for word in contrails_stations_list] 
     return contrails_stations
@@ -86,8 +84,7 @@ def get_ndbc_buoys(fname=None):
     if fname is None:
         utilities.log.error('No NDBC station file assigned: Abort')
         sys.exit(1)
-    df_buoys = pd.read_csv(fname,index_col=0, header=0, skiprows=[1])
-    df_buoys["stationid"] = df_buoys["stationid"].astype(str)
+    df_buoys = pd.read_csv(fname,index_col=0, header=0, skiprows=[1],dtype=str)
     # Many buoys have NO STATE affiliation to replace nans with NONE
     df_buoys['state']=df_buoys['state'].fillna('NONE')
     list_stations = df_buoys["stationid"].tolist()
