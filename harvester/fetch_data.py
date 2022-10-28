@@ -111,6 +111,7 @@ def choose_common_header_name(product):
         'predictions': 'water_level', 
         'hourly_height': 'water_level',
         'river_water_level': 'water_level',
+        'river_flow_volume': 'flow_volume',
         'coastal_water_level': 'water_level',
         'air_pressure':'air_pressure',
         'pressure':'pressure',
@@ -201,7 +202,7 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
         df_contrails_meta: DataFrame (station x metadata)
     """
     # Fetch the data
-    contrails_product=['river_water_level','coastal_water_level', 'air_pressure']
+    contrails_product=['river_flow_volume','river_water_level','coastal_water_level', 'air_pressure']
     try:
         if data_product not in contrails_product:
             utilities.log.error(f'Contrails data product can only be: {contrails_product} was {data_product}')
@@ -319,7 +320,7 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
-        noaa_metadata=f"_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        noaa_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
         data, meta = process_noaa_stations(time_range, noaa_stations, data_product = data_product)
         df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
@@ -346,18 +347,18 @@ def main(args):
         utilities.log.info('Got Contrails access information')
         template = "An exception of type {0} occurred."
         excludedStations=list()
-        if data_product=='river_water_level':
+        if data_product=='river_water_level' or data_product=='river_flow_volume':
             fname='../supporting_data/contrails_stations_rivers.csv'
-            meta='_RIVERS'
+            meta='RIVERS'
         else:
             fname='../supporting_data/contrails_stations_coastal.csv'
-            meta='_COASTAL'
+            meta='COASTAL'
         try:
             # Build ranges for contrails ( and noaa/nos if you like)
             time_range=(starttime,endtime) 
             # Get default station list
             contrails_stations=get_contrails_stations(args.station_list) if args.station_list is not None else get_contrails_stations(fname)
-            contrails_metadata=f"{meta}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
+            contrails_metadata=f"_{data_product}_{meta}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
             data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product = data_product )
             df_contrails_data = format_data_frames(data, data_product) # Melt: Harvester default format
         except Exception as ex:
@@ -383,7 +384,7 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NDBC
         # Use default station list
         ndbc_stations=get_ndbc_buoys(args.station_list) if args.station_list is not None else get_ndbc_buoys(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','ndbc_buoys.csv'))
-        ndbc_metadata=f"_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
+        ndbc_metadata=f"_{data_product}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
         data, meta  = process_ndbc_buoys(time_range, ndbc_stations, data_product = data_product)
         df_ndbc_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
@@ -406,7 +407,7 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NDBC
         # Use default station list
         ndbc_stations=get_ndbc_buoys(args.station_list) if args.station_list is not None else get_ndbc_buoys(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','ndbc_buoys.csv'))
-        ndbc_metadata=f"_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
+        ndbc_metadata=f"_{data_product}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
         data, meta  = process_ndbc_historic_buoys(time_range, ndbc_stations, data_product = data_product)
         df_ndbc_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output

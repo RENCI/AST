@@ -73,6 +73,7 @@ def map_product_to_harvester_units(product):
         'hourly_height': 'm',
         'wave_height': 'm',
         'river_water_level': 'm',
+        'river_flow_volume': 'm^3ps',
         'coastal_water_level': 'm',
         'air_pressure':'mb',
         'wind_speed':'mps'
@@ -825,6 +826,7 @@ class contrails_fetch_data(fetch_station_data):
 
 # See Tom's email Regarding coastal versus river class values
     products={ 'river_water_level':'Stage', 
+               'river_flow_volume':'Flow Volume',
                'coastal_water_level':'Water Elevation',
                'air_pressure':'Barometric Pressure' 
              }
@@ -975,6 +977,9 @@ class contrails_fetch_data(fetch_station_data):
         if product == 'Stage' or product == 'Water Elevation':
             utilities.log.info('Contrails. Converting to meters')
             df=df * 0.3048 # feet to meters
+            return df
+        if product == 'Flow Volume':
+            df=df * (0.3048**3)
             return df
         if product == 'Barometric Pressure':
             test_val = max(df.values)

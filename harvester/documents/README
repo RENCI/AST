@@ -44,6 +44,7 @@ c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level'
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'air_pressure'
+python fetch_data.py --ndays -4 --stoptime '2022-10-28 00:00:00' --data_source 'CONTRAILS' --data_product 'river_flow_volume' --config_name '../secrets/contrails.yml' --station_list '../supporting_data/contrails_stations_rivers.csv'
 
 #Testing output datafiles
     1) ./contrails_stationdata_RIVERS_2022-02-20T00:00:00.csv
