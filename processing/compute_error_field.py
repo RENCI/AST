@@ -282,7 +282,7 @@ class compute_error_field(object):
         """
         z = np.abs(stats.zscore(self.df_final['mean'].dropna(axis=0)))> self.z_thresh
         droplist = self.df_final.dropna(axis=0)[z].index.tolist()
-        self.df_final.drop(droplist,axis=0)
+        self.df_final.drop(droplist,axis=0,inplace=True)
         utilities.log.info('Requested check for station error outlier status. {} stations removed using a zthresh of {}.'.format(len(droplist),self.z_thresh))
 
     def _compute_and_average_errors(self):
