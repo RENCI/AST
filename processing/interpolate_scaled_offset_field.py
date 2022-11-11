@@ -14,6 +14,7 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.metrics import mean_squared_error
 from scipy import interpolate as sci
+import matplotlib.path as mpltPath
 
 ############################################################################
 # Helper functions
@@ -113,6 +114,9 @@ def knn_fit_control_points(df_source, df_controls, nearest_neighbors=3)->pd.Data
     Fit the values of input control_points based on the KNN(k) of the input df_source DataFrame
     indata errors. Then apply that model to predict the control point values
 
+    The fitting of control points using KNN has been generally suspended but still usable if needed.
+  . Now land_controls are generally expected to simply be clamps(=0)
+
     This is setup to use a kd_tree method with uniform weights. The default metric is minkowski
          with a default of using manhattan_distance (l1),
 
@@ -178,7 +182,22 @@ def combine_datasets_for_interpolation(list_dfs) ->pd.DataFrame:
     df_combined=pd.concat(filtered_dataframes, ignore_index=True)
     return df_combined
 
-def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='LinearNDInterpolator'):
+def build_polygon_path(df_clampcontrol):
+    """
+    For the input dataset construct a polygon object and generate a path. This is used as a boundary
+    contour for the final interpolaton field. This EXPECTS the clamps positions to be ORDERED such that
+    the polygon generation behaves well. This constraint is required to be performed by the calling program
+    If the inteprolation procedure is not RBF, then the polygon method can be skipped
+
+    Parameters:
+        df_clampcontrol: A data frame the contains (at least) 'LON','LAT' columns. These should
+            only include rows of clamps and/or control points. Not station data. Ideally, these points
+            have been properly ORDERED by the user to generate a clean,singly clustered  polygon 
+    """
+    path = mpltPath.Path(df_clampcontrol[['LON','LAT']].to_numpy())
+    return path
+
+def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='LinearRBF'):
     """
     Method to manage building interpolations of gauge (ADCIRC-Observational) errors (residuals)
     The model is constructed by interpolation of the input error points
@@ -187,9 +206,11 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     The types LINEATNDINTERPOLATOR, NEARESTNDINTERPOLATOR,  and CLOUGHTOCHER2DINTERPOLATOR are both based on a QHull generation.
 
     The types of interpolation models that are supported are:
-        LinearNDInterpolator (default)
-        CloughTocher2DInterpolator
-        Inter2D
+        LinearNDInterpolator (*)
+        CloughTocher2DInterpolator (*)
+        NearestNDInterpolator (*)
+        LinearRBF (default)
+        (*) deprecated
 
     Parameters:
         df_combined (DatraFrame) is the DataFrame with columns: LON,LAT,VAL that contains all 
@@ -199,7 +220,7 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     Returns:
         model: The actual model use for subsequent extrapolations
     """
-    model_choices=['LINEARNDINTERPOLATOR','CLOUGHTOCHER2DINTERPOLATOR','NEARESTNDINTERPOLATOR'] # version 2, March 2022 
+    model_choices=['LINEARNDINTERPOLATOR','CLOUGHTOCHER2DINTERPOLATOR','NEARESTNDINTERPOLATOR','LINEARRBF'] # version 2, March 2022 
     if interpolation_type.upper() in model_choices:
         interpolation_type = interpolation_type.upper()
     else:
@@ -215,8 +236,11 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     X = df_drop['LON'].to_list()
     Y = df_drop['LAT'].to_list()
     V = df_drop['VAL'].to_list()
+
     try:
-        if interpolation_type=='LINEARNDINTERPOLATOR':
+        if interpolation_type=='LINEARRBF':
+            model = sci.Rbf(X,Y,V,function='linear', smooth=0)
+        elif interpolation_type=='LINEARNDINTERPOLATOR':
             model = sci.LinearNDInterpolator((X,Y), V, fill_value=fill_value)
         elif interpolation_type=='NEARESTNDINTERPOLATOR':
             model = sci.NearestNDInterpolator((X,Y), V)
@@ -233,10 +257,10 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     return model
     
 # TODO Verify behavior if a point has a VAL=nan
-def interpolation_model_transform(adc_combined, model=None, input_grid_type='points')-> pd.DataFrame: 
+def interpolation_model_transform(adc_combined, model=None, input_grid_type='points', pathpoly=None)-> pd.DataFrame: 
     """
     Apply the precomputed model to the LON/LAT input points. These inputs usually
-    reflect the final grid of courtse such as an ADCIRC grid. The inputs can be of types points or grid.
+    reflect the final grid such as an ADCIRC grid. The inputs can be of types points or grid.
     If the LON/LAT lists are meant to be actual points to extrapolate on, then points. Else, if
     that are INDEXES in the LON/LAT directions, then choose GRID.
 
@@ -244,6 +268,8 @@ def interpolation_model_transform(adc_combined, model=None, input_grid_type='poi
         adc_combined: dict with keys 'LON':list,'LAT':list
         input_grid_type: (str) either points or grid.
         model: Resuting from a prior 'fit'
+        pathpoly: An mplpath path object that, if provided, is used to set the surface to zero outside the polygon 
+            If none is provided, then this extra boundary step is skipped
 
     Returns:
         DataFrame: inteprolated grid
@@ -256,21 +282,31 @@ def interpolation_model_transform(adc_combined, model=None, input_grid_type='poi
     d = []
     xl = len(gridx)
     yl = len(gridy)
+
     if input_grid_type=='grid':
+        if pathpoly is not None:
+            (x, y) = np.meshgrid(gridx, gridy)
+            xxyy=np.array([x.flatten(), y.flatten()]).T
+            notinpolyg = ~ pathpoly.contains_points(xxyy).reshape(x.shape)
         for y in range(0,yl):
             gy = gridy[y]
             for x in range(0,xl):
                 gx=gridx[x]
-                #zval = z_krige[y] # ,x]
                 zval=model(gx,gy).item(0) # Assume only a single item
-                d.append((gx, gy, zval)) 
+                d.append([gx, gy, zval]) 
+        df = pd.DataFrame(d,columns=['LON','LAT','VAL'])
+        df.loc[notinpolyg.flatten(),'VAL']=0
     else:
+        if pathpoly is not None:
+            xxyy_adc=np.array([gridx, gridy]).T
+            notinpolyg = ~ pathpoly.contains_points(xxyy_adc).reshape(len(gridx)) # .shape)
         for y in range(0,yl): # Performing like this ensures proper Fortran style ordering
             gy = gridy[y]
             gx = gridx[y]
             zval=model(gx,gy).item(0) # ONLY ONE VALUE
-            d.append((gx, gy, zval))
-    df = pd.DataFrame(d,columns=['LON','LAT','VAL']) # (Z is 500 by 400 in lat major order)
+            d.append([gx, gy, zval])
+        df = pd.DataFrame(d,columns=['LON','LAT','VAL'])
+        df.loc[notinpolyg,'VAL']=0
     return df
 ##
 ## Potential use methods for quick testing of new interpolation models
@@ -299,8 +335,7 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
     """
     df_source is the set of stationids and their values (errors)
 
-    If land_controls are provided then after the df_source training/testing splits, the KNN fits will be performed
-    on the full land_control set (training)
+    kNN fitting land control points has been deprecated.
 
     If df_water_controls are provided, they will be combined with the training set+(opt) land_controls prior to 
     the interpolation fit
@@ -308,6 +343,8 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
     The MEAN Squared Error computation is only performed using the test set of stations. If we included the water_controls
     that would down-bias the statistics (they are always zero and always correct). The land_controls are also leftout but 
     tested separately
+
+    NOTE For test _interpolation we do not need the polygon path because we are only comparing station values to predictions
 
     Parameters:
         df_source (DataFrame) stationds x errors
@@ -348,19 +385,20 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
         print('Fold: {}'.format(fold))
         df_source_train, df_source_test = df_source_drop.iloc[train_index], df_source_drop.iloc[test_index]
         train_list.append(df_source_train)
-        if df_land_controls is not None:
-            df_land_controls_train = knn_fit_control_points(df_source_train, df_land_controls, nearest_neighbors=nearest_neighbors)
-            ktest = len(df_source_test) if len(df_source_test) < nearest_neighbors else nearest_neighbors
-            df_land_controls_test = knn_fit_control_points(df_source_test, df_land_controls, nearest_neighbors=ktest)
-            train_list.append(df_land_controls_train)
         if df_water_controls is not None:
             train_list.append(df_water_controls)
+        if df_land_controls is not None:
+        #    df_land_controls_train = knn_fit_control_points(df_source_train, df_land_controls, nearest_neighbors=nearest_neighbors)
+        #    ktest = len(df_source_test) if len(df_source_test) < nearest_neighbors else nearest_neighbors
+        #    df_land_controls_test = knn_fit_control_points(df_source_test, df_land_controls, nearest_neighbors=ktest)
+            utilities.log.info('No KNN performed on the land control points')
+            train_list.append(df_land_controls) 
         utilities.log.info('test_interpolation_fit: Num of DFs to combined for fit {}'.format(len(train_list)))
         df_Train=pd.concat(train_list, ignore_index=True)
         df_Test=df_source_test # pd.concat(test_list, ignore_index=True)
 
         # Start the computations
-        model = interpolation_model_fit(df_Train, fill_value=0.0, interpolation_type='LinearNDInterpolator')
+        model = interpolation_model_fit(df_Train, fill_value=0.0, interpolation_type='LinearRBF')
         #
         test_coords = {'LON': df_Test['LON'].to_list(), 'LAT': df_Test['LAT'].to_list()}
         df_fit_test_coords = interpolation_model_transform(test_coords, model=model, input_grid_type='points') # ['LON','LAT','VAL'])
@@ -369,9 +407,9 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
 
         # Now check the fitting of just the land_controls using the main model: Exclude the stations and zero clamps
         if df_land_controls is not None:
-            land_coords = df_land_controls_test[['LAT','LON']].to_dict()
+            land_coords = df_land_controls[['LAT','LON']].to_dict()
             df_fit_land_coords = interpolation_model_transform(land_coords, model=model, input_grid_type='points') 
-            testcntl_mse = mean_squared_error(df_land_controls_test['VAL'],df_fit_land_coords['VAL'])
+            testcntl_mse = mean_squared_error(df_land_controls['VAL'],df_fit_land_coords['VAL'])
         else:
              testcntl_mse =-99999
         kfcntl_dict["Cnrl_fold_%s" % fold].append(testcntl_mse)
@@ -401,8 +439,10 @@ def main(args):
 
     try:
         df_source = pd.read_pickle(args.source_file)
-        df_land_controls = pd.read_pickle(args.land_control_file)
-        df_water_controls = pd.read_pickle(args.water_control_file)
+        df_land_controls = pd.read_csv(args.land_control_file,header=0)
+        df_water_controls = pd.read_csv(args.water_control_file,header=0)
+        df_land_controls.rename(columns={'lat':'LAT','lon':'LON','val':'VAL'}, inplace=True)
+        df_water_controls.rename(columns={'lat':'LAT','lon':'LON','val':'VAL'}, inplace=True)
     except Exception as ex:
         print('LOAD error {}'.format(ex.args))
         sys.exit(1)
@@ -410,8 +450,8 @@ def main(args):
     full_scores, best_scores = test_interpolation_fit(df_source=df_source, df_land_controls=df_land_controls, df_water_controls=df_water_controls, cv_splits=5, nearest_neighbors=3)
     
     # Example of using generic grid to get an interpolation surface
-    df_combined=combine_datasets_for_interpolation([df_source, df_land_controls, df_water_controls])
-    model = interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='LinearNDInterpolator')
+    df_combined=combine_datasets_for_interpolation([df_source, df_water_controls, df_land_controls])
+    model = interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='LinearRBF')
     adc_plot_grid = generic_grid()
     df_plot_transformed = interpolation_model_transform(adc_plot_grid, model=model, input_grid_type='grid')
 
