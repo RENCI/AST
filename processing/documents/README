@@ -18,8 +18,8 @@ python compute_error_field.py --adcdata ./compute_error_testing/adc_wl_detailed.
 ##
     ./config/main.yml
     ./interpolate_testing/station_errors_test_interpolation.pkl
-    ./interpolate_testing/water_controls_interpolation.pkl
-    ./interpolate_testing/land_controls_interpolation.pkl
+    ./interpolate_testing/water_controls_interpolation.csv
+    ./interpolate_testing/land_controls_interpolation.csv
 
-python interpolate_scaled_offset_field.py --land_control_file ./interpolate_testing/land_controls_interpolation.pkl  --source_file ./interpolate_testing/station_errors_test_interpolation.pkl  --water_control_file ./interpolate_testing/water_controls_interpolation.pkl
+python interpolate_scaled_offset_field.py --land_control_file ./interpolate_testing/land_controls_interpolation.csv  --source_file ./interpolate_testing/station_errors_test_interpolation.pkl  --water_control_file ./interpolate_testing/water_controls_interpolation.csv
 
