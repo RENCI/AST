@@ -172,6 +172,7 @@ def combine_datasets_for_interpolation(list_dfs) ->pd.DataFrame:
     """ 
     utilities.log.info('combine_datasets_for_interpolation: Combining {} dataframes'.format(len(list_dfs)))
     filtered_dataframes = list()
+    template = "An exception of type {0} occurred."
     try:
         for df in list_dfs:
             filtered_dataframes.append(df[['LON','LAT','VAL']])
@@ -236,7 +237,7 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
     X = df_drop['LON'].to_list()
     Y = df_drop['LAT'].to_list()
     V = df_drop['VAL'].to_list()
-
+    template = "An exception of type {0} occurred."
     try:
         if interpolation_type=='LINEARRBF':
             model = sci.Rbf(X,Y,V,function='linear', smooth=0)
