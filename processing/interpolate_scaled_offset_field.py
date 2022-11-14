@@ -215,7 +215,7 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
 
     Parameters:
         df_combined (DatraFrame) is the DataFrame with columns: LON,LAT,VAL that contains all 
-        source and clamp points. (DataFrame) It is expected the caller has already KNN processed the 
+        source and clamp points. (DataFrame) It is expected the caller, if req, has already KNN processed the 
         land_control points and concatenated the water_control points
 
     Returns:
@@ -230,7 +230,8 @@ def interpolation_model_fit(df_combined, fill_value=0.0, interpolation_type='Lin
 
     # Must remove entries with nans as VAL
     before_missing = df_combined.shape[0]
-    df_drop = df_combined.dropna()
+    df_drop = df_combined.dropna() # Will drop a row for ANY value. TO ensure inut df_sources doesn;t have more than 'LON','LAT','VAL' columns
+
     after_missing = df_drop.shape[0]
     utilities.log.info('interpolation_model_fit: Input rows {}, after missingness check rows {}'.format(before_missing, after_missing))
    
@@ -283,7 +284,6 @@ def interpolation_model_transform(adc_combined, model=None, input_grid_type='poi
     d = []
     xl = len(gridx)
     yl = len(gridy)
-
     if input_grid_type=='grid':
         if pathpoly is not None:
             (x, y) = np.meshgrid(gridx, gridy)
@@ -296,7 +296,7 @@ def interpolation_model_transform(adc_combined, model=None, input_grid_type='poi
                 zval=model(gx,gy).item(0) # Assume only a single item
                 d.append([gx, gy, zval]) 
         df = pd.DataFrame(d,columns=['LON','LAT','VAL'])
-        df.loc[notinpolyg.flatten(),'VAL']=0
+        if pathpoly is not None: df.loc[notinpolyg.flatten(),'VAL']=0
     else:
         if pathpoly is not None:
             xxyy_adc=np.array([gridx, gridy]).T
@@ -307,7 +307,7 @@ def interpolation_model_transform(adc_combined, model=None, input_grid_type='poi
             zval=model(gx,gy).item(0) # ONLY ONE VALUE
             d.append([gx, gy, zval])
         df = pd.DataFrame(d,columns=['LON','LAT','VAL'])
-        df.loc[notinpolyg,'VAL']=0
+        if pathpoly is not None: df.loc[notinpolyg,'VAL']=0
     return df
 ##
 ## Potential use methods for quick testing of new interpolation models
@@ -376,11 +376,12 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
         except Exception as ex:
             print('Stratified header_id error {}'.format(ex.args))
             sys.exit(1)
+
     kf_dict = dict([("fold_%s" % i,[]) for i in range(1, folds+1)])
     kfcntl_dict = dict([("Cnrl_fold_%s" % i,[]) for i in range(1, folds+1)])
     fold = 0
     for train_index, test_index in kfs: # kf.split(df_source_drop):
-        print('TRAIN {}, TEST {}'.format(train_index, test_index))
+        print(f'TRAIN {train_index}, TEST {test_index}')
         train_list = list()
         fold += 1
         print('Fold: {}'.format(fold))
@@ -399,16 +400,17 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
         df_Test=df_source_test # pd.concat(test_list, ignore_index=True)
 
         # Start the computations
-        model = interpolation_model_fit(df_Train, fill_value=0.0, interpolation_type='LinearRBF')
-        #
+        model = interpolation_model_fit(df_Train, interpolation_type='LinearRBF')
         test_coords = {'LON': df_Test['LON'].to_list(), 'LAT': df_Test['LAT'].to_list()}
         df_fit_test_coords = interpolation_model_transform(test_coords, model=model, input_grid_type='points') # ['LON','LAT','VAL'])
         test_mse = mean_squared_error(df_Test['VAL'], df_fit_test_coords['VAL'])
         kf_dict["fold_%s" % fold].append(test_mse)
 
-        # Now check the fitting of just the land_controls using the main model: Exclude the stations and zero clamps
+        # Now check the fitting of just the land_controls using the main model: Exclude the stations and water clamps
         if df_land_controls is not None:
-            land_coords = df_land_controls[['LAT','LON']].to_dict()
+            cntl_x = df_land_controls['LON']
+            cntl_y = df_land_controls['LAT']
+            land_coords = {'LON':cntl_x[:].tolist(),'LAT':cntl_y[:].tolist()}
             df_fit_land_coords = interpolation_model_transform(land_coords, model=model, input_grid_type='points') 
             testcntl_mse = mean_squared_error(df_land_controls['VAL'],df_fit_land_coords['VAL'])
         else:
