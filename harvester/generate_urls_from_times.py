@@ -403,8 +403,10 @@ class generate_urls_from_times(object):
             words[-2]=ensemble
             words[-3]=self.instance_name
             words[-6]=str(time) # Need to ensure because we could have an advisory come in 
-            urls.append('/'.join(words))
-        utilities.log.info('Constructed {} urls of ensemble {}'.format(len(list_of_times),ensemble))
+            newurl='/'.join(words)
+            if newurl not in urls:
+                 urls.append(newurl)
+        utilities.log.info('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
         return urls
 
     def build_url_list_from_template_url_and_offset(self, ensemble='nowcast')->list:
@@ -436,8 +438,10 @@ class generate_urls_from_times(object):
             words[-2]=ensemble
             words[-3]=self.instance_name
             words[-6]=str(time) # Need this in case its an advisory value
-            urls.append('/'.join(words))
-        utilities.log.info('Constructed {} urls of ensemble {}'.format(len(list_of_times),ensemble))
+            newurl='/'.join(words)
+            if newurl not in urls:
+                 urls.append(newurl)
+        utilities.log.info('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
         return urls
 
 # Approach Used by ADDA
@@ -478,8 +482,9 @@ class generate_urls_from_times(object):
         print(list_of_instances)
         for time,instance in zip(list_of_times,list_of_instances):
             url = construct_url_from_yaml( config, time, self.instance_name, ensemble, self.grid_name, hurricane_yaml_year=self.hurricane_yaml_year, hurricane_yaml_source=self.hurricane_yaml_source )
-            urls.append(url)
-        utilities.log.info('Constructed {} urls of ensemble {} based on the YML'.format(len(list_of_times),ensemble))
+            if url not in urls:
+                 urls.append(url)
+        utilities.log.info('Constructed {} urls of ensemble {} based on the YML'.format(len(urls),ensemble))
         return urls
 
 # Approach Used by ADDA
@@ -523,8 +528,9 @@ class generate_urls_from_times(object):
         urls = list()
         for time,instance in zip(list_of_times,list_of_instances):
             url = construct_url_from_yaml( config, time, self.instance_name, ensemble, self.grid_name, hurricane_yaml_year=self.hurricane_yaml_year, hurricane_yaml_source=self.hurricane_yaml_source )
-            urls.append(url)
-        utilities.log.info('Constructed {} urls of ensemble {} based on the YML and offset'.format(len(list_of_times),ensemble))
+            if url not in urls:
+                 urls.append(url)
+        utilities.log.info('Constructed {} urls of ensemble {} based on the YML and offset'.format(len(urls),ensemble))
         return urls
 
 def main(args):
