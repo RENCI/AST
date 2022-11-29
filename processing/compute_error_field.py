@@ -207,6 +207,8 @@ class compute_error_field(object):
         Expects intersection of times and bounds to have been applied. No checks are performed
         NOTE timein, timeout are interpolation ranges and not actual data fetches. So extending timeout
         beyond the ADCIRC 'now' state is okay.
+
+        The tidal transform is skipped if not enough data exist to complete a full 12.42 hour period
         """
         n_range = self.adc.index.tolist()
         n_range.sort()
@@ -224,17 +226,18 @@ class compute_error_field(object):
 
         # Truncate the time ranges to only retain full tidal periods. Update data inplace. 
         num_periods = int(len(self.adc)/12.42)
-        num_rows_keep = num_periods * 12
-        self.adc = self.adc.tail(num_rows_keep)
-        self.obs = self.obs.tail(num_rows_keep)
-
-        print(len(self.adc))
-        utilities.log.info('Tidal transform: Num retained periods {}, num rows kept {}, adc data index {}'.format(num_periods, num_rows_keep, self.adc.index))
-        # Now only keep a complete set of 12.42 ur full-tidal periods whos last time <=timeout
-
-        ttimestart, ttimeend = diurnal_range[0],diurnal_range[-1]
-        utilities.log.info('inplace tidal_transform_data: n_pad {}, n_hours_per_period {}, n_hours_per_tide {}'.format(n_pad, n_hours_per_period, n_hours_per_tide))
-        utilities.log.info('inplace tidal_transform_data: timein {}, timeout {}, trans_time_start, trans_time_end {}'.format(timein, timeout, ttimestart, ttimeend))
+        if num_periods >= 1:
+            num_rows_keep = num_periods * 12
+            self.adc = self.adc.tail(num_rows_keep)
+            self.obs = self.obs.tail(num_rows_keep)
+            print(len(self.adc))
+            utilities.log.info('Tidal transform: Num retained periods {}, num rows kept {}, adc data index {}'.format(num_periods, num_rows_keep, self.adc.index))
+            # Now only keep a complete set of 12.42 ur full-tidal periods whos last time <=timeout
+            ttimestart, ttimeend = diurnal_range[0],diurnal_range[-1]
+            utilities.log.info('inplace tidal_transform_data: n_pad {}, n_hours_per_period {}, n_hours_per_tide {}'.format(n_pad, n_hours_per_period, n_hours_per_tide))
+            utilities.log.info('inplace tidal_transform_data: timein {}, timeout {}, trans_time_start, trans_time_end {}'.format(timein, timeout, ttimestart, ttimeend))
+        else:
+            utilities.log.info('inplace tidal_transform_data: Not enough data to perform a tidal transform. Skip')
 
 # MIGHT need something special for Hurricanes ?
     def _apply_time_bounds(self, time_range):
@@ -261,6 +264,7 @@ class compute_error_field(object):
             except ValueError:
                 utilities.log.error('_apply_time_bounds Input time range is wrong. Must be %Y-%m-%d %H:%M:%S or a hurricane advisory number.  Got {}: Abort'.format(time_range))
                 sys.exit(1)
+        print(f'bounds {bound_lo} and {bound_hi}')
         self.adc=self.adc.loc[ (self.adc.index >= bound_lo) & (self.adc.index <= bound_hi) ]
         self.obs=self.obs.loc[ (self.obs.index >= bound_lo) & (self.obs.index <= bound_hi) ]
         self._intersection_times() # Should not be needed here but just in case
@@ -289,6 +293,9 @@ class compute_error_field(object):
         """
         Average over periods in multiples of n_hours_per_period steps
         This method does not require a semidiurnal treansformation to have been perfrormed
+
+        For nowcast-type data Period 0 is the closest period to the the input timemark. For forecast data
+        the time bounds are flipped and so the FIRST Period (most negative) is the closest to the time timemark
 
         We expect that time bounds have been set
         """
