@@ -329,20 +329,29 @@ class generate_urls_from_times(object):
             only needed for YAML based hurricane construction. Eg .../thredds/dodsC/2021/al09/11/ec95d/...
     """
     
-    def __init__(self, url=None, timein=None, timeout=None, ndays=None, grid_name = None, instance_name=None, config_name=None, hurricane_yaml_year=None, hurricane_yaml_source=None):
+    def __init__(self, url=None, timein=None, timeout=None, ndays=None, grid_name = None, instance_name=None, config_name=None, hurricane_yaml_year=None, hurricane_yaml_source=None,special_case=None):
         # The Hurricane special terms are only usedY if you are requesting to build from a YAML AND the caller wants Hurricane data
         # If a URL passed in, then gridname and instance can be gotten from it. ensembles values are expected to be changed by the user
 
         self.config_name = config_name
         if url is not None:
-            words=url.split('/')
-            self.ensemble=words[-2]
-            self.instance_name=words[-3]
-            self.grid_name=words[-5]
-            try:
-                stoptime=dt.datetime.strptime(words[-6],'%Y%m%d%H').strftime('%Y-%m-%d %H:%M:%S') # Can be overridden by args.stoptime
-            except ValueError: # Must be a hurricane
-                stoptime=words[-6]
+            if special_case is not None:
+                words=url.split('/')
+                self.ensemble=words[-2]
+                self.instance_name=words[-3]
+                self.grid_name=words[-5]
+                try:
+                    stoptime=dt.datetime.strptime(words[-6],'%Y%m%d%H').strftime('%Y-%m-%d %H:%M:%S') # Can be overridden by args.stoptime
+                except ValueError: # Must be a hurricane
+                    stoptime=words[-6]
+            else:
+                words=url.split('/')
+                self.ensemble=words[-2]
+                self.instance_name=words[-5]
+                try:
+                    stoptime=dt.datetime.strptime(words[-3],'%Y%m%d%H').strftime('%Y-%m-%d %H:%M:%S') # Can be overridden by args.stoptime
+                except ValueError: # Must be a hurricane
+                    stoptime=words[-3]
             self.url=url
         # If No url, then build URLs from a YAML. This requires the caller to specify gridname, instance, and ensemble
         else:
@@ -378,7 +387,10 @@ class generate_urls_from_times(object):
         self.ndays=ndays
         print('Current time (or advisory) range is {} to {}. Specified ndays is {}'.format(self.starttime,self.stoptime, self.ndays))
         if url is not None:
-           print('Current estimated ensemble {}, instance {}, and gridname {}'.format(self.ensemble,self.instance_name,self.grid_name))
+           if special_case is not None:
+               print('Current estimated ensemble {}, instance {}, and gridname {}'.format(self.ensemble,self.instance_name,self.grid_name))
+           else:
+               print('Special case: Current estimated ensemble {}, instance {}'.format(self.ensemble,self.instance_name))
 
     def build_url_list_from_template_url_and_times(self, ensemble='nowcast')-> list:
         """
@@ -443,6 +455,44 @@ class generate_urls_from_times(object):
                  urls.append(newurl)
         utilities.log.info('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
         return urls
+
+    def build_url_list_from_alternate_template_url_and_offset(self, ensemble='nowcast')->list:
+        """
+        This is an alternate nomenclature used for some specialized work
+
+        We seek to build a set of compatible URLs starting from the URL embedded time 
+        and walking back/forward offset days while using the provided ensemble value.
+        Eg, you might send in a forecast and want back a list of nowcasts for the same grid
+        structure of the input URL. We expect the caller to provide a proper ensemble value
+        for the new URLs. 
+        We expect no changes in the grid name. Only change in the ensemble and times are expected
+   
+        Parameters:
+            ensemble: (str)( def of "nowcast") The desired ensemble word for the resultant urls
+
+        Returns:
+            urls: list(str). List of valid URLs for processing
+        """
+        url = self.url
+        time_value=self.stoptime  # Could also be an advisory
+        offset = self.ndays
+        if offset > 0:
+            utilities.log.warn('Offset >0 specified: Behavior is not tested')
+        #timein = url.split('/')[-6] # Maybe need to check for a Hurricane Advisory also 
+        list_of_times = generate_six_hour_time_steps_from_offset(time_value,offset)
+        list_of_instances = generate_list_of_instances(list_of_times, 'hsofs', self.instance_name)
+        urls = list()
+        for time,instance in zip(list_of_times,list_of_instances):
+            words=url.split('/')
+            words[-2]=ensemble
+            words[-5]=self.instance_name
+            words[-3]=str(time) # Need this in case its an advisory value
+            newurl='/'.join(words)
+            if newurl not in urls:
+                 urls.append(newurl)
+        utilities.log.info('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
+        return urls
+
 
 # Approach Used by ADDA
     def build_url_list_from_yaml_and_times(self, ensemble='nowcast')->list:
