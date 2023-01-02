@@ -335,7 +335,7 @@ class generate_urls_from_times(object):
 
         self.config_name = config_name
         if url is not None:
-            if special_case is not None:
+            if special_case is None:
                 words=url.split('/')
                 self.ensemble=words[-2]
                 self.instance_name=words[-3]
