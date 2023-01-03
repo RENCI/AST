@@ -311,7 +311,7 @@ def main(args):
     """
     import fetch_adcirc_data as fetch_adcirc_data
 
-    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    main_config = utilities.init_logging(subdir=None,config_file=os.path.join(os.path.dirname(__file__),'../config','main.yml'))
 
     # Basic checks
     if args.config_name is None:
@@ -366,7 +366,7 @@ def main(args):
         urls=convert_urls_to_61style(urls)
 
     # Sample test also needs to have a station list - normally user would supply this
-    station_file = '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv'
+    station_file = os.path.join(os.path.dirname(__file__),'../supporting_data','CERA_NOAA_HSOFS_stations_V3.1.csv')
 
     # Run the job
     rpl = get_adcirc_stations(source=args.data_source, product=args.data_product,

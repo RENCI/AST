@@ -538,9 +538,10 @@ def main(args):
     A simple main method to demonstrate the use of this class
     """
 
-    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    #main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    main_config = utilities.init_logging(subdir=None,config_file=os.path.join(os.path.dirname(__file__),'../config','main.yml'))
 
-    config_name=os.path.join(os.path.dirname(__file__), '../config', 'url_framework.yml')
+    config_name=args.config_name if args.config_name is not None else os.path.join(os.path.dirname(__file__), '../config', 'url_framework.yml')
 
     # Set up IO env
     utilities.log.info("Product Level Working in {}.".format(os.getcwd()))
@@ -564,7 +565,7 @@ def main(args):
             new_urls = rpl.build_url_list_from_template_url_and_offset(ensemble=args.ensemble)
     else:
         print('Selecting a YAML generation method') 
-        if args.grid_name is None or args.instance_name is None or args.config_name is None:
+        if args.grid_name is None or args.instance_name is None or config_name is None:
             print('YAML-based procedurs requires gridname, instance_name and config_name')
             sys.exit(1)
         if args.hurricane_yaml_year is not None and args.hurricane_yaml_source is not None:

@@ -277,7 +277,9 @@ def main(args):
     Then the STARTTIME is ndays on the past
     """
 
-    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    #main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    #main_name = args.main_config if args.main_config is not None else os.path.join(os.path.dirname(__file__),'../config','main.yml')
+    main_config = utilities.init_logging(subdir=None,config_file=os.path.join(os.path.dirname(__file__),'../config','main.yml'))
 
     if args.sources:
          print('Return list of sources')
@@ -348,10 +350,10 @@ def main(args):
         template = "An exception of type {0} occurred."
         excludedStations=list()
         if data_product=='river_water_level' or data_product=='river_flow_volume':
-            fname='../supporting_data/contrails_stations_rivers.csv'
+            fname=os.path.join(os.path.dirname(__file__),'../supporting_data','contrails_stations_rivers.csv')
             meta='RIVERS'
         else:
-            fname='../supporting_data/contrails_stations_coastal.csv'
+            fname=os.path.join(os.path.dirname(__file__),'../supporting_data','contrails_stations_coastal.csv')
             meta='COASTAL'
         try:
             # Build ranges for contrails ( and noaa/nos if you like)

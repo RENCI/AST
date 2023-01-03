@@ -361,7 +361,9 @@ def main(args):
     annotate final .csv files with _TIME_ corresponding to the actual url data starttime.
     """
 
-    main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    #main_config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    main_name = args.main_config if args.main_config is not None else os.path.join(os.path.dirname(__file__),'../config','main.yml')
+    main_config = utilities.init_logging(subdir=None,config_file=main_name)
 
     if args.sources:
          print('Return list of sources')
@@ -495,5 +497,7 @@ if __name__ == '__main__':
                         help='Specify input url is locally stored')
     parser.add_argument('--variable_name', action='store', dest='variable_name', default='zeta', type=str,
                         help='Choose a non-default netCDF4 variable name')
+    parser.add_argument('--main_config', action='store', dest='main_config', default=None, type=str,
+                        help='Choose a non-default main.yml')
     args = parser.parse_args()
     sys.exit(main(args))
