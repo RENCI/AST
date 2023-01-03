@@ -438,7 +438,7 @@ def main(args):
     have not been processed usng KNN.
     """
 
-    config = utilities.init_logging(subdir=None, config_file='../config/main.yml')
+    config = utilities.init_logging(subdir=None,config_file=os.path.join(os.path.dirname(__file__),'../config','main.yml'))
 
     try:
         df_source = pd.read_pickle(args.source_file)
