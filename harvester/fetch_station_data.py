@@ -50,12 +50,15 @@ import pandas as pd
 from siphon.catalog import TDSCatalog
 from collections import OrderedDict
 
+# HARVESTER
+import json
+
 GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in this zone
 
 GLOBAL_FILL_VALUE='-99999'  # Always replaces final np.nans with this.
 
 #UNITS='meters' # Now the code only applies to WL
-def map_product_to_harvester_units(product):
+def map_product_to_units(product):
     """
     The harvester dataset should be returning consistent metric units 
     for all sources. This dictionary performs the translation for supported 
@@ -129,8 +132,43 @@ def stations_interpolate(df)->pd.DataFrame:
         df_out. New time series x stations
     """
     utilities.log.info('Interpolating station data' )
-    df.interpolate(method='polynomial', order=1, limit=1, inplace=True)
+    ## KEEP df.interpolate(method='polynomial', order=1, limit=1, inplace=True)
+    df.interpolate(method='polynomial', order=1, limit=3, inplace=True)
     return df
+
+def check_duplicate_time_entries(station, stationdata):
+    """
+    Sometimes station data comes back with multiple entries for a single time.
+    Here we search for such dups and keep the FIRST one (Same as for ADDA)
+
+    Parameters:
+        station: <str> an individual stationID to check
+        stationData: <dataframe>. Current list of all station product levels 
+    Returns:
+        New dataframe containing no duplicate values
+        multivalue. bool: True if duplicates were found 
+    """
+    multivalue = False
+    idx = stationdata.index
+    if idx.duplicated().any():
+        utilities.log.info(f'Duplicated Obs data found for station {str(station)} will keep first value(s) only')
+        stationdata = stationdata.loc[~stationdata.index.duplicated(keep='first')]
+        multivalue = True
+    return stationdata, multivalue
+
+def build_url_for_station(domain, indict)->str:
+    """
+    Build a simple query for a single gauge and the product level values
+    Parameters:
+        domain: <str> harvester domain
+        indict: <dict> of parameters for the the final url
+    Returns:
+        full_url: <str> A fully formatted harvester URL
+    """
+    url=domain
+    url_values=urllib.parse.urlencode(indict)
+    full_url = url +'?' +url_values
+    return full_url
 
 class fetch_station_data(object):
     """
@@ -198,10 +236,10 @@ class fetch_station_data(object):
                 utilities.log.warning(f'had duplicate times {len(idx)} {len(df_data.index)}')
             #df_data.dropna(how='all', axis=1, inplace=True)
             df_data = replace_and_fill(df_data)
+            df_data = df_data.sort_index()
         except Exception as e:
             utilities.log.error('Aggregate: error: {}'.format(e))
-            ##df_data=np.nan
-        df_data = df_data.sort_index()
+            #sys.exit(1)  We do not die bcs, we want APSVIS SV to proceed without ending. It is possible to have no data here
         return df_data
 
     def aggregate_station_metadata(self)->pd.DataFrame:
@@ -228,7 +266,7 @@ class fetch_station_data(object):
                 utilities.log.warn(f'Error Value: Metadata: {station}, msg {message}')
         if len(aggregateMetaData)==0:
             utilities.log.warn('Metadata: No site data was found for the given site_id list. Perhaps the server is down Exit')
-            #sys.exit(1) # Process remaining list
+            # sys.exit(1) # We do not die bcs, we want APSVIS SV to proceed without ending. It is possible to have no data here
         utilities.log.info(f'{len(excludedStations)} Metadata Stations were excluded')
         df_meta = pd.concat(aggregateMetaData, axis=1).T
         #df_meta.dropna(how='all', axis=1, inplace=True)
@@ -667,7 +705,7 @@ class noaanos_fetch_data(fetch_station_data):
             datum: <str> (Default='MSL')
             resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
-        self._data_unit=map_product_to_harvester_units(product)
+        self._data_unit=map_product_to_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.info(f'NOAA Fetching product {self._product}')
@@ -679,27 +717,6 @@ class noaanos_fetch_data(fetch_station_data):
         self._units='metric' # Redundant cleanup TODO
         self._datum=datum
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
-
-    def check_duplicate_time_entries(self, station, stationdata):
-        """
-        Sometimes station data comes back with multiple entries for a single time.
-        Here we search for such dups and keep the FIRST one (Same as for ADDA)
-        Choosing first was based on a single station and looking at the noaa coops website
-
-        Parameters:
-            station: <str> an individual stationID to check
-            stationData: <dataframe>. Current list of all station product levels (from detailedIDlist) 
-        Returns:
-            New dataframe containing no duplicate values
-            multivalue. bool: True if duplicates were found 
-        """
-        multivalue = False
-        idx = stationdata.index
-        if idx.duplicated().any():
-            utilities.log.info(f'Duplicated Obs data found for station {str(station)} will keep first value(s) only')
-            stationdata = stationdata.loc[~stationdata.index.duplicated(keep='first')]
-            multivalue = True
-        return stationdata, multivalue
 
 # The weirdness with tstart/tend. Prior work by us indicated noaa coops requires time formats of (%Y%m%d %H:%M')
 # Even though their website says otherwise (as of Oct 2021)
@@ -734,7 +751,7 @@ class noaanos_fetch_data(fetch_station_data):
                                             units=self._units,
                                             interval=self._interval, # If none defaults to 6min
                                             time_zone=GLOBAL_TIMEZONE)[self.noaa_data_column_names[self._product]].to_frame()
-            df_data, multivalue = self.check_duplicate_time_entries(station, dx)
+            df_data, multivalue = check_duplicate_time_entries(station, dx)
             # Put checks in here in case we want to exclude stations with determined multiple values
             df_data.reset_index(inplace=True)
             df_data.set_index(['date_time'], inplace=True)
@@ -874,7 +891,7 @@ class contrails_fetch_data(fetch_station_data):
         """
 
         self._owner=owner
-        self._data_unit=map_product_to_harvester_units(product)
+        self._data_unit=map_product_to_units(product)
         try:
             self._product=self.products[product] # product
         except KeyError:
@@ -939,21 +956,6 @@ class contrails_fetch_data(fetch_station_data):
             init_hour, init_min, init_sec = 23,59,59
         return periods
 
-    def build_url_for_contrails_station(self, domain, systemkey, indict)->str:
-        """
-        Build a simple query for a single gauge and the product level values
-        Parameters:
-            domain: <str> contrails domain
-            systemkey: <str> contrails authorization key
-            indict: <dict> of parameters for the the final url
-        Returns:
-            full_url: <str> A fully formatted Contrails URL
-        """
-        url=domain
-        url_values=urllib.parse.urlencode(indict)
-        full_url = url +'?' +url_values
-        return full_url
-
     def convert_to_metric(self, df)-> pd.DataFrame:
         """
         Contrails returns moost (all?) data in imperial units
@@ -1014,7 +1016,7 @@ class contrails_fetch_data(fetch_station_data):
                  'system_key': self._systemkey ,'site_id': station,
                  'tz': GLOBAL_TIMEZONE,
                  'data_start': tstart,'data_end': tend }
-            url = self.build_url_for_contrails_station(self._domain,self._systemkey,indict)
+            url = build_url_for_station(self._domain,indict)
             try:
                 response = requests.get(url)
                 dict_data = xmltodict.parse(response.content)
@@ -1033,6 +1035,7 @@ class contrails_fetch_data(fetch_station_data):
             df_data = pd.concat(datalist)
             utilities.log.info('Contrails. Converting to meters')
             df_data = self.convert_to_metric(df_data)
+            df_data.replace(-99999,np.nan, inplace=True)
         except Exception as e:
             utilities.log.error('Contrails failed concat: error: {}'.format(e))
             df_data=np.nan
@@ -1060,7 +1063,8 @@ class contrails_fetch_data(fetch_station_data):
         METHOD = 'GetSensorMetaData'
         indict = {'method': METHOD,'tz':GLOBAL_TIMEZONE, 'class': self.CLASSDICT[self._product],
              'system_key': self._systemkey ,'site_id': station }
-        url = self.build_url_for_contrails_station(self._domain,self._systemkey,indict)
+        url = build_url_for_station(self._domain,indict)
+
         response = requests.get(url)
         dict_data = xmltodict.parse(response.content)
         data = dict_data['onerain']['response']['general']['row']
@@ -1079,7 +1083,7 @@ class contrails_fetch_data(fetch_station_data):
         #     'system_key': self._systemkey ,'site_id': station }
         indict = {'method': METHOD,'tz':GLOBAL_TIMEZONE, 'class': self.CLASSDICT[self._product],
              'system_key': self._systemkey ,'or_site_id': or_site_id }
-        url = self.build_url_for_contrails_station(self._domain,self._systemkey,indict)
+        url = build_url_for_station(self._domain,indict)
         try:
             response = requests.get(url)
             dict_data = xmltodict.parse(response.content)
@@ -1154,7 +1158,7 @@ class ndbc_fetch_data(fetch_station_data):
             product: <str> (Default='wave_height')  The generic product name
             resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
-        self._data_unit=map_product_to_harvester_units(product)
+        self._data_unit=map_product_to_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.info(f'NDBC Fetching product {self._product}')
@@ -1288,7 +1292,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
             product: <str> (Default='wave_height')  The generic product name
             resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
-        self._data_unit=map_product_to_harvester_units(product)
+        self._data_unit=map_product_to_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.info(f'NDBC Fetching Historicalproduct {self._product}')
@@ -1407,4 +1411,379 @@ class ndbc_fetch_historic_data(fetch_station_data):
         except Exception as e:
             utilities.log.exception(f'NDBC Historical meta error: {e}')
             sys.exit(1)
+        return df_meta
+
+##
+##
+## NOAA/NDBC source historical subclass
+##
+
+class ndbc_fetch_historic_data(fetch_station_data):
+    """
+    Invoke the NDBC historical subclass
+        This class develops the historical data
+        Historical data will not return data from the current year.
+
+    Parameters:
+        station_id_list: list of NDBC buoy ids <str>
+        a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
+        a valid PRODUCT id <str>: wave_height,pressure, wind_speed
+
+        One dict is used to manage jobs. The products dict maps generic product names used by high level codes
+        (keys) to the specific product names in NDBC 
+
+        UNITS: Based on an examinination of the data and comparison to plots on the NDBC website, it appears that
+        at least for the tested stations:
+            wave_height: meters
+            pressure: mbars 
+            wind_speed: m/s
+ 
+        Currently tested input products:
+            wave_height
+            pressure
+            wind_speed
+    """
+    # dict( persistant tag: source specific tag )
+    # products defines current products (as keys) and uses the value as a column header in the returned data set
+
+    # NOTE: This dict maps the generic input data type (key) to the actual product name used by noaa-coops
+
+    products={ 'wave_height':'WVHT', # m
+               'air_pressure':'PRES', # hPa=mb
+               'wind_speed':'WSPD'} # mps
+
+    def __init__(self, station_id_list, periods, product='wave_height', units='metric',
+                resample_mins=15):
+        """
+        NDBC: National Data Buoy Center
+        Read Historical buoy product data.
+
+        Parameters
+            station_id_list: :List of triplets [(id,name,state)...]
+            periods: A tuple of time range (timein,timeend).format %Y-%m-%d %H:%M:%S
+            product: <str> (Default='wave_height')  The generic product name
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
+        """
+        self._data_unit=map_product_to_units(product)
+        try:
+            self._product=self.products[product] # self.products[product] # product
+            utilities.log.info(f'NDBC Fetching Historicalproduct {self._product}')
+        except KeyError:
+            utilities.log.error(f'NDBC No such historical product key. Input {product}, Available {self.products.keys()}')
+            sys.exit(1)
+        else:
+            self._units='metric' # Redundant cleanup TODO
+        if units !='metric':
+            utilities.log.info('NDBC: units must be metric: {}: Abort'.format(units))
+            sys.exit(1)
+        super().__init__(station_id_list, periods, resample_mins=resample_mins)
+
+    def get_year_list_from_timerange(self, time_range):
+        """
+        The input time_range tuple is queried to determine what year we are interested in.
+        No checks are made to ensure the CURRENT year is excluded. If it is included,
+        then the subsequent historical data call will fail
+
+        Parameters:
+            input time tuple: (<str>,<str>) formats are '%Y-%m-%d %H:%M:%S'
+        Returns:
+            year_list: list sorted range of years
+        """
+        dformat = '%Y-%m-%d %H:%M:%S'
+        yin = dt.datetime.strptime(time_range[0], dformat).year
+        yout = dt.datetime.strptime(time_range[1], dformat).year
+        if yin > yout:
+            yin,yout = yout,yim
+        year_list=list(range(yin,yout+1))
+        return year_list
+
+## 
+## API for accessing observation data from the NDBC
+## Implement the required two methods
+##
+
+    def fetch_single_product(self, buoy, time_range) -> pd.DataFrame:
+        """
+        For a single NDBC site_id, process the tuple from the input period.
+        Aggregate them into a dataframe with index pd.timestamps and a single column
+        containing the desired product values. Rename the column to station id
+   
+        As of this writing, it is unclear if the time_range argument to buoypy 
+        works. So I build this year_list approach to be sure
+        
+        Parameters:
+            station <str>. A valid NDBC buoy id
+            time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
+
+        Returns:
+            dataframe of time (timestamps) vs values for the requested station
+        """
+        tstart,tend=time_range
+
+        utilities.log.info('NDBC_HISTORIC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
+
+        data_list=list()
+        year_list = self.get_year_list_from_timerange(time_range)
+        for year in year_list:
+            print(f'NDBC_HISTORICAL: Found year {year}')
+            try:
+                H = bp.historic_data(buoy[0],year)
+                df = H.get_stand_meteo() 
+                df.index.name='TIME'
+                df_data = df[self._product].to_frame()
+                df_data.columns=[str(buoy[0])]
+                df_data.sort_index(inplace=True) # From lowest to highest
+                df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
+                data_list.append(df_data)
+            except ConnectionError as ec:
+                utilities.log.error(f'Hard fail: Could not connect to NDBC for products {buoy[0]}: {ec}')
+            except HTTPError:
+                utilities.log.error('Hard fail: HTTP error to NDBC for products')
+            except Timeout:
+                utilities.log.error('Hard fail NDBC: Timeout')
+            except Exception as e:
+                utilities.log.error(f'NDBC data error: {e} was {self._product}')
+            df_data = pd.concat(data_list, axis=0) 
+        try:
+            df_data=df_data.astype(float)
+        except Exception as e:
+            utilities.log.error(f'NDBC_HISTORIC float assignment error: {e}')
+            df_data = np.nan
+        df_data = df_data.loc[time_range[0]:time_range[1]]
+        return df_data
+
+    def fetch_single_metadata(self, buoy) -> pd.DataFrame:
+        """
+        For a single NDBC site_id fetch the associated metadata.
+        The choice of data is highly subjective at this time.
+
+        Parameters:
+             A valid buoy id <str>
+        Returns:
+             dataframe of preselected metadata for a single station in the (keys,values) orientation
+
+             This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+             to our preferred orientation with stations as index
+        """ 
+        try:
+            meta=dict()
+            df_latest = NDBC.latest_observations().set_index('station')
+            df_latest.to_csv('dump.csv')
+            lat, lon = df_latest.loc[buoy[0]][['latitude','longitude']]
+            meta['LAT'] = lat
+            meta['LON'] = lon
+            meta['NAME'] =  buoy[1]
+            meta['UNITS'] = self._data_unit 
+            meta['TZ'] = GLOBAL_TIMEZONE
+            meta['OWNER'] = 'NONE'
+            meta['STATE'] = buoy[2]
+            meta['COUNTY'] = np.nan # None
+            df_meta=pd.DataFrame.from_dict(meta, orient='index')
+            df_meta.columns = [str(buoy[0])]
+        except KeyError:
+             pass
+             utilities.log.warning(f'Station {buoy[0]} had no metadata: skip it')
+        except Exception as e:
+            utilities.log.exception(f'NDBC Historical meta error: {e}')
+            sys.exit(1)
+        return df_meta
+##
+## RENCI HARVESTER source subclass
+##
+class harvester_fetch_data(fetch_station_data):
+    """
+    Invoke the Harvester subclass
+        This class access time series data of observational data from the RENCI timeseries database; Harvester.
+        The sources and data_products can be more variable (eg, NOAA, Contrails, NDBC, etc.
+
+         In the below, the generic_product refers to the AST identified products such as water_level, and
+         water_elevation. This is needed bcs, the Harvester DB, has temporarily stored products such as 
+         wave_height and water_elevation as water_level. This will change in the futurw. In the meantime, 
+         we take our generic_product name, map to the DB choices, then before saving the data, rename it
+         back to the desired genetic_name
+
+    Parameters:
+        station_id_list: list of NDBC buoy ids <str>
+        a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
+        a valid PRODUCT id <str>: water_level, water_elevation, wave_height, air_pressure, wind_speed
+            not all sources/stations have all data products
+        a valid configuration file to specify where the harvester server and entry points are
+
+        One dict is used to manage jobs. The products dict maps generic product names used by high level codes
+        (keys) to the specific product names in Harvester
+
+        UNITS: Based on an examinination of the data and comparison to plots on the NDBC website, it appears that
+        at least for the tested stations:
+            wave_height, water_level, water_elevation: meters
+            pressure: mbars 
+            wind_speed: m/s
+ 
+        Currently tested input products:
+            wave_height
+            air_pressure
+            wind_speed
+    """
+    # dict( persistant tag: source specific tag )
+    # products defines current products (as keys) and uses the value as a column header in the returned data set
+
+    # NOTE: This dict maps the generic input data type (key) to the actual product name used by harvester
+    # This needs to be updated whenever new products get included to the database
+    #
+    product_map = dict()
+    product_map['NOAA']={'water_level':'tidal_gauge', 'predictions':'tidal_predictions', 'air_pressure':'air_barometer',
+            'hourly_height':'tidal_gauge','wind_speed':'wind_anemometer'} # Wind speed is just a placeholder
+    product_map['NDBC']={'wave_height':'ocean_buoy', 'wind_speed': 'wind_anemometer', 'air_pressure':'air_barometer'} # pressure is a placeholder
+    product_map['CONTRAILS']={'coastal_water_level':'coastal_gauge', 'river_water_level': 'river_gauge', 
+            'river_flow_volume':'river_flow_volume', 'air_pressure':'air_barometer'}
+
+
+# This will disappear when the Harvester DB, start saving data using the proper genetic_product name
+    def temp_product_name(self, product):
+        """
+        A temporary fudge bcs the harvester database currently only has
+        these three names. This will change in the future 
+        """
+        if 'water' in product:
+            return 'water_level'
+        if 'wave' in product:
+            return 'water_level'
+        if 'air' in product:
+            return 'air_pressure'
+        if 'wind' in product:
+            return 'wind_speed'
+        if 'prediction' in product:
+            return 'water_level'
+        print(f'Product Names: No changes applied: Didnt find a product name containing the string water {product}')
+        sys.exit(1)
+        return product
+
+    def __init__(self, station_id_list, server_config, periods, data_source='NOAA', product='water_level', units='metric',
+                resample_mins=15):
+        """
+        RENCI Harvester
+        Read observation product data.
+
+        Parameters
+            station_id_list: :List of triplets [(id,name,state)...]
+            periods: A tuple of time range (timein,timeend).format %Y-%m-%d %H:%M:%S
+            product: <str> (Default='water_level'). The AST generic product names 
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
+        """
+        self.dfn=None # Crrent harvester DB forces user to do a full data query to get the metadata. SO we carry it here
+                      # SO we no longer need to query twice. Set to None to ensure the data are req before the metadata
+        self._data_unit=map_product_to_units(product)
+
+        self._data_source=data_source
+        self._generic_product=product
+        self._domain = server_config['domain']
+        self.harv_num_nan=-99999  # In the DB numbers ae -99999.0000 where as strings are -99999# In the DB numbers ae -99999.0000 where as strings are -99999
+        # Check if chosen product is available at the given data_source
+        try:
+            self._product=self.product_map[self._data_source][self._generic_product] # This maps to the source definition required in the query to the DB
+            utilities.log.info(f'HARVESTER Fetching product {product} to {self._product}')
+        except Exception as e:
+            utilities.log.error(f'HARVESTER No such product key. Input {product}, Available {self.product_map[self._data_source].keys()}, Error Abort: {e}')
+            sys.exit(1)
+        else:
+            self._units='metric' # Redundant cleanup TODO
+        if units !='metric':
+            utilities.log.info('HARVESTER: units must be metric: {}: Abort'.format(units))
+            sys.exit(1)
+        super().__init__(station_id_list, periods, resample_mins=resample_mins)
+
+## 
+## API for accessing observation data from the RENCI Harvester database
+## Implement the required two methods
+##
+    def fetch_single_product(self, station, time_range, pmaxsize=10000) -> pd.DataFrame: 
+        """
+        For a single Harvester site_id, process all tuples from the input periods list
+        and aggregate them into a dataframe with index pd.timestamps and a single column.
+        
+        Parameters:
+            station <str>. A valid station id
+            time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
+
+        Returns:
+            dataframe of time (timestamps) vs values for the requested station
+        """
+        datalist=list()
+        tstart,tend=time_range
+        if tstart > tend:
+            print('Harvester: Swapping input times')
+            tstart, tend = tend, tstart
+        timein =  pd.Timestamp(tstart).strftime('%Y-%m-%d %H:%M:%S').replace(' ','T')
+        timeout =  pd.Timestamp(tend).strftime('%Y-%m-%d %H:%M:%S').replace(' ','T')
+        # Need this bcs harvester requires timein/timeout to query for metadata too.
+        self.timein=timein
+        self.timeout=timeout
+        utilities.log.info('Harvester: Iterate: start time is {}, end time is {}, station is {}'.format(timein,timeout,station))
+        indict = {'station_name':station, 'data_source': self._product, 
+             'time__gte': timein, 'time__lte':timeout, 'psize':pmaxsize, 'format': 'json'}
+        input_url = build_url_for_station(self._domain, indict)
+        try:
+            with urllib.request.urlopen(input_url) as url:
+                data = json.loads(url.read().decode())
+                if data['count'] == 0:
+                    print(f'Had an EMPTY dfn build {station}')
+                    return np.nan
+                else:
+                    dfn = pd.json_normalize(data, record_path = ['results','features']).sort_values('properties.time')
+            dfn.replace(self.harv_num_nan,np.nan, inplace=True)
+            df = dfn.loc[dfn['properties.data_source'] == self.product_map[self._data_source][self._generic_product]][['properties.time', f'properties.{self.temp_product_name(self._generic_product)}']]
+            df.index = pd.to_datetime(df['properties.time'])
+            df.index.name='TIME'
+            df.drop(['properties.time'],axis=1,inplace=True)
+            df.columns=[self._generic_product.upper()] # Give it the untransformed input product name
+            df_data, multivalue = check_duplicate_time_entries(station, df)
+            df_data.columns=[station]
+        except Exception as e:
+            utilities.log.warn(f'Harvester response data error: Perhaps empty data contribution: {e}')
+            df_data=np.nan
+        return df_data
+
+    def fetch_single_metadata(self, station, pmaxsize=100) -> pd.DataFrame:
+        """
+        For a single HARVESTER site_id fetch the associated metadata.
+        The choice of data is highly subjective at this time.
+
+        Parameters:
+             A valid id <str>
+        Returns:
+             dataframe of preselected metadata for a single station in the (keys,values) orientation
+
+             This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+             to our preferred orientation with stations as index
+        """ 
+        meta=dict()
+        # Need this bcs harvester requires timein/timeout to query for metadata too.
+        timein=self.timein
+        timeout=self.timein # We only need one times worth of data self.timeout
+
+        indict = {'station_name':station, 'data_source': self._product,
+             'time__gte': timein, 'time__lte':timeout, 'psize':pmaxsize, 'format': 'json'}
+        input_url = build_url_for_station(self._domain, indict)
+        try:
+            with urllib.request.urlopen(input_url) as url:
+                data = json.loads(url.read().decode())
+                if data['count'] == 0:
+                    print(f'Had an EMPTY dfn build {station}')
+                else:
+                    dfn = pd.json_normalize(data, record_path = ['results','features']).sort_values('properties.time')
+        except Exception as e:
+            utilities.log.warn(f'Harvester response data error: Perhaps empty data contribution: {e}')
+        try:
+            meta['LAT'] = dfn['geometry.coordinates'][0][1] if dfn['geometry.coordinates'][0][1] !=None else np.nan
+            meta['LON'] = dfn['geometry.coordinates'][0][0] if dfn['geometry.coordinates'][0][0] !=None else np.nan
+            meta['NAME'] = dfn['properties.location_name'][0] if dfn['properties.location_name'][0] !=None else np.nan
+            meta['UNITS'] = dfn['properties.units'][0]
+            meta['TZ'] = dfn['properties.tz'][0]
+            meta['OWNER'] = dfn['properties.gauge_owner'][0].upper() if dfn['properties.gauge_owner'][0] !=None else np.nan
+            meta['STATE'] = dfn['properties.state'][0].upper() if dfn['properties.state'][0] !=None else np.nan
+            meta['COUNTY'] = dfn['properties.county'][0] if dfn['properties.county'][0] !=None else np.nan
+            df_meta=pd.DataFrame.from_dict(meta, orient='index')
+            df_meta.columns = [str(station)]
+        except Exception as e:
+            utilities.log.exception(f'Harvester meta response meta error: {e}')
+            #df_meta=np.nan
         return df_meta

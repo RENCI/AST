@@ -11,7 +11,7 @@ import pandas as pd
 import datetime as dt
 import math
 
-from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data, ndbc_fetch_historic_data
+from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data, ndbc_fetch_historic_data, harvester_fetch_data
 from utilities.utilities import utilities as utilities
 
 ##
@@ -19,7 +19,7 @@ from utilities.utilities import utilities as utilities
 ##
 
 # Currently supported sources
-SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
+SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC','HARVESTER']
 
 #def get_noaa_stations(fname='./config/noaa_stations.txt'):
 def get_noaa_stations(fname=None):
@@ -92,6 +92,46 @@ def get_ndbc_buoys(fname=None):
     list_states = df_buoys["state"].tolist()
     station_tuples = tuple(zip(list_stations, list_locations, list_states))
     return station_tuples
+
+def get_harvester_stations(fname=None):
+    """
+    Simply read a CSV file containing stations under the header of stationid
+    Expected format is
+        serial_nr, stationid
+
+    Parameters:
+        fname: <str> full path to a valid stationid file
+
+    Returns:
+        harvester_stations: list(str). List of valid noaa station ids 
+    """
+    if fname is None:
+        utilities.log.error('No HARVESTER station file assigned: Abort')
+        sys.exit(1)
+    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1],dtype=str)
+    harvester_stations_list = df["stationid"].to_list()
+    harvester_stations=[word.rstrip() for word in harvester_stations_list]
+    return harvester_stations
+
+def get_stations(fname=None):
+    """
+    Simply read a CSV file containing stations under the header of stationid
+    Expected format is
+        serial_nr, stationid
+
+    Parameters:
+        fname: <str> full path to a valid stationid file
+
+    Returns:
+        stations: list(str). List of valid station ids 
+    """
+    if fname is None:
+        utilities.log.error('No station file assigned: Abort')
+        sys.exit(1)
+    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1],dtype=str)
+    stations_list = df["stationid"].to_list()
+    stations=[word.rstrip() for word in stations_list]
+    return stations
 
 def choose_common_header_name(product):
     """
@@ -185,6 +225,35 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
     except Exception as e:
         utilities.log.error(f'Error: NOAA: {e}')
     return df_noaa_data, df_noaa_meta
+
+def process_harvester_stations(time_range, harvester_stations, server_config, source='NOAA',data_product='water_level', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+
+    Parameters:
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
+        harvester_stations: list(str). List of desired stations
+        data_product: <str >(def water_level). A generic AST named data product ( Not the True NOAA data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_harvester_data: DataFrame (time x station)
+        df_harvester_meta: DataFrame (station x metadata)
+    """
+    # Fetch the data
+    harvester_products=['water_level', 'predictions', 'river_water_level', 'river_flow_volume', 'coastal_water_level', 'wave_height', 'water_elevation', 'hourly_height', 'air_pressure', 'wind_speed']
+    try:
+        if not data_product in harvester_products:
+            utilities.log.error(f'HARVESTER: data product can only be {harvester_products}')
+            #sys.exit(1) # Dont die here. Need to let apsviz SV continue
+        harvester = harvester_fetch_data(harvester_stations,server_config, time_range, data_source=source, product=data_product, resample_mins=resample_mins)
+        df_harvester_data = harvester.aggregate_station_data()
+        df_harvester_meta = harvester.aggregate_station_metadata()
+        df_harvester_meta.index.name='STATION'
+    except Exception as e:
+        utilities.log.error(f'Fetch_data: Error: HARVESTER: Often means no data at all were found for the input conditions: {e}')
+        # No harvester meta
+    return df_harvester_data, df_harvester_meta
 
 def process_contrails_stations(time_range, contrails_stations, authentication_config, data_product='river_water_level', resample_mins=15 ):
     """
@@ -315,13 +384,16 @@ def main(args):
 
     utilities.log.info(f'Selected time range is {starttime} to {endtime}, ndays is {args.ndays}')
 
+# TODO inclusion of the Harvester source has greatly complicated some of the code here. Need a refactor after the processing has been validated
+
     # metadata are used to augment filename
     #NOAA/NOS
     if data_source.upper()=='NOAA':
         excludedStations=list()
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
-        noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
+        #noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
+        noaa_stations=get_stations(args.station_list) if args.station_list is not None else get_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
         noaa_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
         data, meta = process_noaa_stations(time_range, noaa_stations, data_product = data_product)
         df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
@@ -339,6 +411,71 @@ def main(args):
             utilities.log.info(f'NOAA data has been stored {dataf},{metaf}')
         except Exception as e:
             utilities.log.error(f'Error: NOAA: Failed Write {e}')
+            sys.exit(1)
+
+    #Harvester
+    if data_source.upper()=='HARVESTER':
+        harvester_source = args.harvester_source
+        utilities.log.info(f'HARVESTER: data source specified is {data_source}')
+        excludedStations=list()
+        time_range=(starttime,endtime) 
+        config_name = args.config_name if args.config_name is not None else os.path.join(os.path.dirname(__file__),'../secrets','harvester.yml')
+        try:
+            server_config = utilities.load_config(config_name)['DEFAULT']
+            utilities.log.info(f'Got Harvester access information {config_name}')
+        except Exception as ex:
+            utilities.log.error(f'HARVESTER error {type(ex).__name__}, {ex.args}')
+            sys.exit(1) # GO ahead and hard-die regardless of apsvis SV
+
+        meta=None
+        if args.station_list is not None:
+            harvester_stations=args.station_list
+        else: # If using te defaults we must decide which set of source station to grab
+            meta=args.harvester_source # Needed for modifying output files
+            if args.harvester_source == 'NDBC':
+                #Using harvester is different here. Only want the buoy ids. Harvester has the rest of the data
+                fname=os.path.join(os.path.dirname(__file__),'../supporting_data','ndbc_buoys.csv')
+            else:
+                if args.harvester_source == 'NOAA':
+                    fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv')
+                elif args.harvester_source == 'CONTRAILS':
+                    conf_name = args.config_name if args.config_name is not None else os.path.join(os.path.dirname(__file__),'../secrets','contrails.yml')
+                    if data_product=='river_water_level' or data_product=='river_flow_volume':
+                        fname=os.path.join(os.path.dirname(__file__),'../supporting_data','contrails_stations_rivers.csv')
+                        meta=f'{meta}_RIVERS'
+                    else:
+                        fname=os.path.join(os.path.dirname(__file__),'../supporting_data','contrails_stations_coastal.csv')
+                        meta=f'{meta}_COASTAL'
+                else:
+                    utilities.log.error(f'Looking for default station list failed. Check harvester_source specification {args.harvester_source}')
+                    sys.exit(1)
+            if args.harvester_source == 'NDBC':
+                harvester_stations=get_ndbc_buoys(fname)
+                harvester_stations = [x[0] for x in harvester_stations]
+            else:
+                harvester_stations=get_contrails_stations(fname)
+        #utilities.log.info(f'Harvester run: Chosen station list is {harvester_stations}')
+
+        if meta is None:
+            harvester_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        else:
+            harvester_metadata=f"_{data_product}_{meta}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
+        data, meta = process_harvester_stations(time_range, harvester_stations, server_config, source=harvester_source, data_product = data_product)
+        df_harvester_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
+        # Output
+        # If choosing non-default locations BOTH variables must be specified
+        try:
+            if args.ofile is not None:
+                dataf=f'%s/harvester_stationdata%s.csv'% (args.ofile,harvester_metadata)
+                metaf=f'%s/harvester_stationdata_meta%s.csv'% (args.ometafile,harvester_metadata)
+            else:
+                dataf=f'./harvester_stationdata%s.csv'%harvester_metadata
+                metaf=f'./harvester_stationdata_meta%s.csv'%harvester_metadata
+            df_harvester_data.to_csv(dataf)
+            meta.to_csv(metaf)
+            utilities.log.info(f'HARVESTER config data has been written {dataf}, {metaf}')
+        except Exception as ex:
+            utilities.log.error('HARVESTER error {type(ex).__name__}, {ex.args}')
             sys.exit(1)
 
     #Contrails
@@ -359,7 +496,7 @@ def main(args):
             # Build ranges for contrails ( and noaa/nos if you like)
             time_range=(starttime,endtime) 
             # Get default station list
-            contrails_stations=get_contrails_stations(args.station_list) if args.station_list is not None else get_contrails_stations(fname)
+            contrails_stations=get_stations(args.station_list) if args.station_list is not None else get_stations(fname)
             contrails_metadata=f"_{data_product}_{meta}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
             data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product = data_product )
             df_contrails_data = format_data_frames(data, data_product) # Melt: Harvester default format
@@ -380,7 +517,6 @@ def main(args):
         except Exception as e:
             utilities.log.error(f'Error: CONTRAILS: Failed Write {e}')
             sys.exit(1)
-
     #NDBC
     if data_source.upper()=='NDBC':
         time_range=(starttime,endtime) # Can be directly used by NDBC
@@ -389,7 +525,7 @@ def main(args):
         ndbc_metadata=f"_{data_product}_{endtime.replace(' ','T')}" # +'_'+starttime.replace(' ','T')
         data, meta  = process_ndbc_buoys(time_range, ndbc_stations, data_product = data_product)
         df_ndbc_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
-        # Output
+        # Output_
         # If choosing non-default locations BOTH variables must be specified
         try:
             if args.ofile is not None:
@@ -427,7 +563,6 @@ def main(args):
         except Exception as e:
             utilities.log.error(f'Error: NDBC: Failed Write {e}')
             sys.exit(1)
-
     utilities.log.info(f'Finished with data source {data_source}')
     utilities.log.info('Finished')
 
@@ -454,5 +589,7 @@ if __name__ == '__main__':
                         help='Choose a non-default data product output directory')
     parser.add_argument('--ometafile', action='store', dest='ometafile', default=None, type=str,
                         help='Choose a non-default metadata output directory')
+    parser.add_argument('--harvester_source', action='store', dest='harvester_source', default='NOAA', type=str,
+                        help='Harvester only: Specify the physical data_source for the requested data')
     args = parser.parse_args()
     sys.exit(main(args))

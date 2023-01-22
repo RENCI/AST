@@ -71,6 +71,14 @@ a) python fetch_data.py --ndays -4 --stoptime '2021-12-31 00:00:00' --data_sourc
     1) ./ndbc_stationdata_2022-02-20T00:00:00.csv
     2) ./ndbc_stationdata_meta_2022-02-20T00:00:00.csv
 
+# HARVERSTER. How to run the harvester interface to get the same data as above.
+# NOAA
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'HARVESTER' --harvester_source='NOAA' --data_product 'water_level'
+
+python fetch_data.py --ndays -4 --stoptime '2022-09-20 00:00:00' --data_source 'HARVESTER' --harvester_source='NOAA' --data_product 'air_pressure'
+
+
+
 #
 # Examples of running main for ASGS/ADCIRC data
 # No "times" are specified. These methods replace explicit times with lists of relevant urls that should be created by the caller
