@@ -364,7 +364,7 @@ def main(args):
             data, meta = process_contrails_stations(time_range, contrails_stations, contrails_config, data_product = data_product )
             df_contrails_data = format_data_frames(data, data_product) # Melt: Harvester default format
         except Exception as ex:
-            utilities.log.error('CONTRAILS error {type(ex).__name__}, {ex.args}')
+            utilities.log.error(f'CONTRAILS error {type(ex).__name__}, {ex.args}')
             sys.exit(1)
         # If choosing non-default locations BOTH variables must be specified
         try:

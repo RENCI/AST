@@ -157,15 +157,55 @@ class fetch_station_data(object):
         self._periods=periods
         self._resampling_mins=resample_mins
 
-    def aggregate_station_data(self)->pd.DataFrame:
+    def interpolate_and_resample(self, dx, n_pad=1, sample_mins=15, int_limit=2)->pd.DataFrame:
+        """
+        An alternative way to interpolate and resample data. This approach generates
+        an interpolated value at the sampling frequency. Tus precluding any implicit data time shifting
+        that would occur using the simple resample methods
+
+        Parameters:
+            dx: DataFrame of read products including Nans
+            n_pad: Additional trailng hours to add to the interpolation range 
+            int_limit: Number of consecutive nans to interpolate over.
+            sample_mins: the resampling in minutes
+
+        Returns:
+            Interpolated results: A dataframe (times x stations) for timerange  and input stations
+        """
+        dformat='%Y-%m-%d %H' # Want string times back on-the-hour only
+        timein = dt.datetime.strptime(min(dx.index).strftime(dformat), dformat)
+        timeout = dt.datetime.strptime(max(dx.index+np.timedelta64(n_pad,'h')).strftime(dformat), dformat)
+        # Generate the NEW augmented time range
+        actualRange = dx.index
+        normalRange = pd.date_range(str(timein), str(timeout), freq=f'{sample_mins*60.0}S') # This gets us the stepping we want
+        datanormal=[x for x in normalRange if x not in actualRange] 
+        # Assemble the union of values for the final data set. Exclude entries that already exist in the real data
+        dappend=dx.append(pd.DataFrame(index=datanormal)) # This is fine
+        dappend.sort_index(axis=0, ascending=True, inplace=True)
+        df_smooth = dappend.interpolate(limit=int_limit) 
+        df_normal_smooth = df_smooth.loc[normalRange]
+        df_normal_smooth.index.name='TIME'
+        return df_normal_smooth
+
+    def old_interpolate_and_resample(self, dx, sample_mins=15)->pd.DataFrame:
+        """
+        The original approach used thro0ugh Jan 2023
+        """
+        dx_int = stations_interpolate(dx)
+        df_resampled=stations_resample(dx_int, sample_mins)
+        return df_resampled
+
+    def aggregate_station_data(self, perform_interpolation=True)->pd.DataFrame:
         """
         Loop over the list of stations and fetch the products using the method of the relevant subclasses. Then concatenate them info single dataframe
         nans now get converted to the value in GLOBAL_FILL_VALUE
 
         Returns:
             Aggregated results: A dataframe (times x stations) for all periods and input stations
+            perform_interpolation: bool. Generally True except if you want to fetch data from Harvester
         
         """
+        use_new_interpolation=True # This will go away after validation
         aggregateData = list()
         excludedStations=list()
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -173,14 +213,22 @@ class fetch_station_data(object):
             utilities.log.info(station)    
             try:
                 dx = self.fetch_single_product(station, self._periods)
-                dx_int = stations_interpolate(dx)
-                aggregateData.append(stations_resample(dx_int, sample_mins=self._resampling_mins))
+                ##df_int = self.old_interpolate_and_resample(dx, sample_mins=15)
+                ## OLD dx_int = stations_interpolate(dx)
+                ## OLD aggregateData.append(stations_resample(dx_int, sample_mins=self._resampling_mins))
+                if use_new_interpolation:
+                    if perform_interpolation:
+                        df_int = self.interpolate_and_resample(dx, n_pad=1, sample_mins=self._resampling_mins, int_limit=2)
+                    else:
+                        df_int = stations_resample(dx,sample_mins=self._resampling_mins)
+                else:
+                    df_int = self.old_interpolate_and_resample(dx, sample_mins=self._resampling_mins)
+                aggregateData.append(df_int)
                 #tm.sleep(2) # sleep 2 secs
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
                 utilities.log.warn(f'Error Value: Probably the station simply had no data; Skip {station}, msg {message}')
-
         if len(aggregateData)==0:
             utilities.log.warn('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
             ##return np.nan
