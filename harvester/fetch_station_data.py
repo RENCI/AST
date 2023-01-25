@@ -18,6 +18,9 @@
 #        it is possible for these data to still contain NaNs
 # excluded stations with insufficient data.
 #
+
+import traceback
+
 import os,sys
 import numpy as np
 import pandas as pd
@@ -172,20 +175,28 @@ class fetch_station_data(object):
         Returns:
             Interpolated results: A dataframe (times x stations) for timerange  and input stations
         """
-        dformat='%Y-%m-%d %H' # Want string times back on-the-hour only
-        timein = dt.datetime.strptime(min(dx.index).strftime(dformat), dformat)
-        timeout = dt.datetime.strptime(max(dx.index+np.timedelta64(n_pad,'h')).strftime(dformat), dformat)
-        # Generate the NEW augmented time range
-        actualRange = dx.index
-        normalRange = pd.date_range(str(timein), str(timeout), freq=f'{sample_mins*60.0}S') # This gets us the stepping we want
-        datanormal=[x for x in normalRange if x not in actualRange] 
-        # Assemble the union of values for the final data set. Exclude entries that already exist in the real data
-        dappend=dx.append(pd.DataFrame(index=datanormal)) # This is fine
-        dappend.sort_index(axis=0, ascending=True, inplace=True)
-        df_smooth = dappend.interpolate(limit=int_limit) 
-        df_normal_smooth = df_smooth.loc[normalRange]
-        df_normal_smooth.index.name='TIME'
+        try:
+            if sample_mins==0:
+                utilities.log.info('resample freq set to 0. return all')
+                return dx
+
+            dformat='%Y-%m-%d %H' # Want string times back on-the-hour only
+            timein = dt.datetime.strptime(min(dx.index).strftime(dformat), dformat)
+            timeout = dt.datetime.strptime(max(dx.index+np.timedelta64(n_pad,'h')).strftime(dformat), dformat)
+            # Generate the NEW augmented time range
+            actualRange = dx.index
+            normalRange = pd.date_range(str(timein), str(timeout), freq=f'{sample_mins*60.0}S') # This gets us the stepping we want
+            datanormal=[x for x in normalRange if x not in actualRange] 
+            # Assemble the union of values for the final data set. Exclude entries that already exist in the real data
+            dappend=dx.append(pd.DataFrame(index=datanormal)) # This is fine
+            dappend.sort_index(axis=0, ascending=True, inplace=True)
+            df_smooth = dappend.interpolate(limit=int_limit) 
+            df_normal_smooth = df_smooth.loc[normalRange]
+            df_normal_smooth.index.name='TIME'
+        except Exception as ex:
+            utilities.log.error(f'Error Value: Failed interpolation {ex}: Probable empty station data')
         return df_normal_smooth
+        #sys.exit(1)
 
     def old_interpolate_and_resample(self, dx, sample_mins=15)->pd.DataFrame:
         """
@@ -205,7 +216,8 @@ class fetch_station_data(object):
             perform_interpolation: bool. Generally True except if you want to fetch data from Harvester
         
         """
-        use_new_interpolation=True # This will go away after validation
+        use_new_interpolation=True # False # True # This will go away after validation
+
         aggregateData = list()
         excludedStations=list()
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
@@ -228,6 +240,7 @@ class fetch_station_data(object):
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
+                traceback.print_exc()
                 utilities.log.warn(f'Error Value: Probably the station simply had no data; Skip {station}, msg {message}')
         if len(aggregateData)==0:
             utilities.log.warn('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
@@ -387,7 +400,7 @@ class adcirc_fetch_data(fetch_station_data):
             else:
                 return 'NOWCAST'
         except ValueError:
-            utilities.log.warn(f'Synoptic time check failed')
+            utilities.log.warn(f'Synoptic time check failed: Must be a Hurricane')
             pass
         except Exception as e:
             utilities.log.error(f'synoptic time check hard failed: Error: {e}')
