@@ -175,11 +175,11 @@ class fetch_station_data(object):
         Returns:
             Interpolated results: A dataframe (times x stations) for timerange  and input stations
         """
+        #try:
+        if sample_mins==0:
+            utilities.log.info('resample freq set to 0. return all')
+            return dx
         try:
-            if sample_mins==0:
-                utilities.log.info('resample freq set to 0. return all')
-                return dx
-
             dformat='%Y-%m-%d %H' # Want string times back on-the-hour only
             timein = dt.datetime.strptime(min(dx.index).strftime(dformat), dformat)
             timeout = dt.datetime.strptime(max(dx.index+np.timedelta64(n_pad,'h')).strftime(dformat), dformat)
@@ -216,7 +216,7 @@ class fetch_station_data(object):
             perform_interpolation: bool. Generally True except if you want to fetch data from Harvester
         
         """
-        use_new_interpolation=True # False # True # This will go away after validation
+        use_new_interpolation=False # True # False # True # This will go away after validation
 
         aggregateData = list()
         excludedStations=list()
@@ -259,10 +259,11 @@ class fetch_station_data(object):
                 utilities.log.warning(f'had duplicate times {len(idx)} {len(df_data.index)}')
             #df_data.dropna(how='all', axis=1, inplace=True)
             df_data = replace_and_fill(df_data)
+            df_data = df_data.sort_index()
         except Exception as e:
             utilities.log.error('Aggregate: error: {}'.format(e))
-            ##df_data=np.nan
-        df_data = df_data.sort_index()
+            #df_data=np.nan
+        #df_data = df_data.sort_index()
         return df_data
 
     def aggregate_station_metadata(self)->pd.DataFrame:
