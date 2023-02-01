@@ -78,6 +78,7 @@ class get_obs_stations(object):
         # It is up to the caller to differentiate river from coastal stations 
         if self.source=='CONTRAILS':
             self.station_list=fetch_data.get_contrails_stations(station_list_file)
+            print(f'get stations {self.station_list}')
 
         if self.source=='NDBC':
             self.station_list = fetch_data.get_ndbc_buoys(station_list_file)
@@ -96,6 +97,7 @@ class get_obs_stations(object):
         # May Need to get Contrails secrets 
         if self.source=='CONTRAILS':
             self.contrails_yamlname=contrails_yamlname  
+            print(f'Contrail secrets {self.contrails_yamlname}')
             utilities.log.info('Got Contrails access information')
 
         # Specify up any knockout filename based exclusions as a Dict()
@@ -262,7 +264,7 @@ class get_obs_stations(object):
             data = self.remove_knockout_stations(data)
             utilities.log.info('Removing knockouts from acquired observational data')
 
-        utilities.log.info('Data file {}, meta file {}'.format(data,meta))
+        #utilities.log.info('Data file {}, meta file {}'.format(data,meta))
         utilities.log.info('Finished')
         return data, meta
 
@@ -311,10 +313,9 @@ class get_obs_stations(object):
         # Optional Resample
         if return_sample_min > 0:
             timesampling = f'{return_sample_min}min'
-            #df_smooth.interpolate(method='polynomial', order=1, limit=1, inplace=True)
+            df_smooth.interpolate(method='polynomial', order=1, limit=1, inplace=True) 
             df_smooth=df_smooth.resample(timesampling).asfreq()
             df_smooth = self.remove_columns_with_onevalue(df_smooth)
-            df_smooth.interpolate(method='polynomial', order=1, limit=1, inplace=True)
             utilities.log.debug(f'Averaged data has been resampled and then interpolated to {return_sample_min}mins')
         return df_smooth
 
@@ -331,7 +332,7 @@ class get_obs_stations(object):
             if df[stationid].count() <=1:
                 delete_stations.append(stationid)
         if len(delete_stations) > 0:
-            utilities.log.warning(f'remove_columns_with_onevalue: Some stations have too little data to inteprolate: Removing them {delete_stations}')
+            utilities.log.warning(f'remove_columns_with_onevalue: Some stations have too little data to interpolate: Removing them {delete_stations}')
         return df.drop(delete_stations,axis=1)
 
 def main(args):
@@ -397,6 +398,7 @@ def main(args):
         sys.exit(1)
 
     # Fetch best resolution and no resampling
+
     data,meta=rpl.fetch_station_product((starttime,endtime), return_sample_min=0, interval=interval )
 
     # Revert Harvester filling of nans to -99999 back to nans

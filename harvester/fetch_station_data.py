@@ -160,7 +160,7 @@ class fetch_station_data(object):
         self._periods=periods
         self._resampling_mins=resample_mins
 
-    def interpolate_and_resample(self, dx, n_pad=1, sample_mins=15, int_limit=2)->pd.DataFrame:
+    def interpolate_and_resample(self, dx, n_pad=0, sample_mins=15, int_limit=2)->pd.DataFrame:
         """
         An alternative way to interpolate and resample data. This approach generates
         an interpolated value at the sampling frequency. Tus precluding any implicit data time shifting
@@ -175,23 +175,22 @@ class fetch_station_data(object):
         Returns:
             Interpolated results: A dataframe (times x stations) for timerange  and input stations
         """
-        #try:
-        if sample_mins==0:
-            utilities.log.info('resample freq set to 0. return all')
-            return dx
         try:
-            dformat='%Y-%m-%d %H' # Want string times back on-the-hour only
-            timein = dt.datetime.strptime(min(dx.index).strftime(dformat), dformat)
-            timeout = dt.datetime.strptime(max(dx.index+np.timedelta64(n_pad,'h')).strftime(dformat), dformat)
-            # Generate the NEW augmented time range
-            actualRange = dx.index
-            normalRange = pd.date_range(str(timein), str(timeout), freq=f'{sample_mins*60.0}S') # This gets us the stepping we want
-            datanormal=[x for x in normalRange if x not in actualRange] 
-            # Assemble the union of values for the final data set. Exclude entries that already exist in the real data
-            dappend=dx.append(pd.DataFrame(index=datanormal)) # This is fine
-            dappend.sort_index(axis=0, ascending=True, inplace=True)
-            df_smooth = dappend.interpolate(limit=int_limit) 
-            df_normal_smooth = df_smooth.loc[normalRange]
+            if sample_mins>0:
+                dformat='%Y-%m-%d %H' # Want string times back on-the-hour only
+                timein = dt.datetime.strptime(min(dx.index).strftime(dformat), dformat)
+                timeout = dt.datetime.strptime(max(dx.index+np.timedelta64(n_pad,'h')).strftime(dformat), dformat)
+                # Generate the NEW augmented time range
+                actualRange = dx.index
+                normalRange = pd.date_range(str(timein), str(timeout), freq=f'{sample_mins*60.0}S') # This gets us the stepping we want
+                datanormal=[x for x in normalRange if x not in actualRange] 
+                # Assemble the union of values for the final data set. Exclude entries that already exist in the real data
+                dappend=dx.append(pd.DataFrame(index=datanormal)) # This is fine
+                dappend.sort_index(axis=0, ascending=True, inplace=True)
+                df_smooth = dappend.interpolate(method='time',limit=int_limit)
+                df_normal_smooth = df_smooth.loc[normalRange]
+            else:
+                df_normal_smooth = dx.interpolate(method='time',limit=int_limit) 
             df_normal_smooth.index.name='TIME'
         except Exception as ex:
             utilities.log.error(f'Error Value: Failed interpolation {ex}: Probable empty station data')
@@ -216,27 +215,31 @@ class fetch_station_data(object):
             perform_interpolation: bool. Generally True except if you want to fetch data from Harvester
         
         """
-        use_new_interpolation=False # True # False # True # This will go away after validation
+        use_new_interpolation=True  # False # This will go away after validation
 
         aggregateData = list()
         excludedStations=list()
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+
         for station in self._stations:
             utilities.log.info(station)    
             try:
                 dx = self.fetch_single_product(station, self._periods)
-                ##df_int = self.old_interpolate_and_resample(dx, sample_mins=15)
-                ## OLD dx_int = stations_interpolate(dx)
-                ## OLD aggregateData.append(stations_resample(dx_int, sample_mins=self._resampling_mins))
-                if use_new_interpolation:
-                    if perform_interpolation:
-                        df_int = self.interpolate_and_resample(dx, n_pad=1, sample_mins=self._resampling_mins, int_limit=2)
+                try:
+                    if use_new_interpolation:
+                        if perform_interpolation:
+                            df_int = self.interpolate_and_resample(dx, n_pad=0, sample_mins=self._resampling_mins, int_limit=2)
+                            df_int = stations_resample(df_int,sample_mins=self._resampling_mins)
+                        else:
+                            df_int = stations_resample(dx,sample_mins=self._resampling_mins)
+                        aggregateData.append(df_int)
                     else:
-                        df_int = stations_resample(dx,sample_mins=self._resampling_mins)
-                else:
-                    df_int = self.old_interpolate_and_resample(dx, sample_mins=self._resampling_mins)
-                aggregateData.append(df_int)
+                        df_int = self.old_interpolate_and_resample(dx, sample_mins=self._resampling_mins)
+                        aggregateData.append(df_int)
+                except Exception as e:
+                    pass
                 #tm.sleep(2) # sleep 2 secs
+                # On input dx==nan, the old method bombs preventing a nan form entering aggregateData
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
