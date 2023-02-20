@@ -152,6 +152,14 @@ b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stopt
 c) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' --station_list /projects/sequence_analysis/vol1/prediction_work/AST/supporting_data/contrails_stations_coastal.csv
 
 
+# Try getting flow volumes from the augmented river list
+#
+
+python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' --station_list ../supporting_data/contrails_stations_rivers_largelist.csv
+
+
+
+
 # Output datafiles, Note any redundancies (eg pkl vs json) are inplace to mimic behavior of the original codes that are to be replaced 
 # NOAA/Contrails output files are the same. Viz., 
 
