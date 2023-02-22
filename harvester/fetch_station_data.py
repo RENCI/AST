@@ -1082,6 +1082,7 @@ class contrails_fetch_data(fetch_station_data):
             url = self.build_url_for_contrails_station(self._domain,self._systemkey,indict)
             try:
                 response = requests.get(url)
+                print(f'URL {url}')
                 dict_data = xmltodict.parse(response.content)
                 data = dict_data['onerain']['response']['general']
                 dx = pd.DataFrame(data['row']) # must be <= 5000 entries returned
