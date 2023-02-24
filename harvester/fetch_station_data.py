@@ -415,10 +415,17 @@ class adcirc_fetch_data(fetch_station_data):
             urltime = starttime
             advnum = int(urltime)
             utilities.log.info(f'Found Hurricane Advisory value: Assumes forecast {advnum}')
-            return 'FORECAST'
+            try:
+                if url.split('/')[-2] == 'nowcast':
+                    return 'NOWCAST'
+                else:
+                    return 'FORECAST'
+            except IndexError:
+                    utilities.log.info('Hurricane URL but could not determine CAST status')
+                    return 'NOCAST'
         except ValueError:
             utilities.log.warn(f'Hurricane advisory check failed: Must be local')
-            return 'FORECAST'
+            return 'NOCAST'
         except Exception as e:
             utilities.log.error(f'Hurricane advisory check hard failed: Error: {e}')
             sys.exit(1)
