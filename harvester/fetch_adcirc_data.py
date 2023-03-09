@@ -295,6 +295,26 @@ def strip_instance_from_url(urls)->str:
         utilities.log.error(f'strip_instance_from_url Uexpected failure try next:{e}')
     return instance 
 
+def strip_storm_number_from_url(urls, fill='NONE')->str:
+    """
+    We mandate that the Hurricane URLs input to this fetcher are those used to access the ASGS/ECFlow data. The "storm number" (eg al09) 
+    information will be in position .split('/')[-7]
+    eg. 'http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc'
+    
+    Parameters:
+        urls: list(str). list of valid urls
+    Returns:
+        Storm name: <str>
+    """
+    url = grab_first_url_from_urllist(urls)
+    try:
+        words = url.split('/')
+        stormnumber=words[-7]
+    except IndexError as e:
+        utilities.log.error(f'strip_storm_number_from_url Uexpected failure try next:{e}')
+        stormnumber=fill
+    return stormnumber
+
 def strip_sitename_from_url(urls, fill='NoSite')->str:
     """
     Here we attempt to find which site the url was computed. We read the
