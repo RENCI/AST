@@ -123,7 +123,7 @@ def stations_interpolate(df)->pd.DataFrame:
     """
     Interpolate each station column in the dataframe. 
     Final aggregated data still have flanked nans for some stations. 
-    Defaults to: method='polynomial', order=1, limit=1
+    Defaults to: method='polynomial', order=1, limit=3, limit_direction= 'both'
 
     Parameters:
         df: A time series x stations data frame
@@ -132,7 +132,7 @@ def stations_interpolate(df)->pd.DataFrame:
         df_out. New time series x stations
     """
     utilities.log.info('Interpolating station data' )
-    df.interpolate(method='polynomial', order=1, limit=1, inplace=True)
+    df.interpolate(method='polynomial', order=1, limit=3, inplace=True, limit_direction= 'both')
     return df
 
 class fetch_station_data(object):
@@ -160,7 +160,7 @@ class fetch_station_data(object):
         self._periods=periods
         self._resampling_mins=resample_mins
 
-    def interpolate_and_resample(self, dx, n_pad=0, sample_mins=15, int_limit=2)->pd.DataFrame:
+    def interpolate_and_resample(self, dx, n_pad=0, sample_mins=15, int_limit=3)->pd.DataFrame:
         """
         An alternative way to interpolate and resample data. This approach generates
         an interpolated value at the sampling frequency. Tus precluding any implicit data time shifting
@@ -187,10 +187,10 @@ class fetch_station_data(object):
                 # Assemble the union of values for the final data set. Exclude entries that already exist in the real data
                 dappend=dx.append(pd.DataFrame(index=datanormal)) # This is fine
                 dappend.sort_index(axis=0, ascending=True, inplace=True)
-                df_smooth = dappend.interpolate(method='time',limit=int_limit)
+                df_smooth = dappend.interpolate(method='time',limit=int_limit, limit_direction= 'both')
                 df_normal_smooth = df_smooth.loc[normalRange]
             else:
-                df_normal_smooth = dx.interpolate(method='time',limit=int_limit) 
+                df_normal_smooth = dx.interpolate(method='time',limit=int_limit, limit_direction= 'both') 
             df_normal_smooth.index.name='TIME'
         except Exception as ex:
             utilities.log.error(f'Error Value: Failed interpolation {ex}: Probable empty station data')
