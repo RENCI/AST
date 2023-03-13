@@ -288,6 +288,7 @@ class get_adcirc_stations(object):
         self.ensemble = fetch_adcirc_data.strip_ensemble_from_url(urls)
         self.sitename = fetch_adcirc_data.strip_sitename_from_url(urls, fill='NoSite')
         self.stormnumber = fetch_adcirc_data.strip_storm_number_from_url(urls, fill='NoNumber')
+        self.timemark=fetch_adcirc_data.strip_time_from_url(urls)
 
         if self.source.upper()=='ASGS':
             adc_stations=self.station_list
