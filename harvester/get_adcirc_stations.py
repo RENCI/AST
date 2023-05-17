@@ -166,7 +166,7 @@ class get_adcirc_stations(object):
 
     # Currently supported sources and products
 
-    SOURCES = ['ASGS']
+    SOURCES = ['ASGS', 'ECFLOW']
     ASGS_PRODUCTS = ['water_level']
 
     def __init__(self, source='ASGS',product='water_level',
@@ -175,7 +175,7 @@ class get_adcirc_stations(object):
         get_adcirc_stations constructor
 
         Parameters: 
-            source: <str> Named source. For now only ASGS
+            source: <str> Named source. For now only ASGS or ECFLOW
             product: <str>, product type desired. For now only water_level
             knockout: <dict> used to remove ranges of time(s) for a given station
             fort63_style: <bool>. Perform water level reads on the fort.63/swan_HS.63 file. Requires a station list
