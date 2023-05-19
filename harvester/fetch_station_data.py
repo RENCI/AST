@@ -135,6 +135,12 @@ def stations_interpolate(df)->pd.DataFrame:
     df.interpolate(method='polynomial', order=1, limit=3, inplace=True, limit_direction= 'both')
     return df
 
+##
+## Added a trap for RuntimeError. We have seen rare cases where the TDS call returns a DAP Failure. This return 
+## Can takes minutes per station. So the normal eror trapping would continue to try all stations. Doing so for thie DAP
+## Failure causesz the jobs to run very long. So, now if we have any RuntimeErrors calling the TDS, we bail and move
+## onto calling the next url in the list
+## 
 class fetch_station_data(object):
     """
     We expect upon entry to this class a list of station ids. The content of this list can
@@ -240,6 +246,10 @@ class fetch_station_data(object):
                     pass
                 #tm.sleep(2) # sleep 2 secs
                 # On input dx==nan, the old method bombs preventing a nan form entering aggregateData
+            except RuntimeError as ex:
+                message = template.format(type(ex).__name__, ex.args)
+                utilities.log.warn(f'RuntimeError: Skipping all station for this time period/url. {station}, msg {message}')
+                break
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
@@ -644,7 +654,7 @@ class adcirc_fetch_data(fetch_station_data):
         periods=self._periods
 
         for url in periods:
-            nc = nc4.Dataset(url)
+            nc = nc4.Dataset(f'{url}#log')
             # we need to test access to the netCDF variables, due to infrequent issues with
             # netCDF files written with v1.8 of HDF5.
             try:
