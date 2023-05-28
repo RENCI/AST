@@ -41,6 +41,10 @@ import xmltodict
 # NOAA/NOS
 import noaa_coops as coops
 
+# NOAA/WEB API
+from io import StringIO
+import json
+
 # NDBC # Continue to need siphon to get Lat/Lon values
 from siphon.simplewebservice.ndbc import NDBC
 import buoypy as bp
@@ -246,7 +250,7 @@ class fetch_station_data(object):
                     pass
                 #tm.sleep(2) # sleep 2 secs
                 # On input dx==nan, the old method bombs preventing a nan form entering aggregateData
-            except RuntimeError as ex:
+            except RuntimeError as ex: # This is primarily here to trap DAP Failures for TDS/running on k8s
                 message = template.format(type(ex).__name__, ex.args)
                 utilities.log.warn(f'RuntimeError: Skipping all station for this time period/url. {station}, msg {message}')
                 break
@@ -1013,7 +1017,7 @@ class contrails_fetch_data(fetch_station_data):
         oneSecond=dt.timedelta(seconds=1) # An update interval shift
     
         subrange_start = time_start
-        while subrange_start < time_end:
+        while subrange_start < time_end: # No <= here to ensure we do not try to span multiple days
             interval = dt.timedelta(hours=init_hour, minutes=init_min, seconds=init_sec)
             subrange_end=min(subrange_start+interval,time_end) # Need a variable interval to prevent a day-span  
             periods.append( (dt.datetime.strftime(subrange_start,dformat),dt.datetime.strftime(subrange_end,dformat)) )
@@ -1181,6 +1185,248 @@ class contrails_fetch_data(fetch_station_data):
             df_meta.columns = [str(station)]
         except Exception as e:
             utilities.log.exception(f'Contrails response meta error: {e}')
+            sys.exit(1)
+        return df_meta
+
+#####################################################################################
+##
+## NEW NOAA Class. This is an alternative approach  to the noaa-coops approach.
+## The prior approach had suspicious missing data-gaps which no one could explain
+##
+
+class noaa_web_fetch_data(fetch_station_data):
+    """
+    Parameters:
+        station_id_list: list of NOAA station_ids <str>
+        a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
+        a valid PRODUCT id <str>: hourly_height, water_level,predictions (tidal predictions)
+        interval <str> set to 'h' return hourly data, else 6min data
+
+        Note: hourly_height data only appear for station after some time period (not sure how long that is). 
+
+        NOTE: Default to using imperial units. Because the metadata that gets returned only reports
+        the units for how the data were stored not fetched. So it wouid be easy for the calling program to get confused.
+        Let the caller choose to update units and modify the df_meta structure prior to DB uploads
+
+        Two dicts are used to manage jobs. The first (products) maps generic product names used by high level codes
+        to the specific product names in NOAA/NOS, The second (noaa_data_column_names) is used here internally to properly select 
+        the column name of the data
+
+        UNITS listed as: https://api.tidesandcurrents.noaa.gov/api/prod/#units. Note this implies a hybrid MKS/CGS system and not MKS.
+
+        Currently tested input products:
+        water_level (default)
+        predictions (Tidal predictions) 
+        air_pressure
+        hourly_height
+        wind_speed
+    """
+
+# MAP AST data product names to NOAA product names
+    products={ 'water_level':'water_level',  # 6 min
+               'predictions': 'predictions', # 6 min
+               'air_pressure': 'air_pressure',
+               'hourly_height':'hourly_height', # hourly
+               'wind_speed':'wind'
+    }
+
+# MAP NOAA returned header names to AST data product names
+# NOTE: The Wind product returns 3 values, Speed, Direction, Gust. We currently only fetch Speed
+
+    web_return_columns={'water_level':' Water Level', # Yes there are spaces in thar'
+                        'hourly_height':' Water Level',
+                        'predictions':' Predictions',
+                        'air_pressure':' Pressure',
+                        'wind':' Speed'
+    }
+
+    def __init__(self, station_id_list, periods, product='water_level', interval=None, units='metric',
+                datum='MSL', resample_mins=15):
+        """
+        Invoke the noaa-web subclass
+
+        Parameters:
+            station_id_list: <list> List of desired station ids
+            periods: list of time-tuples indicating the desired time range(s)
+            product: <str> (Default='river_water_level')  The generic product name
+            interval: <str> NOAA coops specific param. None or 'h'
+            owner: <str> (Default 'NCEM') a valid owner
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
+        """
+        self._data_unit=map_product_to_harvester_units(product)
+        try:
+            self._product=self.products[product] # self.products[product] # product
+            utilities.log.info(f'NOAA-WEB Fetching product {self._product}')
+        except KeyError as e:
+            utilities.log.error(f'NOAA/NOS-WEB No such product key. Input {product}, Available {self.products.keys()}: {e}')
+            sys.exit(1)
+        else:
+            self._interval=interval
+        self._units='metric' # Redundant cleanup TODO
+        self._datum=datum
+        self._domain='https://api.tidesandcurrents.noaa.gov/api/prod/datagetter'
+        super().__init__(station_id_list, periods, resample_mins=resample_mins)
+
+    # Customized splitting of the timerange into a list of day-centric tuples.
+
+    def return_list_of_daily_timeranges(self, time_tuple)-> list():
+        """
+        Take an arbitrary start and endtime (inclusive) in the format of %Y-%m-%d %H:%M:%S. Break up into a list of tuples which 
+        are at most a day in length AND break along day boundaries. [ {day1,day1),(day2,day2)..]
+        The first tuple and the last tuple can be partial days. All intervening tuples will be full days.
+    
+        Assume an HOURLY stepping even though non-zero minute offsets may be in effect.
+
+        Parameters:
+            A tuple consisting of:
+            start_time: <str> Time of format %Y-%m-%d %H:%M:%S
+            end_time: <str> Time of format %Y-%m-%d %H:%M:%S
+    
+        Returns:
+            periods: List of daily tuple ranges
+       """
+        start_time=time_tuple[0]
+        end_time=time_tuple[1]
+        print(start_time)
+        print(end_time)
+        periods=list()
+        dformat='%Y-%m-%d %H:%M:%S'
+        print(f'Parameters: start time {start_time}, end_time {end_time}')
+    
+        time_start = dt.datetime.strptime(start_time, dformat)
+        time_end = dt.datetime.strptime(end_time, dformat)
+        if time_start > time_end:
+            print('Swapping input times')
+            time_start, time_end = time_end, time_start
+    
+        today = dt.datetime.today()
+        if time_end > today:
+              time_end = today
+              print(f'Contrails: Truncating list: new end time is {dt.datetime.strftime(today, dformat)}')
+    
+        #What hours/min/secs are we starting on - compute proper interval shifting
+        init_hour = 24-math.floor(time_start.hour)-1
+        init_min = 60-math.floor(time_start.minute)-1
+        init_sec = 60-math.floor(time_start.second)-1
+    
+        oneSecond=dt.timedelta(seconds=1) # An update interval shift
+    
+        subrange_start = time_start
+        while subrange_start <= time_end:
+            interval = dt.timedelta(hours=init_hour, minutes=init_min, seconds=init_sec)
+            subrange_end=min(subrange_start+interval,time_end) # Need a variable interval to prevent a day-span  
+            periods.append( (dt.datetime.strftime(subrange_start,dformat),dt.datetime.strftime(subrange_end,dformat)) )
+            subrange_start=subrange_end+oneSecond # onehourint
+            init_hour, init_min, init_sec = 23,59,59
+        return periods
+
+## TODO the url builders are redundant: Needs a refactor
+
+    def build_url_for_noaaweb_station(self, domain, indict)->str:
+        """
+        Build a simple query for a single gauge and the product level values
+        Parameters:
+            domain: <str> contrails domain
+            systemkey: <str> contrails authorization key
+            indict: <dict> of parameters for the the final url
+        Returns:
+            full_url: <str> A fully formatted Contrails URL
+        """
+        url=domain
+        url_values=urllib.parse.urlencode(indict)
+        full_url = url +'?' +url_values
+        return full_url
+
+##
+## When requesting a json or xml format back, it returns as a string (if using.text) or bytes (when using.content)
+## Not sure what that is about
+##
+
+## NOTE: The respoknse dataobject actually returns:
+## Date Time   Water Level   Sigma   O or I (for verified)   F   R   L  Quality. We only keep the Datetime and Product
+##
+    def fetch_single_product(self, station, time_range) -> pd.DataFrame: 
+        """
+        For a single NOAA site_id, process all tuples from the input periods list
+        and aggregate them into a dataframe with index pd.timestamps and a single column
+        
+        Parameters:
+            station <str>. A valid station id
+            time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
+
+        Returns:
+            dataframe of time (timestamps) vs values for the requested station
+        """
+        datalist=list()
+        periods = self.return_list_of_daily_timeranges(time_range)
+        for tstart,tend in periods:
+            print(f' {tstart}, {tend} {station}')
+            utilities.log.info('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
+            indict = {'product': self._product,
+                 'station': station,
+                 'datum':'MSL',
+                 'time_zone': GLOBAL_TIMEZONE,
+                 'units':'metric', 'format':'csv',
+                 'application':'DataAPI_Sample',
+                 'begin_date': tstart,'end_date': tend }
+            url = self.build_url_for_noaaweb_station(self._domain,indict)
+            try:
+                response = requests.get(url)
+                csvStringIO = StringIO(response.text)
+                df = pd.read_csv(csvStringIO, sep=",", header=0) 
+                dx=df[['Date Time',self.web_return_columns[self._product]]]
+                dx.columns=['TIME',self._product]
+                dx=dx.set_index('TIME')
+                dx.index = pd.to_datetime(dx.index)
+                dx.columns=[station]
+                dx.columns=[station]
+                datalist.append(dx)
+            except Exception as e:
+                utilities.log.warn(f'noaa-web response data error: Perhaps empty data contribution: station {station}: {e}')
+        try:
+            df_data = pd.concat(datalist)
+        except Exception as e:
+            utilities.log.error('noaa-web failed concat: error: {}'.format(e))
+            df_data=np.nan
+        return df_data
+
+# According to oneRain the current best way to access the meta data is using or_site_id
+# Also river and coastal metadata return different kind of objects
+
+    def fetch_single_metadata(self, station) -> pd.DataFrame:      
+        """
+        For a single noaa site_id fetch the associated metadata.
+
+        Parameters:
+             A valid station id <str>
+        Returns:
+             dataframe of preselected metadata for a single station in the (keys,values) orientation
+
+             This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+             to our preferred orientation with stations as index
+        """
+        domain='https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations' # A fixed url for getting metadata
+
+        meta=dict() 
+        try:
+            response = requests.get(f'{domain}/{station}.json')
+            metares=response.text
+            json_meta=json.loads(metares)
+            meta['LAT'] = json_meta['stations'][0]['lat'] 
+            meta['LAT'] = json_meta['stations'][0]['lat'] if json_meta['stations'][0]['lat'] !='' else np.nan
+            meta['LON'] = json_meta['stations'][0]['lng'] if json_meta['stations'][0]['lng'] !='' else np.nan
+            meta['NAME'] = json_meta['stations'][0]['name'] if json_meta['stations'][0]['name'] !='' else np.nan
+            meta['LAT'] = json_meta['stations'][0]['lat'] if json_meta['stations'][0]['lat'] !='' else np.nan
+            meta['UNITS'] = self._data_unit 
+            meta['TZ'] = GLOBAL_TIMEZONE # data['utc_offset']
+            meta['OWNER'] = 'NOAA/NOS'
+            meta['STATE'] = np.nan # None # data2['state']  # DO these work ?
+            meta['COUNTY'] = np.nan
+            #
+            df_meta=pd.DataFrame.from_dict(meta, orient='index')
+            df_meta.columns = [str(station)]
+        except Exception as e:
+            utilities.log.exception(f'NOAA WEB response meta error: {e}')
             sys.exit(1)
         return df_meta
 

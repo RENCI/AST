@@ -11,7 +11,7 @@ import pandas as pd
 import datetime as dt
 import math
 
-from harvester.fetch_station_data import noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data, ndbc_fetch_historic_data
+from harvester.fetch_station_data import noaa_web_fetch_data, noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data, ndbc_fetch_historic_data
 from utilities.utilities import utilities as utilities
 
 ##
@@ -19,7 +19,7 @@ from utilities.utilities import utilities as utilities
 ##
 
 # Currently supported sources
-SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
+SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC','NOAAWEB']
 
 #def get_noaa_stations(fname='./config/noaa_stations.txt'):
 def get_noaa_stations(fname=None):
@@ -186,6 +186,35 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
         utilities.log.error(f'Error: NOAA: {e}')
     return df_noaa_data, df_noaa_meta
 
+def process_noaaweb_stations(time_range, noaa_stations, interval=None, data_product='water_level', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+
+    Parameters:
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
+        noaa_stations: list(str). List of desired NOAA stations
+        interval: <str> (def=None) A NOAA specific interval setting
+        data_product: <str >(def water_level). A generic AST named data product ( Not the True NOAA data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_noaa_data: DataFrame (time x station)
+        df_noaa_meta: DataFrame (station x metadata)
+    """
+    # Fetch the data
+    noaa_products=['water_level', 'predictions', 'hourly_height', 'air_pressure', 'wind_speed']
+    try:
+        if not data_product in noaa_products:
+            utilities.log.error(f'NOAA WEB: data product can only be {noaa_products}')
+            #sys.exit(1)
+        noaanos = noaa_web_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
+        df_noaa_data = noaanos.aggregate_station_data()
+        df_noaa_meta = noaanos.aggregate_station_metadata()
+        df_noaa_meta.index.name='STATION'
+    except Exception as e:
+        utilities.log.error(f'Error: NOAA WEB: {e}')
+    return df_noaa_data, df_noaa_meta
+
 def process_contrails_stations(time_range, contrails_stations, authentication_config, data_product='river_water_level', resample_mins=15 ):
     """
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
@@ -339,6 +368,32 @@ def main(args):
             utilities.log.info(f'NOAA data has been stored {dataf},{metaf}')
         except Exception as e:
             utilities.log.error(f'Error: NOAA: Failed Write {e}')
+            sys.exit(1)
+
+    # metadata are used to augment filename
+    #NOAA/NOS WEB API
+    if data_source.upper()=='NOAAWEB':
+        excludedStations=list()
+        time_range=(starttime,endtime) # Can be directly used by NOAA 
+        # Use default station list
+        noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
+        noaa_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        data, meta = process_noaaweb_stations(time_range, noaa_stations, data_product = data_product)
+        df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
+        # Output
+        # If choosing non-default locations BOTH variables must be specified
+        try:
+            if args.ofile is not None:
+                dataf=f'%s/noaa_stationdata%s.csv'% (args.ofile,noaa_metadata)
+                metaf=f'%s/noaa_stationdata_meta%s.csv'% (args.ometafile,noaa_metadata)
+            else:
+                dataf=f'./noaa_stationdata%s.csv'%noaa_metadata
+                metaf=f'./noaa_stationdata_meta%s.csv'%noaa_metadata
+            df_noaa_data.to_csv(dataf)
+            meta.to_csv(metaf)
+            utilities.log.info(f'NOAA WEB data has been stored {dataf},{metaf}')
+        except Exception as e:
+            utilities.log.error(f'Error: NOAA WEB: Failed Write {e}')
             sys.exit(1)
 
     #Contrails
