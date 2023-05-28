@@ -33,7 +33,7 @@ class get_obs_stations(object):
 
     # Currently supported sources and products
 
-    SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
+    SOURCES = ['NOAAWEB', 'NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
     NOAA_PRODUCTS = ['water_level','hourly_height','predictions','air_pressure','wind_speed']
     CONTRAILS_PRODUCTS = ['river_water_level','river_flow_volume','coastal_water_level','air_pressure']
     NDBC_PRODUCTS=['wave_height','air_pressure','wind_speed']
@@ -59,6 +59,10 @@ class get_obs_stations(object):
 
         if self.source=='NOAA':
             selected_products = self.NOAA_PRODUCTS
+
+        elif self.source=='NOAAWEB':
+            selected_products = self.NOAA_PRODUCTS
+
         elif self.source=='CONTRAILS':
             if contrails_yamlname is None:
                 utilities.log.error('For Contrails work an authentication yaml is required. It was missing: Abort')
@@ -73,6 +77,9 @@ class get_obs_stations(object):
 
         # Setup master list of stations. Can override with a list of stationIDs later if you must
         if self.source=='NOAA':
+            self.station_list = fetch_data.get_noaa_stations(station_list_file)
+
+        if self.source=='NOAAWEB':
             self.station_list = fetch_data.get_noaa_stations(station_list_file)
 
         # It is up to the caller to differentiate river from coastal stations 
@@ -220,6 +227,18 @@ class get_obs_stations(object):
             except Exception as ex:
                 utilities.log.error(f'NOAA error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
+
+        if self.source.upper()=='NOAAWEB':
+            excludedStations=list()
+            # Use default station list
+            noaa_stations=self.station_list
+            noaa_metadata=f"_{endtime.replace(' ','T')}"
+            try:
+                data, meta = fetch_data.process_noaaweb_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
+            except Exception as ex:
+                utilities.log.error(f'NOAA error {template.format(type(ex).__name__, ex.args)}')
+                #sys.exit(1)
+
 
         if self.source.upper()=='CONTRAILS':
             contrails_config = utilities.load_config(self.contrails_yamlname)['DEFAULT']
@@ -369,6 +388,14 @@ def main(args):
     # Invoke the class
     # No longer use the obs.yml file inside the class. keep for future considerations
     if args.data_source.upper() == 'NOAA':
+        if station_list is None:
+            noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
+        else:
+            noaa_stations=station_list
+        rpl = get_obs_stations(source=args.data_source, product=args.data_product,
+                    contrails_yamlname=None,
+                    knockout_dict=None, station_list_file=noaa_stations)
+    elif args.data_source.upper() == 'NOAAWEB':
         if station_list is None:
             noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
         else:
