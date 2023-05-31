@@ -1235,7 +1235,7 @@ class noaa_web_fetch_data(fetch_station_data):
 
     web_return_columns={'water_level':' Water Level', # Yes there are spaces in thar'
                         'hourly_height':' Water Level',
-                        'predictions':' Predictions',
+                        'predictions':' Prediction',
                         'air_pressure':' Pressure',
                         'wind':' Speed'
     }
@@ -1291,6 +1291,7 @@ class noaa_web_fetch_data(fetch_station_data):
         print(end_time)
         periods=list()
         dformat='%Y-%m-%d %H:%M:%S'
+        doformat='%Y%m%d %H:%M'
         print(f'Parameters: start time {start_time}, end_time {end_time}')
     
         time_start = dt.datetime.strptime(start_time, dformat)
@@ -1315,7 +1316,7 @@ class noaa_web_fetch_data(fetch_station_data):
         while subrange_start <= time_end:
             interval = dt.timedelta(hours=init_hour, minutes=init_min, seconds=init_sec)
             subrange_end=min(subrange_start+interval,time_end) # Need a variable interval to prevent a day-span  
-            periods.append( (dt.datetime.strftime(subrange_start,dformat),dt.datetime.strftime(subrange_end,dformat)) )
+            periods.append( (dt.datetime.strftime(subrange_start,doformat),dt.datetime.strftime(subrange_end,doformat)) )
             subrange_start=subrange_end+oneSecond # onehourint
             init_hour, init_min, init_sec = 23,59,59
         return periods
@@ -1382,7 +1383,7 @@ class noaa_web_fetch_data(fetch_station_data):
                 dx.columns=[station]
                 datalist.append(dx)
             except Exception as e:
-                utilities.log.warn(f'noaa-web response data error: Perhaps empty data contribution: station {station}: {e}')
+                utilities.log.warn(f'noaa-web response data error: Perhaps empty data contribution: station {station}: {e} ')
         try:
             df_data = pd.concat(datalist)
         except Exception as e:
