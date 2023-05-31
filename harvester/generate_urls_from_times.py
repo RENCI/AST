@@ -290,7 +290,7 @@ def construct_starttime_from_offset(stoptime,ndays):
 
 class generate_urls_from_times(object):
     """ 
-    Class that attempts to create a list of valid ASGS Urls based on the input time conditions and possibly a YAML file
+    Class that attempts to create a list of valid TDS Urls based on the input time conditions and possibly a YAML file
     that contains the URL structure
     This is NOT expected to be highly generalized and is intended for the ADDA/AST pipelines
 

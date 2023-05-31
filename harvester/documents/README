@@ -17,6 +17,11 @@ d) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 # Specify non-default locations for the output data and metadata files
 e) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --ofile "." --ometafile "."
 
+# 1-b) NOAAWEB Required input files are
+    ../supporting_data/noaa_stations.csv. To provide a list of stations ids
+
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --station_list '../supporting_data/noaa_stations.csv'
+
 These will create output files such as the following. Note the filename metadata is tied to the input time selections:
 
     1) ./noaa_stationdata_2022-02-20T00:00:00.csv
@@ -29,6 +34,7 @@ python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source '
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'air_pressure'
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'hourly_height'
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'wind_speed'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --data_product 'hourly_height'
 
 # 2) CONTRAILS. Required input files
     ../config/main.yml. To fetch the value of rootdir
@@ -72,7 +78,7 @@ a) python fetch_data.py --ndays -4 --stoptime '2021-12-31 00:00:00' --data_sourc
     2) ./ndbc_stationdata_meta_2022-02-20T00:00:00.csv
 
 #
-# Examples of running main for ASGS/ADCIRC data
+# Examples of running main for TDS/ADCIRC data
 # No "times" are specified. These methods replace explicit times with lists of relevant urls that should be created by the caller
 
 # 1) Required input files are
@@ -84,34 +90,34 @@ a) python fetch_data.py --ndays -4 --stoptime '2021-12-31 00:00:00' --data_sourc
 # d) Take Hurricane url and request associated nowcasts - fort63 style
 # e) Specify a custiom non-default stationfile location: This doesn't change the classes at all. But does better support the data_harvesting procedure for APSVIZ2
 
-a) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' 
-b) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc" --fort63_style --data_source 'ASGS'
-c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS'
-d) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.63.nc" --fort63_style --data_source 'ASGS' --convertToNowcast
-e) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' 
-f)  python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --ofile "." --ometafile "."
+a) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'TDS' 
+b) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc" --fort63_style --data_source 'TDS'
+c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'TDS'
+d) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.63.nc" --fort63_style --data_source 'TDS' --convertToNowcast
+e) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' 
+f)  python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --ofile "." --ometafile "."
 
 # Can also specify a LOCAL url datafile. In this case, no scraping of the url for useful information is possible. So the final metadata object will not be very informative
-python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/Projects/NOAA.Reanalysis/fr3/2018/fort.63.nc" --data_source 'ASGS' --station_list '/projects/sequence_analysis/vol1/prediction_work/FR3_UNASSIMILATED_REANALYSIS_2018/supporting_data/unassimilated_stations.csv' --fort63_style --raw_local_url
+python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/Projects/NOAA.Reanalysis/fr3/2018/fort.63.nc" --data_source 'TDS' --station_list '/projects/sequence_analysis/vol1/prediction_work/FR3_UNASSIMILATED_REANALYSIS_2018/supporting_data/unassimilated_stations.csv' --fort63_style --raw_local_url
 
-python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2018/fort.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2018/fort.63.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
 
 # Local files (raw vs transposed+rechunked)
 
-python fetch_adcirc_data.py --url "./fort.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
-python fetch_adcirc_data.py --url "./fort.63_transposed_and_rechunked_1024.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+python fetch_adcirc_data.py --url "./fort.63.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+python fetch_adcirc_data.py --url "./fort.63_transposed_and_rechunked_1024.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
 
-python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2005/fort.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
-python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2005/fort.63_transposed_and_rechunked_1024.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2005/fort.63.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
+python fetch_adcirc_data.py --url "/projects/reanalysis/ADCIRC/ERA5/hsofs/2005/fort.63_transposed_and_rechunked_1024.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --raw_local_url
 
 
 # Try to read a SWAN file instead. Must specify the correct variable name AND specify fort63_style as well as raw_local_url
 
-a) python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/HSOFS-PRIOR-2022/2018/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
+a) python fetch_adcirc_data.py --url "/projects/sequence_analysis/vol1/prediction_work/HSOFS-PRIOR-2022/2018/swan_HS.63.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
 
-b) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/Reanalysis/ADCIRC/ERA5/hsofs/2012/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
+b) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/Reanalysis/ADCIRC/ERA5/hsofs/2012/swan_HS.63.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS'  --raw_local_url
 
-c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --data_source 'ASGS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS' 
+c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --data_source 'TDS' --station_list '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv' --fort63_style --variable_name 'swan_HS' 
 
 # Output datafiles
 
@@ -141,6 +147,9 @@ c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/na
 
 a) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' --interval 'None'
 b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' --interval 'h'
+
+python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAAWEB' --data_product 'water_level' --interval 'h'
+
 
 # 2) Required Contrails input files
 
@@ -183,12 +192,12 @@ c) python get_observations_stations.py --starttime '2022-05-01 00:00:00' --stopt
 python get_observations_stations.py --starttime '2020-05-10 00:00:00' --stoptime '2021-05-10 12:00:00' --data_source 'NDBC_HISTORIC' --data_product 'wave_height'
 
 ##
-## Getting ADCIRC data from the ASGS
+## Getting ADCIRC data from the TDS
 ##
 
 #  In ths case, "times" have little meaning since the underlying methods require a list of URLs that span the desired time range. The construction of the URLs is performed using the
 #  methods in generate_urls_from_times.py. Testing generate_urls_from_times.py is further down in this document. 
-#  Also, times also have little meaning for Hurricane ASGS data. In this case "times" are replaced with Advisories. Examples follow.
+#  Also, times also have little meaning for Hurricane TDS data. In this case "times" are replaced with Advisories. Examples follow.
 #
 #  Secondly fetching water levels requires knowing the station ids. However, the specific ADCIRC nodes best corresponding to a station id depends on the selected GRID. So two options are provided:
 #  1) The default (fort61_style) uses only a list of station ids and uses the fort.61.nc file to elucidate the proper indexes and fetch the water levels. These are inteprolated water levels.
@@ -201,11 +210,11 @@ python get_observations_stations.py --starttime '2020-05-10 00:00:00' --stoptime
 #
 # --ndays defaults to -2
 #
-#  --url URL             ASGS url to fetch ADCIRC data
+#  --url URL             TDS url to fetch ADCIRC data
 #  --sources             List currently supported data sources
 #  --data_source DATA_SOURCE
 #                        choose supported data source (case independant) eg
-#                        ASGS
+#                        TDS
 #  --data_product DATA_PRODUCT
 #                        choose supported data product eg water_level
 #  --return_sample_min RETURN_SAMPLE_MIN
@@ -232,18 +241,18 @@ python get_observations_stations.py --starttime '2020-05-10 00:00:00' --stoptime
     ../secrets/url_framework.yml
 
 ## Case: Provide a template url type examples
-python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' 
-python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --ndays -4
-python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --timeout '2022-02-26 00:00:00'
-python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'ASGS' --fort63_style
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'TDS' 
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'TDS' --ndays -4
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'TDS' --timeout '2022-02-26 00:00:00'
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022011600/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.61.nc" --data_source 'TDS' --fort63_style
 
 # Try a hurricane
-python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS'
-python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'ASGS' --timeout 8  --fort63_style
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'TDS'
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc" --data_source 'TDS' --timeout 8  --fort63_style
 
 ## Case: Provide a YML formatting For the given stations lists noty all grids can use fort63_style in this example
-python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'ASGS'
-python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'ASGS' --fort63_style
+python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'TDS'
+python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gridname 'hsofs' --instance_name 'hsofs-nam-bob-2021' --timeout '2022-02-26 00:00:00' --data_source 'TDS' --fort63_style
 
 # Output datafiles - representative
     1) ./adc_wl_metadata_2022033112.pkl
@@ -252,7 +261,7 @@ python get_adcirc_stations.py  --config_name '../secrets/url_framework.yml' --gr
     4) ./adc_wl_detailed_2022033112.json
 
 ## Case Get a swan data file using the new API
-python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --data_source 'ASGS' --timeout '2022-06-13 00:00:00' --fort63_style --ensemble 'namforecast' --variable_name 'swan_HS'
+python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam/2022061312/NCSC_SAB_v1.23/hatteras.renci.org/ncsc123-nam-sb55.01/namforecast/swan_HS.63.nc" --data_source 'TDS' --timeout '2022-06-13 00:00:00' --fort63_style --ensemble 'namforecast' --variable_name 'swan_HS'
 
 
 ##
@@ -262,7 +271,7 @@ python get_adcirc_stations.py --url "http://tds.renci.org/thredds/dodsC/2022/nam
 ## NOTE: In harvester methods that can perform fort63_style and fort61_style processing. those codes make the required changes. Thus, in the following examples
 ## It doesn't matter too much if you specify fort.61.nc or fort.63.nc 
 
-# This a helper method that assists in  generation of a list of proper ASGS urls that span the desired time range (or advisory range). Many usage scenrios exist. This is expected to 
+# This a helper method that assists in  generation of a list of proper TDS urls that span the desired time range (or advisory range). Many usage scenrios exist. This is expected to 
 # be called by high level applications (such as adda.py) and passed to underlying HARVESTER methods. 
 # This is a method that simply creates urls based on the users requirements. NO VALIDATION of the urls is performed.   
 

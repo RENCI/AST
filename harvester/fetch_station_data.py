@@ -153,7 +153,7 @@ class fetch_station_data(object):
 
     A list of times (periods) is required. The list contents can vary with data source. Generally, this is
     a list of one element; a tuple such as [(time1,time2)]. However, the caller could gang together multiple tuple ranges.
-    For calling ADCIRC data, periods is a list of ASGS URLs (which imply a range of times)
+    For calling ADCIRC data, periods is a list of TDS URLs (which imply a range of times)
 
     The output data are aggregated station products into a dataframe: (TIME vs PRODUCT)
     with TIME as datetime timestamps and a column of data of the desired units and with a column

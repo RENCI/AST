@@ -7,8 +7,8 @@
 # SPDX-License-Identifier: MIT
 
 #
-# A file suitable for use by ADDA,APSVIZ2,Reanalysis to fetch ADCIRC water levels from the ASGS
-# The ASGS input to this class is a list of URLs. If you require running this by specifying TIMES, 
+# A file suitable for use by ADDA,APSVIZ2,Reanalysis to fetch ADCIRC water levels from the TDS
+# The TDS input to this class is a list of URLs. If you require running this by specifying TIMES, 
 # then you must preprocess the data into a list of URLs.
 #
 # TODO Check into the case where ADCIRC returns completely empty stations. This filtering may have been 
@@ -25,7 +25,7 @@ from utilities.utilities import utilities as utilities
 import time as tm
 
 # Currently supported sources
-SOURCES = ['ASGS']
+SOURCES = ['TDS']
 
 def get_adcirc_stations_fort63_style(fname=None)->pd.DataFrame:
     """
@@ -107,7 +107,7 @@ def check_advisory(value, dformat='%Y%m%d%H'):
 
 def check_if_hurricane(urls):
     """
-    Very simple procedure but requires having the ASGS nomenclature. This will not work 
+    Very simple procedure but requires having the TDS nomenclature. This will not work 
     for generic locally stored files
     Only need to check one valid url from the list. This presumnes they all have the same
     grid, instance, class, etc
@@ -135,11 +135,11 @@ def convert_input_url_to_nowcast(urls):
     """
     Though one could call this method using a nowcast url, occasionally we want to be able to
     only pass a forecast type url and, from that, figure out what the corresponding nowcast url might be.
-    This assume a proper ASGS formatted url and makes no attempts to validate the 
+    This assume a proper TDS formatted url and makes no attempts to validate the 
     the constructed url. Either it exists or this methiod exits(1)
 
     To use this feature:
-    We mandate that the url is used to access ASGS data. The "ensemble" information must be in position .split('/')[-2]
+    We mandate that the url is used to access TDS data. The "ensemble" information must be in position .split('/')[-2]
 
     Parameters:
         urls: list(str) A list of valid urls
@@ -243,13 +243,13 @@ def first_true(iterable, default=False, pred=None):
 
 def strip_time_from_url(urls)->str:
     """
-    We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "time" information will be in position .split('/')[-6]
+    We mandate that the URLs input to this fetcher are those used to access the TDS data. The "time" information will be in position .split('/')[-6]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
     Parameters:
         urls: list(str). list of valid urls
     Returns:
-         time: <str>: in either ASGS formatted '%Y%m%d%H' or possibly as a hurricane advisory string (to be checked later)
+         time: <str>: in either TDS formatted '%Y%m%d%H' or possibly as a hurricane advisory string (to be checked later)
     """
     url = grab_first_url_from_urllist(urls)
     try:
@@ -261,7 +261,7 @@ def strip_time_from_url(urls)->str:
 
 def strip_ensemble_from_url(urls)->str:
     """
-    We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "ensemble" information will be in position .split('/')[-2]
+    We mandate that the URLs input to this fetcher are those used to access the TDS data. The "ensemble" information will be in position .split('/')[-2]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
     Parameters:
@@ -279,7 +279,7 @@ def strip_ensemble_from_url(urls)->str:
 
 def strip_instance_from_url(urls)->str:
     """
-    We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "instance" information will be in position .split('/')[-3]
+    We mandate that the URLs input to this fetcher are those used to access the TDS data. The "instance" information will be in position .split('/')[-3]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
     Parameters:
@@ -297,7 +297,7 @@ def strip_instance_from_url(urls)->str:
 
 def strip_storm_number_from_url(urls, fill='NONE')->str:
     """
-    We mandate that the Hurricane URLs input to this fetcher are those used to access the ASGS/ECFlow data. The "storm number" (eg al09) 
+    We mandate that the Hurricane URLs input to this fetcher are those used to access the TDS/ECFlow data. The "storm number" (eg al09) 
     information will be in position .split('/')[-7]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/al09/11/hsofs/hatteras.renci.org/hsofs-al09-bob/nhcOfcl/fort.61.nc'
     
@@ -343,7 +343,7 @@ def strip_sitename_from_url(urls, fill='NoSite')->str:
 
 def grab_gridname_from_url(urls)->str:
     """
-    We mandate that the URLs input to this fetcher are those used to access the ASGS data. The "grid" information will be in position .split('/')[-2]
+    We mandate that the URLs input to this fetcher are those used to access the TDS data. The "grid" information will be in position .split('/')[-2]
     eg. 'http://tds.renci.org/thredds/dodsC/2021/nam/2021052318/hsofs/hatteras.renci.org/hsofs-nam-bob-2021/nowcast/fort.63.nc'
     
     Parameters:
@@ -376,7 +376,7 @@ def grab_first_url_from_urllist(urls)->str:
 
 def main(args):
     """
-    We require the provided URL is using the typical ASGS nomenclature and that the timestamp is in ('/') position -6
+    We require the provided URL is using the typical TDS nomenclature and that the timestamp is in ('/') position -6
     Moreover, This time stamp behaves a little differently if fetching a nowcast versus a forecast (pre vs post). For now, we will
     annotate final .csv files with _TIME_ corresponding to the actual url data starttime.
     """
@@ -454,7 +454,7 @@ def main(args):
     ##
 
     t0 = tm.time()
-    if data_source.upper()=='ASGS':
+    if data_source.upper()=='TDS':
         excludedStations=list()
         # Use default station list
         fname_stations = args.station_list if args.station_list is not None else '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv'
@@ -497,14 +497,14 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--sources', action='store_true',
                         help='List currently supported data sources')
-    parser.add_argument('--data_source', action='store', dest='data_source', default='ASGS', type=str,
-                        help='choose supported data source: default = ASGS')
+    parser.add_argument('--data_source', action='store', dest='data_source', default='TDS', type=str,
+                        help='choose supported data source: default = TDS')
     parser.add_argument('--urls', nargs='+', action='store', dest='urls', default=None, type=str,
-                        help='ASGS url to fetcb ADCIRC data')
+                        help='TDS url to fetcb ADCIRC data')
     parser.add_argument('--data_product', action='store', dest='data_product', default='water_level', type=str,
                         help='choose supported data product: default is water_level')
     parser.add_argument('--convertToNowcast', action='store_true',
-                        help='Attempts to force input URL into a nowcast url assuming normal ASGS conventions')
+                        help='Attempts to force input URL into a nowcast url assuming normal TDS conventions')
     parser.add_argument('--fort63_style', action='store_true', 
                         help='Boolean: Will inform Harvester to use fort.63.methods to get station nodesids')
     parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
