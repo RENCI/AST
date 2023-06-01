@@ -263,7 +263,7 @@ class get_adcirc_stations(object):
 # Since we will do a rolling averager later followed by a final resampling.
 # ADCIRC will by default return data back in hourly steps
 
-    def fetch_station_product(self, urls, return_sample_min=0, fort63_style=False, variable_name='zeta'):
+    def fetch_station_product(self, urls, return_sample_min=0, fort63_style=False, variable_name='zeta', keep_earliest_url=True):
         """
         Fetch the desired data. The main information is part of the class (sources, products, etc.). However, one must still specify the return_sample_minutes
         to sample the data. The harvesting code will read the raw data for the selected product. Perform an interpolation (it doesn't pad nans), and then
@@ -292,7 +292,7 @@ class get_adcirc_stations(object):
 
         if self.source.upper()=='TDS':
             adc_stations=self.station_list
-            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style, variable_name=variable_name)
+            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style, variable_name=variable_name, keep_earliest_url=keep_earliest_url )
         time_index=data.index.tolist()
         self.Tmin = min(time_index).strftime('%Y%m%d%H')
         self.Tmax = max(time_index).strftime('%Y%m%d%H')

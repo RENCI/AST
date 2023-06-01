@@ -451,7 +451,7 @@ class adcirc_fetch_data(fetch_station_data):
 ##
     def __init__(self, station_id_list, periods=None, product='water_level',
                 datum='MSL', sitename=None, gridname=None, castType=None, resample_mins=15,
-                fort63_style=False, variable_name='zeta'):
+                fort63_style=False, variable_name='zeta', keep_earliest_url=True):
         """
         Instantiate the ADCIRC product layer. 
         Parameters:
@@ -465,6 +465,7 @@ class adcirc_fetch_data(fetch_station_data):
             resample_mins: <int> resample time. Set to 0 for full resolution
             fort63_style: <bool> If true input station_ids as list of tuples (stationid/nodeid)
             variable_name: <str> (default='zeta') If using a SWAN type file then you must change the variable name here
+            keep_earliest_url: This boolean can be used to remove the earliest url in a postchecked list of urls 
         """
         self._product=self.products[product]
         #self._interval=interval 
@@ -495,6 +496,10 @@ class adcirc_fetch_data(fetch_station_data):
         self.available_stations_tuple=available_stations
         utilities.log.info(f'List of ADCIRC generated stations {self.available_stations_tuple}')
         periods = self._remove_empty_url_pointers(periods)
+        if not keep_earliest_url:
+            remperiod,periods=periods[0],periods[1:]
+            print(f' FINAL URLS {periods}')
+            utilities.log.info(f'Removing earliest confirmed URL from the processing list: remaining is {len(periods)}: Removed url was {remperiod}') 
         super().__init__(self.available_stations_tuple, periods, resample_mins=resample_mins) # Pass in the full dict
 
     def _fetch_adcirc_nodes_from_fort63_input_file(self, station_df) -> list():

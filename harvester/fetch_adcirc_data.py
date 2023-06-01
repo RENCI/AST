@@ -192,7 +192,7 @@ PRODUCT='water_level'
 ## Run stations. These functions generaly get called by outside callers
 ##
 
-def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product='water_level', resample_mins=0, fort63_style=False, variable_name='zeta'):
+def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product='water_level', resample_mins=0, fort63_style=False, variable_name='zeta', keep_earliest_url=True):
     """
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
 
@@ -216,7 +216,7 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         if data_product != 'water_level':
             utilities.log.error('ADCIRC data product can only be: water_level')
             sys.exit(1)
-        adcirc = adcirc_fetch_data(adcirc_stations, urls, data_product, sitename=sitename, gridname=gridname, castType=ensemble.rstrip(), resample_mins=resample_mins, fort63_style=fort63_style, variable_name=variable_name)
+        adcirc = adcirc_fetch_data(adcirc_stations, urls, data_product, sitename=sitename, gridname=gridname, castType=ensemble.rstrip(), resample_mins=resample_mins, fort63_style=fort63_style, variable_name=variable_name, keep_earliest_url=keep_earliest_url)
         df_adcirc_data = adcirc.aggregate_station_data()
         df_adcirc_meta = adcirc.aggregate_station_metadata()
         df_adcirc_meta.index.name='STATION'
