@@ -250,15 +250,15 @@ class fetch_station_data(object):
                     pass
                 #tm.sleep(2) # sleep 2 secs
                 # On input dx==nan, the old method bombs preventing a nan form entering aggregateData
-            except RuntimeError as ex: # This is primarily here to trap DAP Failures for TDS/running on k8s
-                message = template.format(type(ex).__name__, ex.args)
-                utilities.log.warn(f'RuntimeError: Skipping all station for this time period/url. {station}, msg {message}')
-                break
+            #except RuntimeError as ex: # This is primarily here to trap DAP Failures for TDS/running on k8s
+            #    message = template.format(type(ex).__name__, ex.args)
+            #    utilities.log.warn(f'RuntimeError: Skipping all station for this time period/url. {station}, msg {message}')
+            #    break
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
                 traceback.print_exc()
-                utilities.log.warn(f'Error Value: Probably the station simply had no data; Skip {station}, msg {message}')
+                utilities.log.warn(f'Error Value: Possibly the station simply had no data; Skip {station}, msg {message}')
         if len(aggregateData)==0:
             utilities.log.warn('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
             ##return np.nan
