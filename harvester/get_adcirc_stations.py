@@ -357,12 +357,12 @@ def main(args):
 
     # Invoke the harvester related class
     if args.fort63_style:
-        if args.variable_name is 'zeta':
+        if args.variable_name == 'zeta':
             urls=convert_urls_to_63style(urls)
         else:
             urls=convert_urls_to_swan_63style(urls)
     else:
-        if args.variable_name is not 'zeta':
+        if args.variable_name != 'zeta':
             utilities.log.error('Cannot use fort61_style with a swan file')
             sys.exit(1)
         urls=convert_urls_to_61style(urls)
