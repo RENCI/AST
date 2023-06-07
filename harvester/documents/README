@@ -145,7 +145,7 @@ c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/na
 # a) Grab 6min WLs from NOAA stations for the desired time range
 # b) Grab HOURLY from NOAA stations for the desired time range
 
-a) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' --interval 'None'
+a) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' 
 b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' --interval 'h'
 
 python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAAWEB' --data_product 'water_level' --interval 'h'
