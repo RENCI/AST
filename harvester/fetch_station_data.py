@@ -195,7 +195,7 @@ class fetch_station_data(object):
                 normalRange = pd.date_range(str(timein), str(timeout), freq=f'{sample_mins*60.0}S') # This gets us the stepping we want
                 datanormal=[x for x in normalRange if x not in actualRange] 
                 # Assemble the union of values for the final data set. Exclude entries that already exist in the real data
-                dappend=dx.append(pd.DataFrame(index=datanormal)) # This is fine
+                dappend = pd.concat([dx,pd.DataFrame(index=datanormal)],axis=0)
                 dappend.sort_index(axis=0, ascending=True, inplace=True)
                 df_smooth = dappend.interpolate(method='time',limit=int_limit, limit_direction= 'both')
                 df_normal_smooth = df_smooth.loc[normalRange]
