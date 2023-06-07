@@ -213,8 +213,7 @@ class get_obs_stations(object):
         utilities.log.debug(f'Attempt a product fetch for the time range {starttime}-{endtime}')
         template = "An exception of type {0} occurred."
 
-        if interval is 'None':
-            interval = None # Just double checking
+        interval=interval
 
         time_range=(starttime,endtime)
         if self.source.upper()=='NOAA':
@@ -367,7 +366,7 @@ def main(args):
     # Set up IO env
     utilities.log.info(f"Product Level Working in {os.getcwd()}")
 
-    interval = args.interval if args.interval is 'None' else None
+    interval = args.interval
 
     # Set up time ranges
     if args.starttime is None and args.stoptime is None:
@@ -481,7 +480,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_product', action='store', dest='data_product', default='water_level', type=str,
                         help='choose supported data product eg water_level')
     parser.add_argument('--interval', action='store', dest='interval', default=None, type=str,
-                        help='Interval request to the fetcher (h or None): Only used by NOAA')
+                        help='Interval request to the fetcher (h): Only used by NOAA/NOAAWEB')
     parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
                         help='Choose a non-default location/filename for a stationlist')
     args = parser.parse_args()
