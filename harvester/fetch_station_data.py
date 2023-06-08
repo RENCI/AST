@@ -679,7 +679,8 @@ class adcirc_fetch_data(fetch_station_data):
             meta['LAT'] = lat 
             meta['LON'] = lon 
             # meta['NAME']= nc.agrid # Long form of grid name description # Or possible use nc.version
-            meta['NAME']='_'.join([self._gridname.upper(),self._typeCast.upper()]) # These values come from the calling routine and should be usually nowcast, forecast
+            #meta['NAME']='_'.join([self._gridname.upper(),self._typeCast.upper()]) # These values come from the calling routine and should be usually nowcast, forecast
+            meta['NAME']=str(station) if str(station)!='' else 'Unknown'
             #meta['VERSION'] = nc.version
             meta['UNITS'] ='m'
             meta['TZ'] = GLOBAL_TIMEZONE # Can look in nc.comments
