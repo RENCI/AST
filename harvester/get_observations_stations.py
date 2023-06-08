@@ -215,6 +215,9 @@ class get_obs_stations(object):
 
         interval=interval
 
+        data=np.nan
+        meta=np.nan
+
         time_range=(starttime,endtime)
         if self.source.upper()=='NOAA':
             excludedStations=list()
