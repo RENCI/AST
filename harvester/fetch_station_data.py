@@ -1426,7 +1426,7 @@ class noaa_web_fetch_data(fetch_station_data):
             meta['UNITS'] = self._data_unit 
             meta['TZ'] = GLOBAL_TIMEZONE # data['utc_offset']
             meta['OWNER'] = 'NOAA/NOS'
-            meta['STATE'] = np.nan # None # data2['state']  # DO these work ?
+            meta['STATE'] = json_meta['stations'][0]['state'] if json_meta['stations'][0]['state'] !='' else np.nan
             meta['COUNTY'] = np.nan
             #
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
