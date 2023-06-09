@@ -663,7 +663,7 @@ class adcirc_fetch_data(fetch_station_data):
         periods=self._periods
 
         for url in periods:
-            nc = nc4.Dataset(f'{url}#log')
+            nc = nc4.Dataset(url)
             # we need to test access to the netCDF variables, due to infrequent issues with
             # netCDF files written with v1.8 of HDF5.
             try:
@@ -680,7 +680,7 @@ class adcirc_fetch_data(fetch_station_data):
             meta['LON'] = lon 
             # meta['NAME']= nc.agrid # Long form of grid name description # Or possible use nc.version
             #meta['NAME']='_'.join([self._gridname.upper(),self._typeCast.upper()]) # These values come from the calling routine and should be usually nowcast, forecast
-            meta['NAME']=str(station) if str(station)!='' else 'Unknown'
+            meta['NAME']=str(station)
             #meta['VERSION'] = nc.version
             meta['UNITS'] ='m'
             meta['TZ'] = GLOBAL_TIMEZONE # Can look in nc.comments
