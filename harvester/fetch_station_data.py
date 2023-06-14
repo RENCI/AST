@@ -1349,9 +1349,13 @@ class noaa_web_fetch_data(fetch_station_data):
 ## Not sure what that is about
 ##
 
-## NOTE: The respoknse dataobject actually returns:
+## NOTE: The response data object actually returns:
 ## Date Time   Water Level   Sigma   O or I (for verified)   F   R   L  Quality. We only keep the Datetime and Product
 ##
+
+## Had to comment out the sys.exit(). Sometimes (eg station=1619010) no metadat gets returned as that 
+## station is declared to not exist
+
     def fetch_single_product(self, station, time_range) -> pd.DataFrame: 
         """
         For a single NOAA site_id, process all tuples from the input periods list
@@ -1433,8 +1437,8 @@ class noaa_web_fetch_data(fetch_station_data):
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except Exception as e:
-            utilities.log.exception(f'NOAA WEB response meta error: {e}')
-            sys.exit(1)
+            utilities.log.exception(f'NOAA WEB response meta error: {station} {response.text}: error is {e}')
+            #sys.exit(1)
         return df_meta
 
 #####################################################################################
