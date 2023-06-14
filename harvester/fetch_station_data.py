@@ -1401,9 +1401,6 @@ class noaa_web_fetch_data(fetch_station_data):
             df_data=np.nan
         return df_data
 
-# According to oneRain the current best way to access the meta data is using or_site_id
-# Also river and coastal metadata return different kind of objects
-
     def fetch_single_metadata(self, station) -> pd.DataFrame:      
         """
         For a single noaa site_id fetch the associated metadata.
