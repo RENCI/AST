@@ -36,6 +36,13 @@ python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source '
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'wind_speed'
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --data_product 'hourly_height'
 
+# Example of calling out Pacific NorthWest Stations
+
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --data_product 'hourly_height' --station_list '../supporting_data/pacnorthwest_stations.csv'
+
+
+
+
 # 2) CONTRAILS. Required input files
     ../config/main.yml. To fetch the value of rootdir
     ../secrets/contrails.yml. TO provided authentication information
@@ -159,6 +166,9 @@ python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime
 a) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level'
 b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
 c) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' --station_list /projects/sequence_analysis/vol1/prediction_work/AST/supporting_data/contrails_stations_coastal.csv
+
+d) get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAAWEB' --data_product 'hourly_height' --station_list '../supporting_data/pacnorthwest_stations.csv'
+
 
 
 # Try getting flow volumes from the augmented river list
