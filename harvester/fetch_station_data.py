@@ -998,8 +998,6 @@ class contrails_fetch_data(fetch_station_data):
        """
         start_time=time_tuple[0]
         end_time=time_tuple[1]
-        print(start_time)
-        print(end_time)
         periods=list()
         dformat='%Y-%m-%d %H:%M:%S'
         print(f'Parameters: start time {start_time}, end_time {end_time}')
@@ -1293,8 +1291,6 @@ class noaa_web_fetch_data(fetch_station_data):
        """
         start_time=time_tuple[0]
         end_time=time_tuple[1]
-        print(start_time)
-        print(end_time)
         periods=list()
         dformat='%Y-%m-%d %H:%M:%S'
         doformat='%Y%m%d %H:%M'
@@ -1305,11 +1301,6 @@ class noaa_web_fetch_data(fetch_station_data):
         if time_start > time_end:
             print('Swapping input times')
             time_start, time_end = time_end, time_start
-    
-        today = dt.datetime.today()
-        if time_end > today:
-              time_end = today
-              print(f'Contrails: Truncating list: new end time is {dt.datetime.strftime(today, dformat)}')
     
         #What hours/min/secs are we starting on - compute proper interval shifting
         init_hour = 24-math.floor(time_start.hour)-1
