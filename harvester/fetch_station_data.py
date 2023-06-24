@@ -583,6 +583,11 @@ class adcirc_fetch_data(fetch_station_data):
         full_idx = list(set([i for i in full_idx]))
         return full_idx
 
+##
+## Added in a retry clause here. In June/2023, we've observed that occasionally, a nowcast will fail to read even when 
+## subsequent manual checking indicates aexistance of a valid file. We've tentatively assigned this either to a FS timing issue
+## or a file locking issue. So, if we get a read failure here, we wait and try again one-time. Then fail on a failed 2nd try
+##
     def fetch_single_product(self, station_tuple, periods) -> pd.DataFrame:
         """
         variables.key() are now checked to try and determine if the dataset has been transposed (and rechunked) or not.
@@ -600,13 +605,25 @@ class adcirc_fetch_data(fetch_station_data):
         node=station_tuple[1]
         datalist=list()
         typeCast_status=list() # Check each period to see if this was a nowcast or forecast type fetch. If mixed then abort
-        for url in periods: # If a period is SHORT no data may be found esp for Contrails time ranges
+
+        WAITTIME=os.getenv('AST_IO_RETRY_PAUSE') if os.getenv('AST_IO_RETRY_PAUSE') is not None else '30'
+        try:
+            WAITTIME=int(WAITTIME)
+        except ValueError as e:
+            utilities.log.error(f' Fail to convert AST_IO_RETRY_PAUSE to seconds: Was {WAITTIME}. Will use default {e}')
+            WAITTIME=30
+
+        for url in periods: # If a period is SHORT no data may be found which is acceptible 
             try:
                 nc = nc4.Dataset(url)
-            except OSError as e:
-                utilities.log.error('URL not found should never happen here. Should have been prefiltered: {}'.format(e))
-                raise
-                #sys.exit(1)
+            except Exception as e: # Catch al errors as we are not sre of the complete set of possibles
+                utilities.log.warn(f'Previously tested URL is now not found on first attempt: Try a second time using a wait time of {waittime}s {e}') 
+                try:
+                    time.sleep(WAITTIME)
+                    nc=nc4.Dataset(url)
+                except Exception as e2:
+                    utilities.log.error(f'URL not found on Second try: Abort all URL list reads: Should have been prefiltered: {e2}')
+                    raise
 
             data_transposed = nc[self._variable_name].dimensions[0] == 'node'
             if data_transposed:
