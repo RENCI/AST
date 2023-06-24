@@ -646,7 +646,7 @@ class adcirc_fetch_data(fetch_station_data):
                         utilities.log.error(f'Unexpected leading variable name {ds.variables[v].dims}: Abort')
                         #sys.exit(1)
                 except IndexError as e:
-                    utilities.log.error(f'Error: This is usually caused by specify the proper grid: --grid {e}')
+                    utilities.log.error(f'Potentially non-fatal Error: fetching ADCIRC data: Skip to next url: {e}')
                     raise
                     #sys.exit()
                 np.place(data, data < -1000, np.nan)
@@ -699,7 +699,7 @@ class adcirc_fetch_data(fetch_station_data):
                 nodelat=nc.variables['y'][node]
                 break; 
             except IndexError as e:
-                utilities.log.error('Meta not found. Trying another URL was{}:{}'.format(url, e))
+                utilities.log.error(f' Potentially non-fatal: Meta not found. Trying another URL was {url}:{e}')
                 #sys.exit()
         try:
             lat = float(ma.getdata(nodelat))
