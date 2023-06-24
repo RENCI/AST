@@ -39,7 +39,8 @@ def is_hurricane(test_val)->bool:
                 is_hurricane=True
             except ValueError:
                 utilities.log.error('test indicates not a hurricane nor a casting. Perhaps a format issue ?.  Got {}: Abort'.format(test_val))
-                sys.exit(1)
+                raise
+                #sys.exit(1)
     return is_hurricane
 
 def generate_six_hour_time_steps_from_range(time_range)->list:
@@ -286,7 +287,8 @@ def construct_starttime_from_offset(stoptime,ndays):
         starttime = tstart.strftime('%Y-%m-%d %H:%M:%S')
         return starttime
     utilities.log.error('Fell out the bottom of construct_starttime_from_offset: Abort')
-    sys.exit(1)
+    raise
+    ##sys.exit(1)
 
 class generate_urls_from_times(object):
     """ 
@@ -350,17 +352,20 @@ class generate_urls_from_times(object):
             self.grid_name = grid_name
             if self.instance_name is None:
                 utilities.log.error('Must specify an instance value if building URLs based on a YAML. None specified: Abort')
-                sys.exit(1)
+                raise
+                ##sys.exit(1)
             if self.grid_name is None:
                 utilities.log.error('Must specify a grid_name if building URLs based on a YAML. None specified: Abort')
-                sys.exit(1)
+                raise
+                ##sys.exit(1)
             self.hurricane_yaml_source=hurricane_yaml_source
             self.hurricane_yaml_year=hurricane_yaml_year # Cannot span multiple years using Hurricane-YAML construction
 
         # timeout MUST be supplied somehow
         if timeout is None and stoptime is None:
             utilities.log.info('timeout is not set and no URL provided: Abort')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         if timeout is not None:
             stoptime=timeout
 
@@ -368,7 +373,8 @@ class generate_urls_from_times(object):
         if timein is None:
             if ndays is None:
                 utilities.log.info('No timein or ndays specified.')
-                sys.exit(1)
+                raise
+                ##sys.exit(1)
             else:
                 starttime = construct_starttime_from_offset(stoptime,ndays) # Will return an advisory value if appropriate
         else:
@@ -467,12 +473,14 @@ class generate_urls_from_times(object):
         """
         if self.config_name is None:
             utilities.log.error('self.config_name is None. Cannot use the YAML generators: Abort')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         try:
             config = utilities.load_config(self.config_name)
         except FileNotFoundError: # OSError:
             utilities.log.error('No URL structural config  yml file found.{}: Abort'.format(self.config_name))
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         
         time_range=(self.starttime,self.stoptime) # Could also be a range of advisories
         list_of_times = generate_six_hour_time_steps_from_range(time_range)
@@ -511,12 +519,14 @@ class generate_urls_from_times(object):
         """
         if self.config_name is None:
             utilities.log.error('self.config_name is None. Cannot use the YAML generators: Abort')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         try:
             config = utilities.load_config(self.config_name)
         except OSError:
             utilities.log.error('No URL structural config  yml file found.{}: Abort'.format(self.config_name))
-            sys.exit(1)
+            raise 
+            ##sys.exit(1)
 
         time_value=self.stoptime # Could also be an advisory
         offset = self.ndays
@@ -567,7 +577,8 @@ def main(args):
         print('Selecting a YAML generation method') 
         if args.grid_name is None or args.instance_name is None or config_name is None:
             print('YAML-based procedurs requires gridname, instance_name and config_name')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         if args.hurricane_yaml_year is not None and args.hurricane_yaml_source is not None:
             print('Detected values required for building YAML-based Hurricane urls')
         if args.timein is not None:

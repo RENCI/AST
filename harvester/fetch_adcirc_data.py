@@ -224,7 +224,8 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         station_nodes = adcirc.available_stations_tuple
         df_adcirc_meta=combine_metadata_with_station_tuples(df_adcirc_meta, station_nodes, fort63_style)
     except Exception as e:
-        utilities.log.error(f'Error: ADCIRC: {e}')
+        utilities.log.error(f'Failed fetching ADCIRC: {e}')
+        raise
     return df_adcirc_data, df_adcirc_meta 
 
 def first_true(iterable, default=False, pred=None):
@@ -458,18 +459,22 @@ def main(args):
         excludedStations=list()
         # Use default station list
         fname_stations = args.station_list if args.station_list is not None else '../supporting_data/CERA_NOAA_HSOFS_stations_V3.1.csv'
-        if args.fort63_style:
-            adcirc_stations=get_adcirc_stations_fort63_style(fname=fname_stations)
-        else:
-            adcirc_stations=get_adcirc_stations_fort61_style(fname=fname_stations)
-        # Need to specify something for the metadata 
-        if not args.raw_local_url:
-            adcirc_metadata='_'+ensemble+'_'+gridname.upper()+'_'+runtime.replace(' ','T')
-            adcirc_metadata=f"_{ensemble}_{gridname.upper()}_{runtime.replace(' ','T')}"
-        else:
-            adcirc_metadata='Raw_data'
+        try:
+            if args.fort63_style:
+                adcirc_stations=get_adcirc_stations_fort63_style(fname=fname_stations)
+            else:
+                adcirc_stations=get_adcirc_stations_fort61_style(fname=fname_stations)
+            # Need to specify something for the metadata 
+            if not args.raw_local_url:
+               adcirc_metadata='_'+ensemble+'_'+gridname.upper()+'_'+runtime.replace(' ','T')
+               adcirc_metadata=f"_{ensemble}_{gridname.upper()}_{runtime.replace(' ','T')}"
+            else:
+                adcirc_metadata='Raw_data'
 
-        data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product, resample_mins=0, fort63_style=args.fort63_style, variable_name=variable_name)
+            data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product, resample_mins=0, fort63_style=args.fort63_style, variable_name=variable_name)
+        except Exception as e:
+            utilities.log.info('Failed to process the ADCIRC data: {e}')
+            raise            
         ## df_adcirc_data = format_data_frames(data)
 
         ## Skip the melt: Note this is only for the written file
@@ -487,7 +492,8 @@ def main(args):
             utilities.log.info(f'ADCIRC data has been stored {dataf},{metaf}')
         except Exception as e:
             utilities.log.error(f'Error: ADCIRC: Failed Write {e}')
-            sys.exit(1)
+            raise
+            #sys.exit(1)
     total_time = tm.time() - t0
     utilities.log.info(f'Finished with data source {data_source}. Time was {total_time}')
     utilities.log.info('Finished')

@@ -118,7 +118,8 @@ def first_available_netCDF4(urls):
             utilities.log.debug('first_true: skip a url look up. Try next iteration')
         except Exception as e:
             utilities.log.debug(f'first_available_netCDF4: something wrong looking for url: {e}')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
     return url
 
 #
@@ -353,7 +354,8 @@ def main(args):
     else:
         urls = genrpl.build_url_list_from_template_url_and_offset( ensemble=args.ensemble_name)
         gridname = fetch_adcirc_data.grab_gridname_from_url(urls)
-    print(urls)
+
+    print(f' URLs {urls}')
 
     # Invoke the harvester related class
     if args.fort63_style:

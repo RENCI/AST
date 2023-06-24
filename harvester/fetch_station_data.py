@@ -204,6 +204,7 @@ class fetch_station_data(object):
             df_normal_smooth.index.name='TIME'
         except Exception as ex:
             utilities.log.error(f'Error Value: Failed interpolation {ex}: Probable empty station data')
+            raise
         return df_normal_smooth
         #sys.exit(1)
 
@@ -247,6 +248,7 @@ class fetch_station_data(object):
                         df_int = self.old_interpolate_and_resample(dx, sample_mins=self._resampling_mins)
                         aggregateData.append(df_int)
                 except Exception as e:
+                    utilities.log.error(f'Potentially Non Fatal Interpolation procedure status for station {station} {e}')
                     pass
                 #tm.sleep(2) # sleep 2 secs
                 # On input dx==nan, the old method bombs preventing a nan form entering aggregateData
@@ -258,7 +260,7 @@ class fetch_station_data(object):
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
                 traceback.print_exc()
-                utilities.log.warn(f'Error Value: Possibly the station simply had no data; Skip {station}, msg {message}')
+                utilities.log.warn(f'Possibly the station simply had no data; Skip {station}, msg {message}')
         if len(aggregateData)==0:
             utilities.log.warn('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
             ##return np.nan
@@ -278,7 +280,8 @@ class fetch_station_data(object):
             df_data = replace_and_fill(df_data)
             df_data = df_data.sort_index()
         except Exception as e:
-            utilities.log.error('Aggregate: error: {}'.format(e))
+            utilities.log.error(f'Station list aggregation: error: {e}')
+            pass
             #df_data=np.nan
         #df_data = df_data.sort_index()
         return df_data
@@ -365,7 +368,7 @@ class adcirc_fetch_data(fetch_station_data):
                 nc = nc4.Dataset(url)
                 new_periods.append(url)
             except OSError as e:
-                utilities.log.info('URL not found: Remove url {}'.format(url))
+                utilities.log.warn('URL not found: Remove url {}'.format(url))
         return new_periods
 
 ## TODO this cast method is is clumsy
@@ -408,7 +411,8 @@ class adcirc_fetch_data(fetch_station_data):
             return 'FORECAST'
         except Exception as e:
             utilities.log.error(f'Error: {e}')
-            sys.exit(1)
+            raise
+            #sys.exit(1)
 
         #Synoptic ?
         try:
@@ -418,11 +422,12 @@ class adcirc_fetch_data(fetch_station_data):
             else:
                 return 'NOWCAST'
         except ValueError:
-            utilities.log.warn(f'Synoptic time check failed: Must be a Hurricane')
+            utilities.log.warn(f'Synoptic time check suggests this must be a Hurricane')
             pass
         except Exception as e:
             utilities.log.error(f'synoptic time check hard failed: Error: {e}')
-            sys.exit(1)
+            raise
+            #sys.exit(1)
 
         # Hurricane ?
         try:
@@ -442,7 +447,8 @@ class adcirc_fetch_data(fetch_station_data):
             return 'NOCAST'
         except Exception as e:
             utilities.log.error(f'Hurricane advisory check hard failed: Error: {e}')
-            sys.exit(1)
+            raise
+            #sys.exit(1)
 
 #TODO change name periods to urls
 
@@ -524,7 +530,8 @@ class adcirc_fetch_data(fetch_station_data):
             return idx
         except Exception as e:
             utilities.log.error(f'fort_63_style. Input file problematic {station_df} {e}: Abort')
-            sys.exit(1)
+            raise
+            #sys.exit(1)
 
     def _fetch_adcirc_nodes_from_fort61_input_file(self, stations, periods) -> list(): 
         """
@@ -570,7 +577,8 @@ class adcirc_fetch_data(fetch_station_data):
             except Exception as e:
                 utilities.log.error('Could not find ANY fort.61 urls from which to get stations lists {}'.format(e))
                 utilities.log.info('Bottomed out in _fetch_adcirc_nodes_from_fort61_input_file')
-                sys.exit(1) 
+                raise
+                #sys.exit(1) 
         # Remove any duplicate tuples eg if len(periods) > 1
         full_idx = list(set([i for i in full_idx]))
         return full_idx
@@ -597,7 +605,8 @@ class adcirc_fetch_data(fetch_station_data):
                 nc = nc4.Dataset(url)
             except OSError as e:
                 utilities.log.error('URL not found should never happen here. Should have been prefiltered: {}'.format(e))
-                sys.exit(1)
+                raise
+                #sys.exit(1)
 
             data_transposed = nc[self._variable_name].dimensions[0] == 'node'
             if data_transposed:
@@ -618,9 +627,10 @@ class adcirc_fetch_data(fetch_station_data):
                         data = nc[self._variable_name][node] 
                     else:
                         utilities.log.error(f'Unexpected leading variable name {ds.variables[v].dims}: Abort')
-                        sys.exit(1)
+                        #sys.exit(1)
                 except IndexError as e:
-                    utilities.log.error(f'Error: This is usually caused by accessing non-hsofs data but forgetting to specify the proper --grid {e}')
+                    utilities.log.error(f'Error: This is usually caused by specify the proper grid: --grid {e}')
+                    raise
                     #sys.exit()
                 np.place(data, data < -1000, np.nan)
                 dx = pd.DataFrame(data, columns=[str(node)], index=t)
@@ -633,6 +643,7 @@ class adcirc_fetch_data(fetch_station_data):
             df_data = pd.concat(datalist)
         except Exception as e:
             print(f'ADCIRC concat error: {e}')
+            raise
         # Check if ALL entries in typeCast_status are the same. If not fail hard.
         if len(set(typeCast_status)) != 1:
             utilities.log.error('Some mix up with typeCast_status {}'.format(typeCast_status))
@@ -692,7 +703,7 @@ class adcirc_fetch_data(fetch_station_data):
             df_meta.columns = [str(station)]
         except IndexError as e:
             utilities.log.error(f'Failed updating te ADCIRC station metadata for station {station}, {e}')
-            sys.exit(1)
+            #sys.exit(1)
         return df_meta
 
 #####################################################################################
@@ -765,7 +776,8 @@ class noaanos_fetch_data(fetch_station_data):
             utilities.log.info(f'NOAA Fetching product {self._product}')
         except KeyError as e:
             utilities.log.error(f'NOAA/NOS No such product key. Input {product}, Available {self.products.keys()}: {e}')
-            sys.exit(1)
+            raise
+            #sys.exit(1)
         else:
             self._interval=interval
         self._units='metric' # Redundant cleanup TODO
@@ -840,11 +852,11 @@ class noaanos_fetch_data(fetch_station_data):
         except Timeout:
             utilities.log.error('Hard fail: Timeout')
         except Exception as e:
-            utilities.log.error(f'NOAA/NOS data error: station {station}: {e} was {self._product}')
+            utilities.log.error(f'Hard Error: NOAA/NOS data error: station {station}: {e} was {self._product}')
         try:
             df_data=df_data.astype(float)
         except Exception as e:
-            utilities.log.warning(f'NOAA/NOS concat warning: {e}')
+            utilities.log.warning(f'NOAA/NOS station data warning: {e}')
             df_data = np.nan
         return df_data
 
@@ -971,7 +983,8 @@ class contrails_fetch_data(fetch_station_data):
             self._product=self.products[product] # product
         except KeyError:
             utilities.log.error('Contrails No such product key. Input {}, Available {}'.format(product, self.products.keys()))
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         print(self._product)
         utilities.log.info(f'CONTRAILS Fetching product {self._product}')
         self._systemkey=config['systemkey']
@@ -1189,7 +1202,8 @@ class contrails_fetch_data(fetch_station_data):
             df_meta.columns = [str(station)]
         except Exception as e:
             utilities.log.exception(f'Contrails response meta error: {e}')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         return df_meta
 
 #####################################################################################
@@ -1263,7 +1277,8 @@ class noaa_web_fetch_data(fetch_station_data):
             utilities.log.info(f'NOAA-WEB Fetching product {self._product}')
         except KeyError as e:
             utilities.log.error(f'NOAA/NOS-WEB No such product key. Input {product}, Available {self.products.keys()}: {e}')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         else:
             self._interval=interval
         self._units='metric' # Redundant cleanup TODO
@@ -1487,7 +1502,8 @@ class ndbc_fetch_data(fetch_station_data):
             utilities.log.info(f'NDBC Fetching product {self._product}')
         except KeyError:
             utilities.log.error(f'NDBC No such product key. Input {product}, Available {self.products.keys()}')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         else:
             self._units='metric' # Redundant cleanup TODO
         if units !='metric':
@@ -1621,7 +1637,8 @@ class ndbc_fetch_historic_data(fetch_station_data):
             utilities.log.info(f'NDBC Fetching Historicalproduct {self._product}')
         except KeyError:
             utilities.log.error(f'NDBC No such historical product key. Input {product}, Available {self.products.keys()}')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         else:
             self._units='metric' # Redundant cleanup TODO
         if units !='metric':
@@ -1733,5 +1750,6 @@ class ndbc_fetch_historic_data(fetch_station_data):
              utilities.log.warning(f'Station {buoy[0]} had no metadata: skip it')
         except Exception as e:
             utilities.log.exception(f'NDBC Historical meta error: {e}')
-            sys.exit(1)
+            raise
+            ##sys.exit(1)
         return df_meta

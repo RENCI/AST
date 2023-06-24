@@ -263,7 +263,8 @@ class compute_error_field(object):
                 bound_hi = time_range[1]
             except ValueError:
                 utilities.log.error('_apply_time_bounds Input time range is wrong. Must be %Y-%m-%d %H:%M:%S or a hurricane advisory number.  Got {}: Abort'.format(time_range))
-                sys.exit(1)
+                raise
+                #sys.exit(1)
         print(f'bounds {bound_lo} and {bound_hi}')
         self.adc=self.adc.loc[ (self.adc.index >= bound_lo) & (self.adc.index <= bound_hi) ]
         self.obs=self.obs.loc[ (self.obs.index >= bound_lo) & (self.obs.index <= bound_hi) ]

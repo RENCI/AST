@@ -37,7 +37,8 @@ def get_lon_lat_control_values(fname=None, header_data='val')->pd.DataFrame:
     """
     if fname is None:
         utilities.log.error('No lon_lat_val data file assigned: Abort interpolation')
-        sys.exit(1)
+        raise
+        ##sys.exit(1)
     df = pd.read_csv(fname, header=0)
     df=df.rename(columns = {header_data:'val'})
     df.columns = df.columns.str.replace(' ', '') 
@@ -49,7 +50,8 @@ def get_lon_lat_control_values(fname=None, header_data='val')->pd.DataFrame:
             col_headers.append(item)
     if len(col_headers)!=3:
         utilities.log.info('get_lon_lat_control_values: control data file {} doesnt have all the needed headers. {}: Abort'.format(fname,df.columns)) 
-        sys.exit(1)
+        raise
+        ##sys.exit(1)
     return df[['LON','LAT','VAL']]
 
 def get_station_values(fname=None, header_data='mean')->pd.DataFrame:
