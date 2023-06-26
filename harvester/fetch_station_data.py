@@ -716,6 +716,7 @@ class adcirc_fetch_data(fetch_station_data):
             meta['STATE'] = np.nan 
             meta['COUNTY'] = np.nan 
             meta['SITE'] = self._sitename
+            meta['CAST'] = self._typeCast.upper()
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except IndexError as e:

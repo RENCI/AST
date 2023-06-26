@@ -98,7 +98,7 @@ class get_obs_stations(object):
         # Specify the desired products
         self.product = product.lower()
         if self.product not in selected_products:
-            utilities.log.error('Requested product not available {self.product}, Possible choices {selected_products}') 
+            utilities.log.error(f'Requested product not available {self.product}, Possible choices {selected_products}') 
             sys.exit(1)
 
         # May Need to get Contrails secrets 
