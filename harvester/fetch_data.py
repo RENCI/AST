@@ -21,6 +21,20 @@ from utilities.utilities import utilities as utilities
 # Currently supported sources
 SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC','NOAAWEB']
 
+
+def intersect_stations(df_data,df_meta):
+    """
+    Occasionally, (esp for NDBC data) the returned list of data is not the same as the
+    returned list of metadata. This will cause weird plotting scenarios for apsviz
+    So here we check end align as needed
+    """
+    data_stations=df_data.columns.tolist()
+    meta_stations=df_meta.index.tolist()
+    stations=list(set(data_stations) & set(meta_stations))
+    print(f' Total number of OBS intersected stations {len(stations)}')
+    return df_data[stations], df_meta.loc[stations]
+
+
 #def get_noaa_stations(fname='./config/noaa_stations.txt'):
 def get_noaa_stations(fname=None):
     """
@@ -157,6 +171,11 @@ GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in the z
 ## Run stations
 ##
 
+##
+## Added a data aligner. I have seens some cases (esp in the NDBC), where we can find data but no metadata
+## Here we now keep data common to both,lest we get plots with no metadata
+##
+
 def process_noaa_stations(time_range, noaa_stations, interval=None, data_product='water_level', resample_mins=15 ):
     """
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
@@ -181,6 +200,7 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
         noaanos = noaanos_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
         df_noaa_data = noaanos.aggregate_station_data()
         df_noaa_meta = noaanos.aggregate_station_metadata()
+        df_noaa_data,df_noaa_meta = intersect_stations(df_noaa_data.copy(),df_noaa_meta.copy())
         df_noaa_meta.index.name='STATION'
     except Exception as e:
         utilities.log.error(f'Error: NOAA: {e}')
@@ -210,6 +230,7 @@ def process_noaaweb_stations(time_range, noaa_stations, interval=None, data_prod
         noaanos = noaa_web_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
         df_noaa_data = noaanos.aggregate_station_data()
         df_noaa_meta = noaanos.aggregate_station_metadata()
+        df_noaa_data,df_noaa_meta = intersect_stations(df_noaa_data.copy(),df_noaa_meta.copy())
         df_noaa_meta.index.name='STATION'
     except Exception as e:
         utilities.log.error(f'Error: NOAA WEB: {e}')
@@ -239,6 +260,8 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
         contrails = contrails_fetch_data(contrails_stations, time_range, authentication_config, product=data_product, owner='NCEM', resample_mins=resample_mins)
         df_contrails_data = contrails.aggregate_station_data()
         df_contrails_meta = contrails.aggregate_station_metadata()
+        df_contrails_data,df_contrails_meta = intersect_stations(df_contrails_data.copy(),df_contrails_meta.copy())
+
         df_contrails_meta.index.name='STATION'
     except Exception as e:
         utilities.log.error(f'Error: CONTRAILS: {e}')
@@ -267,6 +290,7 @@ def process_ndbc_buoys(time_range, ndbc_buoys, data_product='wave_height', resam
         ndbc = ndbc_fetch_data(ndbc_buoys, time_range, product=data_product, resample_mins=resample_mins)
         df_ndbc_data = ndbc.aggregate_station_data()
         df_ndbc_meta = ndbc.aggregate_station_metadata()
+        df_ndbc_data,df_ndbc_meta = intersect_stations(df_ndbc_data.copy(),df_ndbc_meta.copy())
         df_ndbc_meta.index.name='STATION'
     except Exception as e:
         utilities.log.error(f'Error: NEW NDBC: {e}')
@@ -295,6 +319,7 @@ def process_ndbc_historic_buoys(time_range, ndbc_buoys, data_product='wave_heigh
         ndbc = ndbc_fetch_historic_data(ndbc_buoys, time_range, product=data_product, resample_mins=resample_mins)
         df_ndbc_data = ndbc.aggregate_station_data()
         df_ndbc_meta = ndbc.aggregate_station_metadata()
+        df_ndbc_data,df_ndbc_meta = intersect_stations(df_ndbc_data.copy(),df_ndbc_meta.copy())
         df_ndbc_meta.index.name='STATION'
     except Exception as e:
         utilities.log.error(f'Error: NEW NDBC HISTORIC: {e}')
