@@ -331,6 +331,7 @@ def strip_sitename_from_url(urls, fill='NoSite')->str:
         canonical site name: (str) eg RENCI,PSC
     """
     known_sites= {'hatteras.renci.org':'RENCI', 
+                  'ht-ncfs.renci.org': 'RENCI',
                   'bridges2.psc.edu': 'PSC'}
 
     url = grab_first_url_from_urllist(urls)
