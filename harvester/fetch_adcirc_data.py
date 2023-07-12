@@ -332,6 +332,7 @@ def strip_sitename_from_url(urls, fill='NoSite')->str:
     """
     known_sites= {'hatteras.renci.org':'RENCI', 
                   'ht-ncfs.renci.org': 'RENCI',
+                  'sapelo2': 'UGA',
                   'bridges2.psc.edu': 'PSC'}
 
     url = grab_first_url_from_urllist(urls)
