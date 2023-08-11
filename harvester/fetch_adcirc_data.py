@@ -39,7 +39,7 @@ def get_adcirc_stations_fort63_style(fname=None)->pd.DataFrame:
 
     """
     if fname is None:
-        utilities.log.error('No Fort63_style ADCIRC station file assigned: Abort with status 0')
+        utilities.log.error(f'No Fort63_style ADCIRC station file assigned {fname}: Abort with status 0')
         sys.exit(0)
     df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1], sep=',',dtype=str)
     try:
@@ -61,7 +61,7 @@ def get_adcirc_stations_fort61_style(fname=None):
 
     """
     if fname is None:
-        utilities.log.error('No Fort61_style ADCIRC station file assigned: Abort with status 0')
+        utilities.log.error(f'No Fort61_style ADCIRC station file assigned {fname}: Abort with status 0')
         sys.exit(0)
     df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1],dtype=str)
     adcirc_stations_list = df["stationid"].to_list()
