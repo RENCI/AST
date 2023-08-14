@@ -617,7 +617,7 @@ class adcirc_fetch_data(fetch_station_data):
             try:
                 nc = nc4.Dataset(url)
             except Exception as e: # Catch al errors as we are not sre of the complete set of possibles
-                utilities.log.warn(f'Previously tested URL is now not found on first attempt: Try a second time using a wait time of {waittime}s {e}') 
+                utilities.log.warn(f'Previously tested URL is now not found on first attempt: Try a second time using a wait time of {WAITTIME}s {e}') 
                 try:
                     time.sleep(WAITTIME)
                     nc=nc4.Dataset(url)
