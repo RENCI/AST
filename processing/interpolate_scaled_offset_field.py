@@ -311,6 +311,67 @@ def interpolation_model_transform(adc_combined, model=None, input_grid_type='poi
         df = pd.DataFrame(d,columns=['LON','LAT','VAL'])
         if pathpoly is not None: df.loc[notinpolyg,'VAL']=0
     return df
+
+##
+## TODO merge the model_transform codes
+##
+def interpolation_model_transform_dualpoly(adc_combined, model=None, input_grid_type='points', pathpoly=None, pathpoly2=None)-> pd.DataFrame: 
+    """
+    Apply the precomputed model to the LON/LAT input points. These inputs usually
+    reflect the final grid such as an ADCIRC grid. The inputs can be of types points or grid.
+    If the LON/LAT lists are meant to be actual points to extrapolate on, then points. Else, if
+    that are INDEXES in the LON/LAT directions, then choose GRID.
+
+    NOTE: user must either supky no polygonal data or both polygonal objects
+
+    Parameters:
+        adc_combined: dict with keys 'LON':list,'LAT':list
+        input_grid_type: (str) either points or grid.
+        model: Resuting from a prior 'fit'
+        pathpoly: An mplpath path object that, if provided, is used to set the surface to zero outside the polygon 
+            If none is provided, then this extra boundary step is skipped
+
+    Returns:
+        DataFrame: inteprolated grid
+    """
+    if model is None:
+        utilities.log.error('interpolation_model_transform: No model was supplied: Abort')
+        sys.exit(1)
+    gridx = adc_combined['LON']
+    gridy = adc_combined['LAT']
+    d = []
+    xl = len(gridx)
+    yl = len(gridy)
+    if input_grid_type=='grid':
+        if pathpoly is not None and pathpoly2 is not None:
+            (x, y) = np.meshgrid(gridx, gridy)
+            xxyy=np.array([x.flatten(), y.flatten()]).T
+            notinpolyg1  = ~ pathpoly.contains_points(xxyy).reshape(x.shape)
+            notinpolyg2 = ~ pathpoly2.contains_points(xxyy).reshape(x.shape)
+            notinpolyg = notinpolyg1 & notinpolyg2
+        for y in range(0,yl):
+            gy = gridy[y]
+            for x in range(0,xl):
+                gx=gridx[x]
+                zval=model(gx,gy).item(0) # Assume only a single item
+                d.append([gx, gy, zval]) 
+        df = pd.DataFrame(d,columns=['LON','LAT','VAL'])
+        if pathpoly is not None and pathpoly2 is not None: df.loc[notinpolyg.flatten(),'VAL']=0
+    else:
+        if pathpoly is not None and pathpoly2 is not None:
+            xxyy_adc=np.array([gridx, gridy]).T
+            #notinpolyg = ~ pathpoly.contains_points(xxyy_adc).reshape(len(gridx)) # .shape)
+            notinpolyg1  = ~ pathpoly.contains_points(xxyy_adc).reshape(len(gridx))
+            notinpolyg2 = ~ pathpoly2.contains_points(xxyy_adc).reshape(len(gridx))
+            notinpolyg = notinpolyg1 & notinpolyg2
+        for y in range(0,yl): # Performing like this ensures proper Fortran style ordering
+            gy = gridy[y]
+            gx = gridx[y]
+            zval=model(gx,gy).item(0) # ONLY ONE VALUE
+            d.append([gx, gy, zval])
+        df = pd.DataFrame(d,columns=['LON','LAT','VAL'])
+        if pathpoly is not None and pathpoly2 is not None: df.loc[notinpolyg,'VAL']=0
+    return df
 ##
 ## Potential use methods for quick testing of new interpolation models
 ##
