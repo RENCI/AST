@@ -291,16 +291,18 @@ class get_adcirc_stations(object):
         self.stormnumber = fetch_adcirc_data.strip_storm_number_from_url(urls, fill='NoNumber')
         self.timemark=fetch_adcirc_data.strip_time_from_url(urls)
 
-        if self.source.upper()=='TDS':
-            adc_stations=self.station_list
-            data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style, variable_name=variable_name, keep_earliest_url=keep_earliest_url )
-        time_index=data.index.tolist()
-        self.Tmin = min(time_index).strftime('%Y%m%d%H')
-        self.Tmax = max(time_index).strftime('%Y%m%d%H')
-
-        if self.knockout_dict is not None:
-            data = self.remove_knockout_stations(data)
-            utilities.log.info('Removing knockouts from acquired ADCIRC data')
+        try:
+            if self.source.upper()=='TDS':
+                adc_stations=self.station_list
+                data, meta = fetch_adcirc_data.process_adcirc_stations(urls,adc_stations,self.gridname,self.ensemble,self.sitename,data_product=self.product,resample_mins=return_sample_min,fort63_style=fort63_style, variable_name=variable_name, keep_earliest_url=keep_earliest_url )
+            time_index=data.index.tolist()
+            self.Tmin = min(time_index).strftime('%Y%m%d%H')
+            self.Tmax = max(time_index).strftime('%Y%m%d%H')
+            if self.knockout_dict is not None:
+                data = self.remove_knockout_stations(data)
+                utilities.log.info('Removing knockouts from acquired ADCIRC data')
+        except Exception as e:
+            utilities.log.error('TDS: Broad failure {}'.format(e))
         return data, meta
 
 ## Several scenarios may be used for this example main. For now we choose the ADDA style execution
