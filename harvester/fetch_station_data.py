@@ -142,7 +142,7 @@ def stations_interpolate(df)->pd.DataFrame:
 ##
 ## Added a trap for RuntimeError. We have seen rare cases where the TDS call returns a DAP Failure. This return 
 ## Can takes minutes per station. So the normal eror trapping would continue to try all stations. Doing so for thie DAP
-## Failure causesz the jobs to run very long. So, now if we have any RuntimeErrors calling the TDS, we bail and move
+## Failure causes the jobs to run very long. So, now if we have any RuntimeErrors calling the TDS, we bail and move
 ## onto calling the next url in the list
 ## 
 class fetch_station_data(object):
@@ -616,7 +616,7 @@ class adcirc_fetch_data(fetch_station_data):
         for url in periods: # If a period is SHORT no data may be found which is acceptible 
             try:
                 nc = nc4.Dataset(url)
-            except Exception as e: # Catch al errors as we are not sre of the complete set of possibles
+            except Exception as e: # Catch all errors as we are not sure of the complete set of possibles
                 utilities.log.warn(f'Previously tested URL is now not found on first attempt: Try a second time using a wait time of {WAITTIME}s {e}') 
                 try:
                     time.sleep(WAITTIME)
