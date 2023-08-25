@@ -610,57 +610,62 @@ class adcirc_fetch_data(fetch_station_data):
         try:
             WAITTIME=int(WAITTIME)
         except ValueError as e:
-            utilities.log.error(f' Fail to convert AST_IO_RETRY_PAUSE to seconds: Was {WAITTIME}. Will use default {e}')
+            utilities.log.info(f' Fail to convert AST_IO_RETRY_PAUSE to seconds: Was {WAITTIME}. Will use default {e}')
             WAITTIME=30
 
         for url in periods: # If a period is SHORT no data may be found which is acceptible 
+            waitsec=0 # Start off assuming no wait required
             try:
                 nc = nc4.Dataset(url)
             except Exception as e: # Catch all errors as we are not sure of the complete set of possibles
-                utilities.log.warn(f'Previously tested URL is now not found on first attempt: Try a second time using a wait time of {WAITTIME}s {e}') 
-                try:
-                    time.sleep(WAITTIME)
-                    nc=nc4.Dataset(url)
-                except Exception as e2:
-                    utilities.log.error(f'URL not found on Second try: Abort all URL list reads: Should have been prefiltered: {e2}')
-                    raise
+                utilities.log.exit(f'Failed try to open a netCDF object: This should never happen so abort. Stationid {station}. error {e}') 
+                sys.exit(1)
 
+            # We have not seen dap failures occur when querying for global data info so don't worry about it here 
             data_transposed = nc[self._variable_name].dimensions[0] == 'node'
             if data_transposed:
                 utilities.log.info('Expecting netCDF data in transposed form')
-
             if self._variable_name not in nc.variables.keys():
                 print(f'{self._variable_name} not found in netCDF for {url}')
                 # okay to have a missing one  do not exit 
                 # sys.exit(1)
             else:
-                time_var = nc.variables['time']
-                t = nc4.num2date(time_var[:], time_var.units)
-                data = np.empty([len(t), 0])
-                try:
-                    if nc[self._variable_name].dimensions[0] == 'time':
-                        data = nc[self._variable_name][:,node] 
-                    elif nc[self._variable_name].dimensions[0] == 'node':
-                        data = nc[self._variable_name][node] 
-                    else:
-                        utilities.log.error(f'Unexpected leading variable name {ds.variables[v].dims}: Abort')
-                        #sys.exit(1)
-                except IndexError as e:
-                    utilities.log.error(f'Potentially non-fatal Error: fetching ADCIRC data: Skip to next url: {e}')
-                    raise
+                for itry in range(2): # Try a maximum of 2 times
+                    got_data=False
+                    time_var = nc.variables['time']
+                    t = nc4.num2date(time_var[:], time_var.units)
+                    data = np.empty([len(t), 0])
+                    try:
+                        if nc[self._variable_name].dimensions[0] == 'time':
+                            data = nc[self._variable_name][:,node] 
+                            got_data=True
+                            break
+                        elif nc[self._variable_name].dimensions[0] == 'node':
+                            data = nc[self._variable_name][node] 
+                            got_data=True
+                            break
+                        else:
+                            utilities.log.error(f'Unexpected leading variable name {ds.variables[v].dims}')
+                            #sys.exit(1)
+                    except Exception as e:
+                         wait+=WAITTIME
+                         utilities.log.warn(f'{itry} attempt to fetch URL data failed. Wait {wait}s and try again. {e}')
+                if got_data:
+                    np.place(data, data < -1000, np.nan)
+                    dx = pd.DataFrame(data, columns=[str(node)], index=t)
+                    dx.columns=[station]
+                    dx.index.name='TIME'
+                    typeCast_status.append(self.type_ADCIRC_cast(url, dx))
+                    dx.index = pd.to_datetime(dx.index.astype(str)) # New pandas can only do this to strings now
+                    datalist.append(dx)
+                else:
+                    raise # Let the aggregate caller choose to ignore this missing station and all associated urls
                     #sys.exit()
-                np.place(data, data < -1000, np.nan)
-                dx = pd.DataFrame(data, columns=[str(node)], index=t)
-                dx.columns=[station]
-                dx.index.name='TIME'
-                typeCast_status.append(self.type_ADCIRC_cast(url, dx))
-                dx.index = pd.to_datetime(dx.index.astype(str)) # New pandas can only do this to strings now
-                datalist.append(dx)
         try:
             df_data = pd.concat(datalist)
         except Exception as e:
             print(f'ADCIRC concat error: {e}')
-            raise
+            raise # These get trapped/ignored later
         # Check if ALL entries in typeCast_status are the same. If not fail hard.
         if len(set(typeCast_status)) != 1:
             utilities.log.error('Some mix up with typeCast_status {}'.format(typeCast_status))
