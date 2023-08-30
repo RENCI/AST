@@ -724,8 +724,6 @@ class adcirc_fetch_data(fetch_station_data):
             meta['CAST'] = self._typeCast.upper()
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
-            print(f'Fetch {url}')
-            print(f'Fetch {df_meta}')
         except IndexError as e:
             utilities.log.error(f'Failed updating te ADCIRC station metadata for station {station}, {e}')
             #sys.exit(1)
