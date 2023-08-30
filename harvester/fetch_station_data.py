@@ -648,8 +648,8 @@ class adcirc_fetch_data(fetch_station_data):
                             utilities.log.error(f'Unexpected leading variable name {ds.variables[v].dims}')
                             #sys.exit(1)
                     except Exception as e:
-                         wait+=WAITTIME
-                         utilities.log.warn(f'{itry} attempt to fetch URL data failed. Wait {wait}s and try again. {e}')
+                         waitsec+=WAITTIME
+                         utilities.log.warn(f'{itry} attempt to fetch URL data failed. Wait {waitsec}s and try again. {e}')
                 if got_data:
                     np.place(data, data < -1000, np.nan)
                     dx = pd.DataFrame(data, columns=[str(node)], index=t)
@@ -724,6 +724,8 @@ class adcirc_fetch_data(fetch_station_data):
             meta['CAST'] = self._typeCast.upper()
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
+            print(f'Fetch {url}')
+            print(f'Fetch {df_meta}')
         except IndexError as e:
             utilities.log.error(f'Failed updating te ADCIRC station metadata for station {station}, {e}')
             #sys.exit(1)
