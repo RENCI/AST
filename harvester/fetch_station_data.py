@@ -630,7 +630,7 @@ class adcirc_fetch_data(fetch_station_data):
                 # okay to have a missing one  do not exit 
                 # sys.exit(1)
             else:
-                for itry in range(2): # Try a maximum of 2 times
+                for itry in range(1): # Try a maximum of 2 times
                     got_data=False
                     time_var = nc.variables['time']
                     t = nc4.num2date(time_var[:], time_var.units)
