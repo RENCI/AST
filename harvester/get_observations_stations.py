@@ -35,7 +35,7 @@ class get_obs_stations(object):
 
     SOURCES = ['NOAAWEB', 'NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
     NOAA_PRODUCTS = ['water_level','hourly_height','predictions','air_pressure','wind_speed']
-    CONTRAILS_PRODUCTS = ['river_water_level','river_flow_volume','coastal_water_level','air_pressure']
+    CONTRAILS_PRODUCTS = ['river_stream_elevation','river_water_level','river_flow_volume','coastal_water_level','air_pressure']
     NDBC_PRODUCTS=['wave_height','air_pressure','wind_speed']
 
     # Default to NOAA/NOS WL run
@@ -245,7 +245,7 @@ class get_obs_stations(object):
         if self.source.upper()=='CONTRAILS':
             contrails_config = utilities.load_config(self.contrails_yamlname)['DEFAULT']
             excludedStations=list()
-            meta='_RIVERS' if self.product=='river_water_level' else '_COASTAL'
+            meta='_RIVERS' if self.product=='river_water_level' or self.product=='river_stream_elevation' else '_COASTAL'
             contrails_stations=self.station_list
             try:
                 # Get default station list

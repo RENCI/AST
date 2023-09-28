@@ -125,6 +125,7 @@ def choose_common_header_name(product):
         'predictions': 'water_level', 
         'hourly_height': 'water_level',
         'river_water_level': 'water_level',
+        'river_stream_elevation': 'water_level',
         'river_flow_volume': 'flow_volume',
         'coastal_water_level': 'water_level',
         'air_pressure':'air_pressure',
@@ -252,7 +253,7 @@ def process_contrails_stations(time_range, contrails_stations, authentication_co
         df_contrails_meta: DataFrame (station x metadata)
     """
     # Fetch the data
-    contrails_product=['river_flow_volume','river_water_level','coastal_water_level', 'air_pressure']
+    contrails_product=['river_flow_volume','river_water_level','coastal_water_level', 'air_pressure', 'river_stream_elevation']
     try:
         if data_product not in contrails_product:
             utilities.log.error(f'Contrails data product can only be: {contrails_product} was {data_product}')
@@ -429,7 +430,7 @@ def main(args):
         utilities.log.info('Got Contrails access information')
         template = "An exception of type {0} occurred."
         excludedStations=list()
-        if data_product=='river_water_level' or data_product=='river_flow_volume':
+        if data_product=='river_water_level' or data_product=='river_flow_volume' or data_product=='river_stream_elevation':
             fname=os.path.join(os.path.dirname(__file__),'../supporting_data','contrails_stations_rivers.csv')
             meta='RIVERS'
         else:

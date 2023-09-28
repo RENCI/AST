@@ -80,6 +80,7 @@ def map_product_to_harvester_units(product):
         'hourly_height': 'm',
         'wave_height': 'm',
         'river_water_level': 'm',
+        'river_stream_elevation': 'm',
         'river_flow_volume': 'm^3ps',
         'coastal_water_level': 'm',
         'air_pressure':'mb',
@@ -946,6 +947,8 @@ class contrails_fetch_data(fetch_station_data):
 
         Currently tested input products:
         river_water_level 
+        river_flow_volume
+        river_stream_elevation
         coastal_water_level
         air_pressure
     """
@@ -955,7 +958,8 @@ class contrails_fetch_data(fetch_station_data):
     products={ 'river_water_level':'Stage', 
                'river_flow_volume':'Flow Volume',
                'coastal_water_level':'Water Elevation',
-               'air_pressure':'Barometric Pressure' 
+               'air_pressure':'Barometric Pressure', 
+               'river_stream_elevation':'Stream Elevation'
              }
 
     CLASSDICT = {
@@ -963,6 +967,7 @@ class contrails_fetch_data(fetch_station_data):
         'Rain Accumulation':11,
         'Stage':20,            # River gauges
         'Water Elevation':94,  # Coastal gauges  - not documented in contrails doc as of early 2022
+        'Stream Elevation':210, # New product enabled for RENCI on Sept 2023
         'Flow Volume':25,
         'Air Temperature':30,
         'Fuel Temperature':38,
@@ -1100,7 +1105,7 @@ class contrails_fetch_data(fetch_station_data):
         arbitrary_min = 600 
         product = self._product
         df=df.astype(float)
-        if product == 'Stage' or product == 'Water Elevation':
+        if product == 'Stage' or product == 'Water Elevation' or product == 'Stream Elevation':
             utilities.log.info('Contrails. Converting to meters')
             df=df * 0.3048 # feet to meters
             return df
