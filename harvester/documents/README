@@ -52,9 +52,11 @@ a) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 b) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
 # Run while specifying non-default stationlist and auth yml files
 c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' --config_name '../secrets/contrails.yml' --station_list '../supporting_data/contrails_stations_rivers.csv'
+d) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_stream_elevation'
 
 # Examples of using different product levels
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'river_water_elevation''
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'coastal_water_level'
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'CONTRAILS' --data_product 'air_pressure'
 python fetch_data.py --ndays -4 --stoptime '2022-10-28 00:00:00' --data_source 'CONTRAILS' --data_product 'river_flow_volume' --config_name '../secrets/contrails.yml' --station_list '../supporting_data/contrails_stations_rivers.csv'
