@@ -425,6 +425,9 @@ def test_interpolation_fit(df_source, df_land_controls=None, df_water_controls=N
     """
     utilities.log.info('Initiating the CV testing: Using station drop outs to check overfitting. cv_splits {}, knn {}'.format(cv_splits, nearest_neighbors))
     df_source_drop = df_source.dropna()
+    print('Shuffle data for interpolation')
+    df_source_drop = df_source_drop.sample(frac=1) 
+
     utilities.log.info('test_interpolation_fit: Nan Removal. Init {}. after {}'.format(len(df_source), len(df_source_drop)))
 
     if stratified_header_name is None:
