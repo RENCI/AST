@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
@@ -22,6 +23,15 @@ import json
 
 LOGGER = None
 LOGFILE = None
+
+# Sets up a map if choosing to use the main config style logger specification
+
+map_logging ={
+    'DEBUG': logging.DEBUG,
+    'INFO': logging.INFO,
+    'WARN':logging.WARN,
+    'ERROR': logging.ERROR
+    }
 
 class utilities:
     """
@@ -47,6 +57,8 @@ class utilities:
     def initialize_logging(subdir=None, config=None, log_file_metadata = None):
         """
         Log file get saved to $LOG_PATH/subdir. LOG_PATH defaults to '.'
+        Have the following log_level precedence.
+            env setting > main config > default
 
         Parameters
             config: dictionary containing logging settings (usually this is main.yml)
@@ -57,8 +69,12 @@ class utilities:
         # logger = logging.getLogger(__name__)
         logger = logging.getLogger("ast_services") # We could simply add the instanceid here as well
 
-        log_level = config["DEFAULT"].get('LOGLEVEL', 'DEBUG')
-        logger.setLevel(log_level)
+        # Return a numercial specification for log_level
+        log_level = os.getenv('LOG_LEVEL')
+        if log_level is None:
+            log_level = map_logging[config["DEFAULT"].get('LOGLEVEL', 'DEBUG')]
+        #log_level = config["DEFAULT"].get('LOGLEVEL', 'DEBUG')
+        logger.setLevel(int(log_level))
 
         if subdir is not None:
             Logdir = '/'.join([os.getenv('LOG_PATH','.'),subdir])
