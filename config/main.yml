@@ -8,7 +8,7 @@
 DEFAULT: &default
   RDIR: $RUNTIMEDIR   
   LOGGING: true
-  LOGLEVEL: DEBUG
+  LOGLEVEL: DEBUG  #DEBUG INFO WARN ERROR
 
 DESCRIPTION: &description
    DESCRIBE: 'An AST-v2 configuration file used by the the logger code.'
