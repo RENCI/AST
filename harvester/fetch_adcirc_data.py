@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
@@ -94,7 +95,7 @@ def check_advisory(value, dformat='%Y%m%d%H'):
     utilities.log.debug(f'Check advisory {value}')
     try:
         test=dt.datetime.strptime(value,dformat) # '%Y%m%d%H')
-        utilities.log.info(f'A timestamp data was found: Not a Hurricane advisory ? {test}')
+        utilities.log.debug(f'A timestamp data was found: Not a Hurricane advisory ? {test}')
     except ValueError:
         try:
             outid = int(value)
@@ -102,7 +103,7 @@ def check_advisory(value, dformat='%Y%m%d%H'):
         except ValueError:
             utilities.log.error(f'Expected an Advisory value but could not convert to int {value}')
             sys.exit(1)
-    utilities.log.info(f'URL state_hurricane is {state_hurricane}')
+    utilities.log.debug(f'URL state_hurricane is {state_hurricane}')
     return state_hurricane
 
 def check_if_hurricane(urls):
@@ -155,7 +156,7 @@ def convert_input_url_to_nowcast(urls):
         urlwords=url.split('/')
         urlwords[-2]='nowcast'
         newurls.append('/'.join(urlwords))
-    utilities.log.info('Modified input URL to be a nowcast type')
+    utilities.log.debug('Modified input URL to be a nowcast type')
     return newurls
 
 # This is also retained for backward compatability
@@ -396,7 +397,7 @@ def main(args):
     data_source = args.data_source
 
     if data_source.upper() in SOURCES:
-        utilities.log.info(f'Found selected data source {data_source}')
+        utilities.log.debug(f'Found selected data source {data_source}')
     else:
         utilities.log.error(f'Invalid data source {data_source}')
         sys.exit(1)
@@ -411,7 +412,7 @@ def main(args):
         urls = [urls]
 
     if args.convertToNowcast:
-        utilities.log.info('Requested conversion to Nowcast')
+        utilities.log.debug('Requested conversion to Nowcast')
         urls = convert_input_url_to_nowcast(urls)
 
     data_product = args.data_product
@@ -428,7 +429,7 @@ def main(args):
     if not args.raw_local_url:
         # Check if this is a Hurricane
         if not check_if_hurricane(urls):
-            utilities.log.info('URL is not a Hurricane advisory')
+            utilities.log.debug('URL is not a Hurricane advisory')
             #sys.exit(1)
             urltimeStr = strip_time_from_url(urls)
             urltime = dt.datetime.strptime(urltimeStr,'%Y%m%d%H')
@@ -441,7 +442,7 @@ def main(args):
         gridname = grab_gridname_from_url(urls)   # ditto
         sitename = strip_sitename_from_url(urls)
         #starttime='2021-12-08 12:00:00'
-        utilities.log.info(f'Selected run time/Advisory range is {runtime}')
+        utilities.log.debug(f'Selected run time/Advisory range is {runtime}')
     else:
         print('Raw url data structure specified')
         utilities.log.info('Running a RAW url type')
@@ -475,7 +476,7 @@ def main(args):
 
             data, meta = process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename, data_product, resample_mins=0, fort63_style=args.fort63_style, variable_name=variable_name)
         except Exception as e:
-            utilities.log.info('Failed to process the ADCIRC data: {e}')
+            utilities.log.warning('Failed to process the ADCIRC data: {e}')
             raise            
         ## df_adcirc_data = format_data_frames(data)
 
@@ -498,7 +499,6 @@ def main(args):
             #sys.exit(1)
     total_time = tm.time() - t0
     utilities.log.info(f'Finished with data source {data_source}. Time was {total_time}')
-    utilities.log.info('Finished')
 
 if __name__ == '__main__':
     from argparse import ArgumentParser

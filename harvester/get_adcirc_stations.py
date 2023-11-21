@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
@@ -41,7 +42,7 @@ def convert_urls_to_61style(urls)->list:
         words=url.split('/')
         words[-1]='fort.61.nc'
         urls_61.append('/'.join(words))
-    utilities.log.info('Conversion of url list to url_61 list')
+    utilities.log.debug('Conversion of url list to url_61 list')
     return urls_61
 
 def convert_urls_to_63style(urls)->list:
@@ -58,7 +59,7 @@ def convert_urls_to_63style(urls)->list:
         words=url.split('/')
         words[-1]='fort.63.nc'
         urls_63.append('/'.join(words))
-    utilities.log.info('Conversion of url list to url_63 list')
+    utilities.log.debug('Conversion of url list to url_63 list')
     return urls_63
 
 def convert_urls_to_63style_customfilename(urls, filename='fort.63.nc')->list:
@@ -77,7 +78,7 @@ def convert_urls_to_63style_customfilename(urls, filename='fort.63.nc')->list:
         words=url.split('/')
         words[-1]=filename
         urls_63.append('/'.join(words))
-    utilities.log.info('Conversion of url list to url_63 list using the name {}'.format(filename))
+    utilities.log.debug('Conversion of url list to url_63 list using the name {}'.format(filename))
     return urls_63
 
 def convert_urls_to_swan_63style(urls)->list:
@@ -95,7 +96,7 @@ def convert_urls_to_swan_63style(urls)->list:
         words=url.split('/')
         words[-1]='swan_HS.63.nc'
         urls_63.append('/'.join(words))
-    utilities.log.info('Conversion of url list to swan url_63 list')
+    utilities.log.debug('Conversion of url list to swan url_63 list')
     return urls_63
 
 def first_available_netCDF4(urls):
@@ -196,7 +197,7 @@ class get_adcirc_stations(object):
             self.station_list=fetch_adcirc_data.get_adcirc_stations_fort63_style(station_list_file)
         else:
             self.station_list=fetch_adcirc_data.get_adcirc_stations_fort61_style(station_list_file)
-        utilities.log.info(f'Fetched station list from {self.station_list}')
+        utilities.log.debug(f'Fetched station list from {self.station_list}')
 
         # Specify the desired products
         self.product = product.lower()
@@ -281,7 +282,7 @@ class get_adcirc_stations(object):
         """
         utilities.log.debug('Attempt a product fetch')
         if not isinstance(urls,list):
-            utilities.log.warn('Input adcirc url needs to be a list: Try to convert')
+            utilities.log.warning('Input adcirc url needs to be a list: Try to convert')
             urls=[urls]
 
         self.instance = fetch_adcirc_data.strip_instance_from_url(urls)
@@ -300,7 +301,7 @@ class get_adcirc_stations(object):
             self.Tmax = max(time_index).strftime('%Y%m%d%H')
             if self.knockout_dict is not None:
                 data = self.remove_knockout_stations(data)
-                utilities.log.info('Removing knockouts from acquired ADCIRC data')
+                utilities.log.debug('Removing knockouts from acquired ADCIRC data')
         except Exception as e:
             utilities.log.error('TDS: Broad failure {}'.format(e))
         return data, meta
@@ -329,7 +330,7 @@ def main(args):
         sys.exit(1)
 
     # Set up IO env
-    utilities.log.info("Product Level Working in {}.".format(os.getcwd()))
+    utilities.log.debug("Product Level Working in {}.".format(os.getcwd()))
 
     # Set up the times information No need to worry about values for hh:mm:ssZ Subsequent resampling cleans that up
     if args.timeout is None: # Set to a default of now()

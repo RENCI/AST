@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
@@ -274,7 +275,7 @@ class get_obs_stations(object):
             ndbc_metadata=f"_{endtime.replace(' ','T')}"
             try:
                 data, meta = fetch_data.process_ndbc_historic_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
-                utilities.log.info(f'NDBC_HISTORIC data {data}')
+                utilities.log.debug(f'NDBC_HISTORIC data {data}')
             except Exception as ex:
                 utilities.log.error(f'NDBC_HISTORIC process error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
@@ -296,7 +297,7 @@ class get_obs_stations(object):
             ndbc_metadata='_'+endtime.replace(' ','T')
             try:
                 data, meta = fetch_data.process_ndbc_historic_buoys(time_range, ndbc_stations, data_product=self.product, resample_mins=return_sample_min)
-                utilities.log.info(f'NDBC_HISTORIC data {data}')
+                utilities.log.debug(f'NDBC_HISTORIC data {data}')
             except Exception as ex:
                 utilities.log.error(f'NDBC_HISTORIC process error {template.format(type(ex).__name__, ex.args)}')
                 sys.exit(1)

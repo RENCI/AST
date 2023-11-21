@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
@@ -117,10 +118,10 @@ def stations_resample(df, sample_mins=15)->pd.DataFrame:
         df_out. New time series every sample_mins x stations
     """
     if sample_mins==0:
-        utilities.log.info('resample freq set to 0. return all')
+        utilities.log.debug('resample freq set to 0. return all')
         return df
     timesample=f'{sample_mins}min'
-    utilities.log.info('Resampling freq set to {}'.format(timesample))
+    utilities.log.debug('Resampling freq set to {}'.format(timesample))
     dx=df.groupby(pd.Grouper(freq=timesample)).first().reset_index()
     return dx.set_index('TIME')
 
@@ -234,7 +235,7 @@ class fetch_station_data(object):
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
 
         for station in self._stations:
-            utilities.log.info(station)    
+            utilities.log.debug(station)    
             try:
                 dx = self.fetch_single_product(station, self._periods)
                 try:
@@ -249,31 +250,31 @@ class fetch_station_data(object):
                         df_int = self.old_interpolate_and_resample(dx, sample_mins=self._resampling_mins)
                         aggregateData.append(df_int)
                 except Exception as e:
-                    utilities.log.error(f'Potentially Non Fatal Interpolation procedure status for station {station} {e}')
+                    utilities.log.warning(f'Potentially Non Fatal Interpolation procedure status for station {station} {e}')
                     pass
                 #tm.sleep(2) # sleep 2 secs
                 # On input dx==nan, the old method bombs preventing a nan form entering aggregateData
             #except RuntimeError as ex: # This is primarily here to trap DAP Failures for TDS/running on k8s
             #    message = template.format(type(ex).__name__, ex.args)
-            #    utilities.log.warn(f'RuntimeError: Skipping all station for this time period/url. {station}, msg {message}')
+            #    utilities.log.warning(f'RuntimeError: Skipping all station for this time period/url. {station}, msg {message}')
             #    break
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
                 traceback.print_exc()
-                utilities.log.warn(f'Possibly the station simply had no data; Skip {station}, msg {message}')
+                utilities.log.warning(f'Possibly the station simply had no data; Skip {station}, msg {message}')
         if len(aggregateData)==0:
-            utilities.log.warn('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
+            utilities.log.warning('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
             ##return np.nan
             #sys.exit(1) # Keep processing the remaining list
-        utilities.log.info('{} Stations were excluded'.format(len(excludedStations)))
-        utilities.log.info('{} Stations included'.format(len(aggregateData)))
+        utilities.log.debug('{} Stations were excluded'.format(len(excludedStations)))
+        utilities.log.debug('{} Stations included'.format(len(aggregateData)))
         try:
             df_data = pd.concat(aggregateData, axis=1)
             idx = df_data.index
-            utilities.log.info('Check for time duplicates')
+            utilities.log.debug('Check for time duplicates')
             if idx.duplicated().any():
-                utilities.log.info("Duplicated data times found . will keep first value(s) only")
+                utilities.log.debug("Duplicated data times found . will keep first value(s) only")
                 df_data = df_data.loc[~df_data.index.duplicated(keep='first')]
             if len(idx) != len(df_data.index):
                 utilities.log.warning(f'had duplicate times {len(idx)} {len(df_data.index)}')
@@ -281,7 +282,7 @@ class fetch_station_data(object):
             df_data = replace_and_fill(df_data)
             df_data = df_data.sort_index()
         except Exception as e:
-            utilities.log.error(f'Station list aggregation: error: {e}')
+            utilities.log.warning(f'Station list aggregation: error: {e}')
             pass
             #df_data=np.nan
         #df_data = df_data.sort_index()
@@ -304,13 +305,13 @@ class fetch_station_data(object):
                 dx = self.fetch_single_metadata(station)
                 aggregateMetaData.append(dx)
                 #tm.sleep(2) # sleep 2 secs
-                utilities.log.info('Iterate: Kept station is {}'.format(station))
+                utilities.log.debug('Iterate: Kept station is {}'.format(station))
             except Exception as ex:
                 excludedStations.append(station)
                 message = template.format(type(ex).__name__, ex.args)
-                utilities.log.warn(f'Error Value: Metadata: {station}, msg {message}')
+                utilities.log.warning(f'Error Value: Metadata: {station}, msg {message}')
         if len(aggregateMetaData)==0:
-            utilities.log.warn('Metadata: No site data was found for the given site_id list. Perhaps the server is down Exit')
+            utilities.log.warning('Metadata: No site data was found for the given site_id list. Perhaps the server is down Exit')
             #sys.exit(1) # Process remaining list
         utilities.log.info(f'{len(excludedStations)} Metadata Stations were excluded')
         df_meta = pd.concat(aggregateMetaData, axis=1).T
@@ -369,7 +370,7 @@ class adcirc_fetch_data(fetch_station_data):
                 nc = nc4.Dataset(url)
                 new_periods.append(url)
             except OSError as e:
-                utilities.log.warn('URL not found: Remove url {}'.format(url))
+                utilities.log.warning('URL not found: Remove url {}'.format(url))
         return new_periods
 
 ## TODO this cast method is is clumsy
@@ -408,7 +409,7 @@ class adcirc_fetch_data(fetch_station_data):
         try:
             starttime=url.split('/')[-6]
         except IndexError as e:
-            utilities.log.info(f'Found (probably) a LOCAL netCDF file: Assume a FORECAST {e}')
+            utilities.log.debug(f'Found (probably) a LOCAL netCDF file: Assume a FORECAST {e}')
             return 'FORECAST'
         except Exception as e:
             utilities.log.error(f'Error: {e}')
@@ -423,7 +424,7 @@ class adcirc_fetch_data(fetch_station_data):
             else:
                 return 'NOWCAST'
         except ValueError:
-            utilities.log.warn(f'Synoptic time check suggests this must be a Hurricane')
+            utilities.log.debug(f'Synoptic time check suggests this must be a Hurricane')
             pass
         except Exception as e:
             utilities.log.error(f'synoptic time check hard failed: Error: {e}')
@@ -434,17 +435,17 @@ class adcirc_fetch_data(fetch_station_data):
         try:
             urltime = starttime
             advnum = int(urltime)
-            utilities.log.info(f'Found Hurricane Advisory value: Assumes forecast {advnum}')
+            utilities.log.debug(f'Found Hurricane Advisory value: Assumes forecast {advnum}')
             try:
                 if url.split('/')[-2] == 'nowcast':
                     return 'NOWCAST'
                 else:
                     return 'FORECAST'
             except IndexError:
-                    utilities.log.info('Hurricane URL but could not determine CAST status')
+                    utilities.log.warning('Hurricane URL but could not determine CAST status')
                     return 'NOCAST'
         except ValueError:
-            utilities.log.warn(f'Hurricane advisory check failed: Must be local')
+            utilities.log.warning(f'Hurricane advisory check failed: Must be a local raw file')
             return 'NOCAST'
         except Exception as e:
             utilities.log.error(f'Hurricane advisory check hard failed: Error: {e}')
@@ -480,13 +481,13 @@ class adcirc_fetch_data(fetch_station_data):
         self._datum=datum
         periods=periods
         if castType.upper()==None:
-            utilities.log.info('ADCIRC: castType not set. Will result in poor metadata NAME value')
+            utilities.log.debug('ADCIRC: castType not set. Will result in poor metadata NAME value')
         self._castType=castType 
         if gridname==None:
-            utilities.log.info('ADCIRC: gridname not specified. Will result in poor metadata NAME value') 
+            utilities.log.debug('ADCIRC: gridname not specified. Will result in poor metadata NAME value') 
         self._gridname=gridname
         if sitename==None:
-            utilities.log.info('ADCIRC: sitename not specified. Will result in poor metadata NAME value')
+            utilities.log.debug('ADCIRC: sitename not specified. Will result in poor metadata NAME value')
         self._sitename=sitename
         self._variable_name=variable_name
         utilities.log.info('FS: Variable name is {}'.format(self._variable_name))
@@ -498,10 +499,10 @@ class adcirc_fetch_data(fetch_station_data):
             utilities.log.info('Fetch station ids using fort.61 style')
             available_stations = self._fetch_adcirc_nodes_from_fort61_input_file(station_id_list, periods)
         if available_stations==None:
-            utilities.log.error('No valid fort file was found: Abort')
+            utilities.log.critical('No valid fort file was found: Abort')
             sys.exit(1)
         self.available_stations_tuple=available_stations
-        utilities.log.info(f'List of ADCIRC generated stations {self.available_stations_tuple}')
+        utilities.log.debug(f'List of ADCIRC generated stations {self.available_stations_tuple}')
         periods = self._remove_empty_url_pointers(periods)
         if not keep_earliest_url:
             remperiod,periods=periods[0],periods[1:]
@@ -520,7 +521,7 @@ class adcirc_fetch_data(fetch_station_data):
 
         Returns: list of tuples (stationid,nodeid). Superfluous stationids are ignored
         """
-        utilities.log.info('Attempt to find ADCIRC fort_63 stations/Nodes')
+        utilities.log.debug('Attempt to find ADCIRC fort_63 stations/Nodes')
         try:
             idx=list()
             utilities.log.info('Fetch stations fort63 style: {} ')
@@ -530,7 +531,7 @@ class adcirc_fetch_data(fetch_station_data):
             idx = (list(zip(station_ids, node_idx)))
             return idx
         except Exception as e:
-            utilities.log.error(f'fort_63_style. Input file problematic {station_df} {e}: Abort')
+            utilities.log.warning(f'fort_63_style. Input file problematic {station_df} {e}: Abort')
             raise
             #sys.exit(1)
 
@@ -549,7 +550,7 @@ class adcirc_fetch_data(fetch_station_data):
         utilities.log.info('Attempt to find ADCIRC stations')
         full_idx=list()
         for url61 in periods:
-            utilities.log.info('Fetch stations: {} '.format(url61))
+            utilities.log.debug('Fetch stations: {} '.format(url61))
             try:
                 ds = xr.open_dataset(url61)
                 ds = ds.transpose()
@@ -574,10 +575,10 @@ class adcirc_fetch_data(fetch_station_data):
                         ##sys.exit(1)
                 full_idx+=idx
             except OSError:
-                utilities.log.warn("Could not open/read a specific fort.61 URL. Try next iteration {}".format(url61))
+                utilities.log.warning("Could not open/read a specific fort.61 URL. Try next iteration {}".format(url61))
             except Exception as e:
                 utilities.log.error('Could not find ANY fort.61 urls from which to get stations lists {}'.format(e))
-                utilities.log.info('Bottomed out in _fetch_adcirc_nodes_from_fort61_input_file')
+                utilities.log.debug('Bottomed out in _fetch_adcirc_nodes_from_fort61_input_file')
                 raise
                 #sys.exit(1) 
         # Remove any duplicate tuples eg if len(periods) > 1
@@ -611,7 +612,7 @@ class adcirc_fetch_data(fetch_station_data):
         try:
             WAITTIME=int(WAITTIME)
         except ValueError as e:
-            utilities.log.info(f' Fail to convert AST_IO_RETRY_PAUSE to seconds: Was {WAITTIME}. Will use default {e}')
+            utilities.log.debug(f' Fail to convert AST_IO_RETRY_PAUSE to seconds: Was {WAITTIME}. Will use default {e}')
             WAITTIME=30
 
         for url in periods: # If a period is SHORT no data may be found which is acceptible 
@@ -619,15 +620,15 @@ class adcirc_fetch_data(fetch_station_data):
             try:
                 nc = nc4.Dataset(url)
             except Exception as e: # Catch all errors as we are not sure of the complete set of possibles
-                utilities.log.exit(f'Failed try to open a netCDF object: This should never happen so abort. Stationid {station}. error {e}') 
+                utilities.log.critical(f'Failed try to open a netCDF object: This should never happen so abort. Stationid {station}. error {e}') 
                 sys.exit(1)
 
             # We have not seen dap failures occur when querying for global data info so don't worry about it here 
             data_transposed = nc[self._variable_name].dimensions[0] == 'node'
             if data_transposed:
-                utilities.log.info('Expecting netCDF data in transposed form')
+                utilities.log.warning('Expecting netCDF data in transposed form')
             if self._variable_name not in nc.variables.keys():
-                print(f'{self._variable_name} not found in netCDF for {url}')
+                utilities.log.warning(f'{self._variable_name} not found in netCDF for {url}')
                 # okay to have a missing one  do not exit 
                 # sys.exit(1)
             else:
@@ -650,7 +651,7 @@ class adcirc_fetch_data(fetch_station_data):
                             #sys.exit(1)
                     except Exception as e:
                          waitsec+=WAITTIME
-                         utilities.log.warn(f'{itry} attempt to fetch URL data failed. Wait {waitsec}s and try again. {e}')
+                         utilities.log.warning(f'{itry} attempt to fetch URL data failed. Wait {waitsec}s and try again. {e}')
                 if got_data:
                     np.place(data, data < -1000, np.nan)
                     dx = pd.DataFrame(data, columns=[str(node)], index=t)
@@ -660,7 +661,8 @@ class adcirc_fetch_data(fetch_station_data):
                     dx.index = pd.to_datetime(dx.index.astype(str)) # New pandas can only do this to strings now
                     datalist.append(dx)
                 else:
-                    raise # Let the aggregate caller choose to ignore this missing station and all associated urls
+                    pass
+                    #raise # Let the aggregate caller choose to ignore this missing station and all associated urls
                     #sys.exit()
         try:
             df_data = pd.concat(datalist)
@@ -672,7 +674,7 @@ class adcirc_fetch_data(fetch_station_data):
             utilities.log.error('Some mix up with typeCast_status {}'.format(typeCast_status))
             #sys.exit(1)
         self._typeCast = list(set(typeCast_status))[0] 
-        utilities.log.info('ADCIRC typeCast determined to be {}'.format(self._typeCast))
+        utilities.log.debug('ADCIRC typeCast determined to be {}'.format(self._typeCast))
         return df_data
 ##
 ## The nodelat/nodelon objects are masked arrays. For a single node (as used here)
@@ -705,7 +707,7 @@ class adcirc_fetch_data(fetch_station_data):
                 nodelat=nc.variables['y'][node]
                 break; 
             except IndexError as e:
-                utilities.log.error(f' Potentially non-fatal: Meta not found. Trying another URL was {url}:{e}')
+                utilities.log.warning(f' Potentially non-fatal: Meta not found. Trying another URL was {url}:{e}')
                 #sys.exit()
         try:
             lat = float(ma.getdata(nodelat))
@@ -797,7 +799,7 @@ class noaanos_fetch_data(fetch_station_data):
         self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
-            utilities.log.info(f'NOAA Fetching product {self._product}')
+            utilities.log.debug(f'NOAA Fetching product {self._product}')
         except KeyError as e:
             utilities.log.error(f'NOAA/NOS No such product key. Input {product}, Available {self.products.keys()}: {e}')
             raise
@@ -824,7 +826,7 @@ class noaanos_fetch_data(fetch_station_data):
         multivalue = False
         idx = stationdata.index
         if idx.duplicated().any():
-            utilities.log.info(f'Duplicated Obs data found for station {str(station)} will keep first value(s) only')
+            utilities.log.debug(f'Duplicated Obs data found for station {str(station)} will keep first value(s) only')
             stationdata = stationdata.loc[~stationdata.index.duplicated(keep='first')]
             multivalue = True
         return stationdata, multivalue
@@ -849,7 +851,7 @@ class noaanos_fetch_data(fetch_station_data):
             dataframe of time (timestamps) vs values for the requested station
         """
         tstart,tend=time_range
-        utilities.log.info('NOAA/NOS:Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
+        utilities.log.debug('NOAA/NOS:Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
         timein =  pd.Timestamp(tstart).strftime('%Y%m%d %H:%M')
         timeout =  pd.Timestamp(tend).strftime('%Y%m%d %H:%M')
         try:
@@ -870,13 +872,13 @@ class noaanos_fetch_data(fetch_station_data):
             df_data.index.name='TIME'
             df_data.index = pd.to_datetime(df_data.index)
         except ConnectionError as ec:
-            utilities.log.error(f'Hard fail: Could not connect to COOPS for products {station}: {ec}')
+            utilities.log.warning(f'Could not connect to COOPS for products {station}: {ec}')
         except HTTPError as eh:
-            utilities.log.error(f'Hard fail: HTTP error to COOPS for products: {eh}')
+            utilities.log.warning(f'HTTP error to COOPS for products: {eh}')
         except Timeout:
-            utilities.log.error('Hard fail: Timeout')
+            utilities.log.warning('Timeout')
         except Exception as e:
-            utilities.log.error(f'Hard Error: NOAA/NOS data error: station {station}: {e} was {self._product}')
+            utilities.log.warning(f'NOAA/NOS data error: station {station}: {e} was {self._product}')
         try:
             df_data=df_data.astype(float)
         except Exception as e:
@@ -1014,7 +1016,7 @@ class contrails_fetch_data(fetch_station_data):
             raise
             ##sys.exit(1)
         print(self._product)
-        utilities.log.info(f'CONTRAILS Fetching product {self._product}')
+        utilities.log.debug(f'CONTRAILS Fetching product {self._product}')
         self._systemkey=config['systemkey']
         self._domain=config['domain']
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
@@ -1041,7 +1043,7 @@ class contrails_fetch_data(fetch_station_data):
         end_time=time_tuple[1]
         periods=list()
         dformat='%Y-%m-%d %H:%M:%S'
-        print(f'Parameters: start time {start_time}, end_time {end_time}')
+        #print(f'Parameters: start time {start_time}, end_time {end_time}')
     
         time_start = dt.datetime.strptime(start_time, dformat)
         time_end = dt.datetime.strptime(end_time, dformat)
@@ -1106,7 +1108,7 @@ class contrails_fetch_data(fetch_station_data):
         product = self._product
         df=df.astype(float)
         if product == 'Stage' or product == 'Water Elevation' or product == 'Stream Elevation':
-            utilities.log.info('Contrails. Converting to meters')
+            utilities.log.debug('Contrails. Converting to meters')
             df=df * 0.3048 # feet to meters
             return df
         if product == 'Flow Volume':
@@ -1115,7 +1117,7 @@ class contrails_fetch_data(fetch_station_data):
         if product == 'Barometric Pressure':
             test_val = max(df.values)
             if test_val < arbitrary_min:
-                utilities.log.info('Contrails. Converting inHg to millibars (atm)')
+                utilities.log.debug('Contrails. Converting inHg to millibars (atm)')
                 df=df * 1000.0 / 29.52998 
             return df
         utilities.log.error('convert_to_metric: Dropped out the bottom. Unexpected product of {}: Abort'.format(product))
@@ -1140,7 +1142,7 @@ class contrails_fetch_data(fetch_station_data):
         datalist=list()
         periods = self.return_list_of_daily_timeranges(time_range)
         for tstart,tend in periods:
-            utilities.log.info('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
+            utilities.log.debug('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
             indict = {'method': METHOD, 'class': self.CLASSDICT[self._product],
                  'system_key': self._systemkey ,'site_id': station,
                  'tz': GLOBAL_TIMEZONE,
@@ -1152,17 +1154,17 @@ class contrails_fetch_data(fetch_station_data):
                 data = dict_data['onerain']['response']['general']
                 dx = pd.DataFrame(data['row']) # must be <= 5000 entries returned
                 dx = dx[['data_time','data_value']]
-                utilities.log.info('Contrails. Converting to meters')
+                utilities.log.debug('Contrails. Converting to meters')
                 dx.columns = ['TIME',station]
                 dx.set_index('TIME',inplace=True)
                 dx.index = pd.to_datetime(dx.index)
                 datalist.append(dx)
             except Exception as e:
-                utilities.log.warn(f'Contrails response data error: Perhaps empty data contribution: {e}')
+                utilities.log.warning(f'Contrails response data error: Perhaps empty data contribution: {e}')
         try:
             # Manually convert all values to meters
             df_data = pd.concat(datalist)
-            utilities.log.info('Contrails. Converting to meters')
+            utilities.log.debug('Contrails. Converting to meters')
             df_data = self.convert_to_metric(df_data)
         except Exception as e:
             utilities.log.error('Contrails failed concat: error: {}'.format(e))
@@ -1203,7 +1205,7 @@ class contrails_fetch_data(fetch_station_data):
                     break
         else:
             or_site_id= data['or_site_id']
-        utilities.log.info(f'Current or_site_id is {or_site_id}')
+        utilities.log.debug(f'Current or_site_id is {or_site_id}')
         # 2
         METHOD = 'GetSiteMetaData'
         #indict = {'method': METHOD,'tz':GLOBAL_TIMEZONE, 'class': self.CLASSDICT[self._product],
@@ -1302,7 +1304,7 @@ class noaa_web_fetch_data(fetch_station_data):
         self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
-            utilities.log.info(f'NOAA-WEB Fetching product {self._product}')
+            utilities.log.debug(f'NOAA-WEB Fetching product {self._product}')
         except KeyError as e:
             utilities.log.error(f'NOAA/NOS-WEB No such product key. Input {product}, Available {self.products.keys()}: {e}')
             raise
@@ -1337,7 +1339,7 @@ class noaa_web_fetch_data(fetch_station_data):
         periods=list()
         dformat='%Y-%m-%d %H:%M:%S'
         doformat='%Y%m%d %H:%M'
-        print(f'Parameters: start time {start_time}, end_time {end_time}')
+        #print(f'Parameters: start time {start_time}, end_time {end_time}')
     
         time_start = dt.datetime.strptime(start_time, dformat)
         time_end = dt.datetime.strptime(end_time, dformat)
@@ -1406,7 +1408,7 @@ class noaa_web_fetch_data(fetch_station_data):
         periods = self.return_list_of_daily_timeranges(time_range)
         for tstart,tend in periods:
             print(f' {tstart}, {tend} {station}')
-            utilities.log.info('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
+            utilities.log.debug('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
             indict = {'product': self._product,
                  'station': station,
                  'datum':'MSL',
@@ -1427,7 +1429,7 @@ class noaa_web_fetch_data(fetch_station_data):
                 dx.columns=[station]
                 datalist.append(dx)
             except Exception as e:
-                utilities.log.warn(f'noaa-web response data error: Perhaps empty data contribution: station {station}: {e} ')
+                utilities.log.warning(f'noaa-web response data error: Perhaps empty data contribution: station {station}: {e} ')
         try:
             df_data = pd.concat(datalist)
         except Exception as e:
@@ -1535,7 +1537,7 @@ class ndbc_fetch_data(fetch_station_data):
         else:
             self._units='metric' # Redundant cleanup TODO
         if units !='metric':
-            utilities.log.info(f'NDBC: units must be metric: {units}: Abort')
+            utilities.log.debug(f'NDBC: units must be metric: {units}: Abort')
             sys.exit(1)
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
 
@@ -1555,7 +1557,7 @@ class ndbc_fetch_data(fetch_station_data):
         """
         tstart,tend=time_range
 
-        utilities.log.info('NDBC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
+        utilities.log.debug('NDBC: Iterate: start time is {}, end time is {}, buoy is {}'.format(tstart,tend,buoy[0]))
         try:
             df = NDBC.realtime_observations(buoy[0])
             B = bp.realtime(buoy[0])
@@ -1567,13 +1569,13 @@ class ndbc_fetch_data(fetch_station_data):
             df_data = df_data.loc[time_range[0]:time_range[1]]
             df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
         except ConnectionError as ec:
-            utilities.log.error(f'Hard fail: Could not connect to NDBC for products {bouy[0]}: {ec}')
+            utilities.log.warning(f'Could not connect to NDBC for products {bouy[0]}: {ec}')
         except HTTPError as eh:
-            utilities.log.error(f'Hard fail: HTTP error to NDBC for products: {eh}')
+            utilities.log.warning(f'HTTP error to NDBC for products: {eh}')
         except Timeout:
-            utilities.log.error('Hard fail NDBC: Timeout')
+            utilities.log.warning('NDBC: Timeout')
         except Exception as e:
-            utilities.log.error(f'NDBC data error: {e} was {self._product}')
+            utilities.log.warning(f'NDBC data error: {e} was {self._product}')
         try:
             df_data=df_data.astype(float)
         except Exception as e:
@@ -1662,7 +1664,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
         self._data_unit=map_product_to_harvester_units(product)
         try:
             self._product=self.products[product] # self.products[product] # product
-            utilities.log.info(f'NDBC Fetching Historicalproduct {self._product}')
+            utilities.log.debug(f'NDBC Fetching Historicalproduct {self._product}')
         except KeyError:
             utilities.log.error(f'NDBC No such historical product key. Input {product}, Available {self.products.keys()}')
             raise
@@ -1670,7 +1672,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
         else:
             self._units='metric' # Redundant cleanup TODO
         if units !='metric':
-            utilities.log.info('NDBC: units must be metric: {}: Abort'.format(units))
+            utilities.log.debug('NDBC: units must be metric: {}: Abort'.format(units))
             sys.exit(1)
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
 
@@ -1729,13 +1731,13 @@ class ndbc_fetch_historic_data(fetch_station_data):
                 df_data.replace(to_replace=99.0, value=np.nan, inplace=True)
                 data_list.append(df_data)
             except ConnectionError as ec:
-                utilities.log.error(f'Hard fail: Could not connect to NDBC for products {buoy[0]}: {ec}')
+                utilities.log.warning(f'Could not connect to NDBC for products {buoy[0]}: {ec}')
             except HTTPError:
-                utilities.log.error('Hard fail: HTTP error to NDBC for products')
+                utilities.log.warning('HTTP error to NDBC for products')
             except Timeout:
-                utilities.log.error('Hard fail NDBC: Timeout')
+                utilities.log.warning('NDBC: Timeout')
             except Exception as e:
-                utilities.log.error(f'NDBC data error: {e} was {self._product}')
+                utilities.log.warning(f'NDBC data error: {e} was {self._product}')
             df_data = pd.concat(data_list, axis=0) 
         try:
             df_data=df_data.astype(float)

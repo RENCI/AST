@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
+# SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
@@ -154,7 +155,7 @@ def generate_six_hour_time_castings_from_offset(time_value,offset)->list:
     starttime = stoptime + dt.timedelta(days=offset)
 
     if starttime > stoptime:
-        utilities.log.warn('Stoptime < starttime. Suypplied offset was {}days: Reordering'.format(offset))
+        utilities.log.warning('Stoptime < starttime. Suypplied offset was {}days: Reordering'.format(offset))
         starttime,stoptime = stoptime,starttime
     return generate_six_hour_time_steps_from_range( (starttime.strftime('%Y-%m-%d %H:%M:%S'), stoptime.strftime('%Y-%m-%d %H:%M:%S')) )
     
@@ -245,7 +246,7 @@ def construct_url_from_yaml( config, intime, instance, ensemble, gridname, hurri
     """
     # hurricane_yaml_source is a special case scenario
     if is_hurricane(intime):
-        utilities.log.info('Request for YAML build of Hurricane URL. subdir is {}'.format(hurricane_yaml_source))
+        utilities.log.debug('Request for YAML build of Hurricane URL. subdir is {}'.format(hurricane_yaml_source))
         intime = str(intime)
         subdir = hurricane_yaml_year # This is certainly NOT generalized
         source=hurricane_yaml_source
@@ -363,7 +364,7 @@ class generate_urls_from_times(object):
 
         # timeout MUST be supplied somehow
         if timeout is None and stoptime is None:
-            utilities.log.info('timeout is not set and no URL provided: Abort')
+            utilities.log.error('timeout is not set and no URL provided: Abort')
             raise
             ##sys.exit(1)
         if timeout is not None:
@@ -372,7 +373,7 @@ class generate_urls_from_times(object):
         # Find timein
         if timein is None:
             if ndays is None:
-                utilities.log.info('No timein or ndays specified.')
+                utilities.log.error('No timein or ndays specified.')
                 raise
                 ##sys.exit(1)
             else:
@@ -412,7 +413,7 @@ class generate_urls_from_times(object):
             newurl='/'.join(words)
             if newurl not in urls:
                  urls.append(newurl)
-        utilities.log.info('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
+        utilities.log.debug('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
         return urls
 
     def build_url_list_from_template_url_and_offset(self, ensemble='nowcast')->list:
@@ -434,7 +435,7 @@ class generate_urls_from_times(object):
         time_value=self.stoptime  # Could also be an advisory
         offset = self.ndays
         if offset > 0:
-            utilities.log.warn('Offset >0 specified: Behavior is not tested')
+            utilities.log.warning('Offset >0 specified: Behavior is not tested')
         #timein = url.split('/')[-6] # Maybe need to check for a Hurricane Advisory also 
         list_of_times = generate_six_hour_time_steps_from_offset(time_value,offset)
         list_of_instances = generate_list_of_instances(list_of_times, self.grid_name, self.instance_name)
@@ -447,7 +448,7 @@ class generate_urls_from_times(object):
             newurl='/'.join(words)
             if newurl not in urls:
                  urls.append(newurl)
-        utilities.log.info('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
+        utilities.log.debug('Constructed {} urls of ensemble {}'.format(len(urls),ensemble))
         return urls
 
 # Approach Used by ADDA
@@ -531,7 +532,7 @@ class generate_urls_from_times(object):
         time_value=self.stoptime # Could also be an advisory
         offset = self.ndays
         if offset > 0:
-            utilities.log.warn('Offset >0 specified: Behavior is not tested')
+            utilities.log.warning('Offset >0 specified: Behavior is not tested')
                  
         list_of_times = generate_six_hour_time_steps_from_offset(time_value,offset)
         list_of_instances = generate_list_of_instances(list_of_times, self.grid_name, self.instance_name)
@@ -540,7 +541,7 @@ class generate_urls_from_times(object):
             url = construct_url_from_yaml( config, time, self.instance_name, ensemble, self.grid_name, hurricane_yaml_year=self.hurricane_yaml_year, hurricane_yaml_source=self.hurricane_yaml_source )
             if url not in urls:
                  urls.append(url)
-        utilities.log.info('Constructed {} urls of ensemble {} based on the YML and offset'.format(len(urls),ensemble))
+        utilities.log.warning('Constructed {} urls of ensemble {} based on the YML and offset'.format(len(urls),ensemble))
         return urls
 
 def main(args):
