@@ -2,7 +2,6 @@
 
 # SPDX-FileCopyrightText: 2022 Renaissance Computing Institute. All rights reserved.
 # SPDX-FileCopyrightText: 2023 Renaissance Computing Institute. All rights reserved.
-#
 # SPDX-License-Identifier: GPL-3.0-or-later
 # SPDX-License-Identifier: LicenseRef-RENCI
 # SPDX-License-Identifier: MIT
@@ -57,6 +56,10 @@ import numpy.ma as ma
 import pandas as pd
 from siphon.catalog import TDSCatalog
 from collections import OrderedDict
+
+# USGS Via dataretrierval v0.1
+import dataretrieval.nwis as nwis
+
 
 GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in this zone
 
@@ -1407,7 +1410,7 @@ class noaa_web_fetch_data(fetch_station_data):
         datalist=list()
         periods = self.return_list_of_daily_timeranges(time_range)
         for tstart,tend in periods:
-            print(f' {tstart}, {tend} {station}')
+            #print(f' {tstart}, {tend} {station}')
             utilities.log.debug('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
             indict = {'product': self._product,
                  'station': station,
@@ -1425,7 +1428,6 @@ class noaa_web_fetch_data(fetch_station_data):
                 dx.columns=['TIME',self._product]
                 dx=dx.set_index('TIME')
                 dx.index = pd.to_datetime(dx.index)
-                dx.columns=[station]
                 dx.columns=[station]
                 datalist.append(dx)
             except Exception as e:
@@ -1782,4 +1784,186 @@ class ndbc_fetch_historic_data(fetch_station_data):
             utilities.log.exception(f'NDBC Historical meta error: {e}')
             raise
             ##sys.exit(1)
+        return df_meta
+
+
+#####################################################################################
+##
+## USGS source subclass
+## Fetching the Station/River data from USGS via dataretrieval
+## Department of the Interior/USGS
+## https://github.com/DOI-USGS/dataretrieval-python/blob/master/LICENSE.md
+
+#Hodson, T.O., Hariharan, J.A., Black, S., and Horsburgh, J.S., 2023, dataretrieval (Python): a Python package for discovering and retrieving water data available from U.S. federal hydrologic web services: U.S. Geological Survey software release, https://doi.org/10.5066/P94I5TX3.
+
+## Must MANUALLY convert to metric here
+
+class usgs_fetch_data(fetch_station_data):
+    """
+    Parameters:
+        station_id_list: list of station_ids <str>
+        a tuple of (time_start, time_end) <str>,<str> format %Y-%m-%d %H:%M:%S
+        a valid OWNER for USGS <str>
+        a valid PRODUCT id <str>
+
+        NOTE: Defaults to using mixed metric/imperial units. Manually correct them 
+
+        Currently tested input products:
+        water_level 
+        river_flow_volume
+        air_pressure
+    """
+    products={ 'water_level':'00065', # ft
+               'river_flow_volume':'00059', # ft^3/s
+               'air_pressure':'62602', # mmHg
+             }
+    #'00055', # Stream Velocity ft/s
+    #'00059', # Flow rate gal/min
+    #'00061', # Discharge ft^3/s
+    #'00065', # Gage Height (Stage) (ft)
+    #'00067', # Tide Stage
+    #'30207', # Gage Ht above datum
+    #'62602', # Bero Pressure adjusted to Sea lvl
+    #'62624', # Tide stage above datum
+    #'62625', # Wind speed m/s
+    #'63161', # Stream water lvl above NAVD88
+
+    def __init__(self, station_id_list, periods, product='water_level', owner='USGS', station_type='ST', resample_mins=15):
+        """
+        Invoke the USGS subclass
+
+        Parameters:
+            station_id_list: <list> List of desired station ids
+            periods: list of time-tuples indicating the desired time range(s)
+            product: <str> (Default='water_level')  The generic product name
+            station_type: <str> (Default=OD-CO Coastal) Select eithe rRiver or Coastal data types
+            owner: <str> (Default 'USGS') a valid owner
+            resample_mins: <int> time sampling. Specify 0 to get maximum resolution
+        """
+        self._owner=owner
+        self._data_unit=map_product_to_harvester_units(product)
+        self._station_type=station_type
+        try:
+            self._product=self.products[product] # product
+        except KeyError:
+            utilities.log.error('Contrails No such product key. Input {}, Available {}'.format(product, self.products.keys()))
+            raise
+            ##sys.exit(1)
+        print(f' roduct {self._product}')
+        utilities.log.debug(f'USGS Fetching product {self._product} for Station type {station_type}')
+        print(f' station {station_id_list}')
+        super().__init__(station_id_list, periods, resample_mins=resample_mins)
+
+    def convert_to_metric(self, df)-> pd.DataFrame:
+        """
+        USGS returns data in mixed metrix/imperial units
+        Here we convert valid products to metric
+        The product selection is based on the native USGS product codes
+        which is carried by self.product
+      
+        Dataframe is updated inplace
+
+        Parameters
+            df: <dataframe> Data of tmes x product for a specific station
+        Returns:
+            df: <dataframe> Data of times x product in metric units
+        """
+        product = self._product
+        df=df.astype(float)
+        print(f' convert {df}')
+        if product == '00065':
+            utilities.log.debug('USGS. Converting to meters')
+            df=df * 0.3048 # feet to meters
+            return df
+        if product == '00059':
+            df=df * (0.3048**3)
+            return df
+        if product == '62602':
+            df=df * 1.33322
+            return df
+        utilities.log.error('USGS: convert_to_metric: Dropped out the bottom. Unexpected product of {}: Abort'.format(product))
+        sys.exit(1)
+
+    def fetch_single_product(self, station, time_range) -> pd.DataFrame:
+        """
+        For a single USGS site_id, process input time_range (inclusive) from the input periods list
+        time parameters MUST BE on the day
+        and aggregate them into a dataframe with index pd.timestamps and a single column
+        containing the desired values. Rename the column to station id
+
+        NOTE: dataretriever assumes the input start/end times are in your LOCAL timezone. This locality may be
+              the server itself. The data are returned as UTC relative to the input start/end times. The result of this
+              is the returned UTC data series will begins +5 (+4 edt) hrs after the inp[ht start time 
+        
+        Parameters:
+            station <str>. A valid station id
+            time_range <tuple>. Start and end times (<str>,<str>) denoting time ranges
+
+        Returns:
+            dataframe of time (timestamps) vs values for the requested station
+        """
+        ## Check times and ensure they break on a day boundary. For start round down. For end round up to highest day value
+
+        tstart,tend=time_range
+        utilities.log.debug('USGS:Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
+        timein =  pd.Timestamp(tstart) 
+        timeout =  pd.Timestamp(tend)
+        if timein > timeout:
+            utilities.log.debug('USGS Swapping input times')
+            timein, timeout = timeout, timein
+
+        ## Check times and ensure they break on a day boundary. For start round down. For end round up to highest day value
+        timein_day=timein.round(freq='d')
+        timeout_day=timeout.round(freq='d')
+        start_day = dt.datetime.strftime(timein_day,'%Y-%m-%d')
+        end_day = dt.datetime.strftime(timeout_day,'%Y-%m-%d')
+        utilities.log.debug('USGS:Iterate: Day Rounded start time is {}, end time is {}, station is {}'.format(start_day,end_day,station))
+        try:
+            stationdata = pd.DataFrame()
+            df_data = nwis.get_record(sites=station, service='iv', parameterCd=self._product, siteType=self._station_type, start=start_day, end=end_day, multi_index=False)
+            df_data = df_data[self._product].to_frame()
+            utilities.log.debug(f' Localizing USGS timedata to {GLOBAL_TIMEZONE}') # Need to remove TZ components to the data
+            df_data.index = df_data.index.tz_localize(None)
+            #df_data=dx.copy() 
+            df_data.index.name='TIME'
+            df_data.columns=[station]
+            df_data.index = pd.to_datetime(df_data.index)
+        except KeyError as e:
+            utilities.log.warning(f'USGS key error: Prob simply no data: : station {station}: {self._product}: fetch: Error {e}:')
+        except Exception as e:
+            utilities.log.warning(f'USGS generalized data error: station {station}: {self._product}: fetch: Error {e}:')
+        try:
+            df_data = self.convert_to_metric(df_data)
+        except Exception as e:
+            utilities.log.warning(f'USGS station data warning: All empty ?: {e}')
+            df_data = np.nan
+        return df_data
+
+    def fetch_single_metadata(self, station) -> pd.DataFrame:
+        """
+        For a single USGS site_id fetch the associated metadata.
+
+        Parameters:
+             A valid station id <str>
+        Returns:
+             dataframe of pre selected metadata for a single station in the (keys,values) orientation
+             This orientation facilitates aggregation upstream. Upstream will transpose this eventually
+             to our preferred orientation with stations as index
+        """
+        meta=dict()
+        try:
+            df = nwis.get_record(sites=station, service='site')
+            meta['LAT'] = df['dec_lat_va'].values[0]
+            meta['LON'] = df['dec_long_va'].values[0]
+            meta['NAME'] = df['station_nm'].values[0] if df['station_nm'].values[0] !='' else np.nan
+            meta['UNITS'] = self._data_unit
+            meta['TZ'] = GLOBAL_TIMEZONE # df['tz_cd'].values[0] # GLOBAL_TIMEZONE  Data gets returned as UTC relative to the input times
+            meta['OWNER'] = df['agency_cd'].values[0]
+            meta['STATE'] = df['state_cd'].values[0] if df['state_cd'].values[0] !='' else np.nan
+            meta['COUNTRY'] = df['country_cd'].values[0] if df['country_cd'].values[0] !='' else np.nan
+            df_meta=pd.DataFrame.from_dict(meta, orient='index')
+            df_meta.columns = [str(station)]
+        except Exception as e:
+            utilities.log.exception(f'USGS meta error: {station} {df}: error is {e}')
+            #sys.exit(1)
         return df_meta

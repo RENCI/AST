@@ -34,10 +34,11 @@ class get_obs_stations(object):
 
     # Currently supported sources and products
 
-    SOURCES = ['NOAAWEB', 'NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
+    SOURCES = ['USGS','USGS_RIVERS','NOAAWEB', 'NOAA','CONTRAILS','NDBC','NDBC_HISTORIC']
     NOAA_PRODUCTS = ['water_level','hourly_height','predictions','air_pressure','wind_speed']
     CONTRAILS_PRODUCTS = ['river_stream_elevation','river_water_level','river_flow_volume','coastal_water_level','air_pressure']
     NDBC_PRODUCTS=['wave_height','air_pressure','wind_speed']
+    USGS_PRODUCTS=['water_level','river_flow_volume','air_pressure'] # Applies to coastal and river stations
 
     # Default to NOAA/NOS WL run
 
@@ -72,6 +73,9 @@ class get_obs_stations(object):
         elif self.source=='NDBC' or self.source=='NDBC_HISTORIC':
             selected_products = self.NDBC_PRODUCTS
             utilities.log.info(f'NDBC request source is {self.source}')
+        elif self.source=='USGS' or self.source=='USGS_RIVERS':
+            selected_products = self.USGS_PRODUCTS
+            utilities.log.info(f'USGS request source is {self.source}')
         else:
             utilities.log.error(f'No valid source specified {self.source}')
             sys.exit(1)
@@ -93,6 +97,9 @@ class get_obs_stations(object):
 
         if self.source=='NDBC_HISTORIC':
             self.station_list = fetch_data.get_ndbc_buoys(station_list_file)
+        
+        if self.source=='USGS' or self.source=='USGS_RIVERS':
+            self.station_list = fetch_data.get_usgs_stations(station_list_file)
        
         utilities.log.info(f'Fetched station list from {self.station_list}')
 
@@ -142,7 +149,7 @@ class get_obs_stations(object):
         # 2 Okay for each station loop over time range(s) and NaN away
         utilities.log.debug(f'Stations is {stations}')
         utilities.log.debug(f'dict {self.knockout_dict}')
-        print(df_station)
+        #print(df_station)
         for station in stations:
             for key, value in self.knockout_dict[station].items():
                 df_station.loc[value[0]:value[1]][station]=np.nan
@@ -278,6 +285,28 @@ class get_obs_stations(object):
                 utilities.log.debug(f'NDBC_HISTORIC data {data}')
             except Exception as ex:
                 utilities.log.error(f'NDBC_HISTORIC process error {template.format(type(ex).__name__, ex.args)}')
+                #sys.exit(1)
+
+        if self.source.upper()=='USGS':
+            excludedStations=list()
+            # Use default station list
+            usgs_stations=self.station_list
+            try:
+                data, meta = fetch_data.process_usgs_coastal_stations(time_range, usgs_stations, data_product=self.product, resample_mins=return_sample_min)
+                utilities.log.info(f'USGS data {data}')
+            except Exception as ex:
+                utilities.log.error(f'USGS process error {template.format(type(ex).__name__, ex.args)}')
+                #sys.exit(1)
+
+        if self.source.upper()=='USGS_RIVERS':
+            excludedStations=list()
+            # Use default station list
+            usgs_stations=self.station_list
+            try:
+                data, meta = fetch_data.process_usgs_river_stations(time_range, usgs_stations, data_product=self.product, resample_mins=return_sample_min)
+                utilities.log.info(f'USGS_RIVERS data {data}')
+            except Exception as ex:
+                utilities.log.error(f'USGS_RIVERS process error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
 
         utilities.log.info(f'Finished with data source {self.source}')
@@ -423,8 +452,24 @@ def main(args):
         rpl = get_obs_stations(source=args.data_source, product=args.data_product,
                     contrails_yamlname=None,
                     knockout_dict=None, station_list_file=ndbc_stations)
+
+    elif args.data_source.upper() == 'USGS':
+        if station_list is None:
+            usgs_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'USGS_coastal_stations.csv')
+        else:
+            usgs_stations=station_list
+        rpl = get_obs_stations(source=args.data_source, product=args.data_product,
+                    knockout_dict=None, station_list_file=usgs_stations)
+
+    elif args.data_source.upper() == 'USGS_RIVERS':
+        if station_list is None:
+            usgs_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'USGS_river_stations.csv')
+        else:
+            usgs_stations=station_list
+        rpl = get_obs_stations(source=args.data_source, product=args.data_product,
+                    knockout_dict=None, station_list_file=usgs_stations)
     else:
-        print('No source specified')
+        utilities.log.error('No source specified')
         sys.exit(1)
 
     # Fetch best resolution and no resampling

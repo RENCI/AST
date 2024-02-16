@@ -12,7 +12,7 @@ import pandas as pd
 import datetime as dt
 import math
 
-from harvester.fetch_station_data import noaa_web_fetch_data, noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data, ndbc_fetch_historic_data
+from harvester.fetch_station_data import usgs_fetch_data, noaa_web_fetch_data, noaanos_fetch_data, contrails_fetch_data, ndbc_fetch_data, ndbc_fetch_historic_data
 from utilities.utilities import utilities as utilities
 
 ##
@@ -20,7 +20,7 @@ from utilities.utilities import utilities as utilities
 ##
 
 # Currently supported sources
-SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC','NOAAWEB']
+SOURCES = ['NOAA','CONTRAILS','NDBC','NDBC_HISTORIC','NOAAWEB','USGS', 'USGS_RIVERS']
 
 
 def intersect_stations(df_data,df_meta):
@@ -57,13 +57,33 @@ def get_noaa_stations(fname=None):
     noaa_stations=[word.rstrip() for word in noaa_stations_list] 
     return noaa_stations
 
+def get_usgs_stations(fname=None):
+    """
+    Simply read a CSV file containing stations under the header of stationid
+    Expected format is
+        serial_nr, stationid
+
+    Parameters:
+        fname: <str> full path to a valid stationid file
+
+    Returns:
+        noaa_stations: list(str). List of valid noaa station ids 
+    """
+    if fname is None:
+        utilities.log.error('No USGS station file assigned: Abort')
+        sys.exit(1)
+    df = pd.read_csv(fname, index_col=0, header=0, skiprows=[1], dtype=str)
+    noaa_stations_list = df["stationid"].to_list()
+    noaa_stations=[word.rstrip() for word in noaa_stations_list]
+    return noaa_stations
+
 def get_contrails_stations(fname=None):
     """
     Simply read a CSV file containing stations under the header of stationid
     A convenience method to fetch river guage lists. 
     Contrails data
 
-    Expected format is
+    Eoxpected format is
         serial_nr, stationid
     Parameters:
         fname: <str> full path to a valid stationid file
@@ -238,6 +258,64 @@ def process_noaaweb_stations(time_range, noaa_stations, interval=None, data_prod
         utilities.log.error(f'Error: NOAA WEB: {e}')
     return df_noaa_data, df_noaa_meta
 
+def process_usgs_coastal_stations(time_range, usgs_stations, data_product='water_level', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+
+    Parameters:
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
+        usgs_stations: list(str). List of desired NOAA stations
+        data_product: <str >(def water_level). A generic AST named data product ( Not the True NOAA data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_usgs_data: DataFrame (time x station)
+        df_usgs_meta: DataFrame (station x metadata)
+    """
+    # Fetch the data
+    usgs_products=['water_level', 'air_pressure', 'river_flow_volume']
+    try:
+        if not data_product in usgs_products:
+            utilities.log.error(f'USGS: data product can only be {usgs_products}')
+            #sys.exit(1)
+        usgs = usgs_fetch_data(usgs_stations, time_range, station_type='OC-CO', product=data_product, resample_mins=resample_mins)
+        df_usgs_data = usgs.aggregate_station_data()
+        df_usgs_meta = usgs.aggregate_station_metadata()
+        df_usgs_data,df_usgs_meta = intersect_stations(df_usgs_data.copy(),df_usgs_meta.copy())
+        df_usgs_meta.index.name='STATION'
+    except Exception as e:
+        utilities.log.error(f'USGS Coastal Error: USGS: {e}')
+    return df_usgs_data, df_usgs_meta
+
+def process_usgs_river_stations(time_range, usgs_stations, data_product='water_level', resample_mins=15 ):
+    """
+    Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
+
+    Parameters:
+        time_range: <tuple> (<str>,<str>). Input time range ('%Y-%m-%dT%H:%M:%S)
+        usgs_stations: list(str). List of desired NOAA stations
+        data_product: <str >(def water_level). A generic AST named data product ( Not the True NOAA data product name) 
+        resample_mins: <int> Returned time series with a sampling of resample_mins
+
+    Returns:
+        df_usgs_data: DataFrame (time x station)
+        df_usgs_meta: DataFrame (station x metadata)
+    """
+    # Fetch the data
+    usgs_products=['water_level', 'air_pressure', 'river_flow_volume']
+    try:
+        if not data_product in usgs_products:
+            utilities.log.error(f'USGS WEB: data product can only be {usgs_products}')
+            #sys.exit(1)
+        usgs = usgs_fetch_data(usgs_stations, time_range, station_type='ST', product=data_product, resample_mins=resample_mins)
+        df_usgs_data = usgs.aggregate_station_data()
+        df_usgs_meta = usgs.aggregate_station_metadata()
+        df_usgs_data,df_usgs_meta = intersect_stations(df_usgs_data.copy(),df_usgs_meta.copy())
+        df_usgs_meta.index.name='STATION'
+    except Exception as e:
+        utilities.log.error(f'Error: USGS: {e}')
+    return df_usgs_data, df_usgs_meta
+
 def process_contrails_stations(time_range, contrails_stations, authentication_config, data_product='river_water_level', resample_mins=15 ):
     """
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
@@ -327,6 +405,7 @@ def process_ndbc_historic_buoys(time_range, ndbc_buoys, data_product='wave_heigh
         utilities.log.error(f'Error: NEW NDBC HISTORIC: {e}')
     return df_ndbc_data, df_ndbc_meta
 
+# TODO Refactor this. 
 def main(args):
     """
     Generally we anticipate inputting a STOPTIME
@@ -508,6 +587,54 @@ def main(args):
             utilities.log.info(f'NDBC data has been stored {dataf},{metaf}')
         except Exception as e:
             utilities.log.error(f'Error: NDBC: Failed Write {e}')
+            sys.exit(1)
+
+    if data_source.upper()=='USGS':
+        excludedStations=list()
+        time_range=(starttime,endtime) # Can be directly used by USGS 
+        # Use default station list
+        usgs_stations=get_usgs_stations(args.station_list) if args.station_list is not None else get_usgs_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','usgs_stations.csv'))
+        usgs_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        data, meta = process_usgs_coastal_stations(time_range, usgs_stations, data_product = data_product)
+        df_usgs_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
+        # Output
+        # If choosing non-default locations BOTH variables must be specified
+        try:
+            if args.ofile is not None:
+                dataf=f'%s/usgs_stationdata%s.csv'% (args.ofile,usgs_metadata)
+                metaf=f'%s/usgs_stationdata_meta%s.csv'% (args.ometafile,usgs_metadata)
+            else:
+                dataf=f'./usgs_stationdata%s.csv'%usgs_metadata
+                metaf=f'./usgs_stationdata_meta%s.csv'%usgs_metadata
+            df_usgs_data.to_csv(dataf)
+            meta.to_csv(metaf)
+            utilities.log.info(f'USGS data has been stored {dataf},{metaf}')
+        except Exception as e:
+            utilities.log.error(f'Error: USGS: Failed Write {e}')
+            sys.exit(1)
+
+    if data_source.upper()=='USGS_RIVERS':
+        excludedStations=list()
+        time_range=(starttime,endtime) # Can be directly used by USGS 
+        # Use default station list
+        usgs_stations=get_usgs_stations(args.station_list) if args.station_list is not None else get_usgs_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','usgs_stations.csv'))
+        usgs_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        data, meta = process_usgs_river_stations(time_range, usgs_stations, data_product = data_product)
+        df_usgs_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
+        # Output
+        # If choosing non-default locations BOTH variables must be specified
+        try:
+            if args.ofile is not None:
+                dataf=f'%s/usgs_river_stationdata%s.csv'% (args.ofile,usgs_metadata)
+                metaf=f'%s/usgs_river_stationdata_meta%s.csv'% (args.ometafile,usgs_metadata)
+            else:
+                dataf=f'./usgs_river_stationdata%s.csv'%usgs_metadata
+                metaf=f'./usgs_river_stationdata_meta%s.csv'%usgs_metadata
+            df_usgs_data.to_csv(dataf)
+            meta.to_csv(metaf)
+            utilities.log.info(f'USGS RIVER data has been stored {dataf},{metaf}')
+        except Exception as e:
+            utilities.log.error(f'Rivers: Error: USGS: Failed Write {e}')
             sys.exit(1)
 
     utilities.log.info(f'Finished with data source {data_source}')
