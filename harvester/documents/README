@@ -22,6 +22,8 @@ e) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --station_list '../supporting_data/noaa_stations.csv'
 
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'USGS' --station_list '../supporting_data/USGS_coastal_stations.csv'
+
 These will create output files such as the following. Note the filename metadata is tied to the input time selections:
 
     1) ./noaa_stationdata_2022-02-20T00:00:00.csv
@@ -172,6 +174,10 @@ c) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stopt
 d) get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAAWEB' --data_product 'hourly_height' --station_list '../supporting_data/pacnorthwest_stations.csv'
 
 
+# Test USGS
+#
+
+python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'USGS' --data_product 'water_level' --station_list '../supporting_data/USGS_coastal_stations.csv' 
 
 # Try getting flow volumes from the augmented river list
 #
