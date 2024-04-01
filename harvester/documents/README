@@ -24,6 +24,9 @@ python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source '
 
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'USGS' --station_list '../supporting_data/USGS_coastal_stations.csv'
 
+python fetch_data.py --ndays -4 --stoptime '2024-02-20 00:00:00' --data_source 'USGS_RIVERS' --station_list '/Users/jtilson/CODES/AST_gridstations/full_stationlist/supporting_data/USGS_river_stations.csv'
+
+
 These will create output files such as the following. Note the filename metadata is tied to the input time selections:
 
     1) ./noaa_stationdata_2022-02-20T00:00:00.csv
@@ -41,9 +44,6 @@ python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source '
 # Example of calling out Pacific NorthWest Stations
 
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --data_product 'hourly_height' --station_list '../supporting_data/pacnorthwest_stations.csv'
-
-
-
 
 # 2) CONTRAILS. Required input files
     ../config/main.yml. To fetch the value of rootdir
@@ -68,7 +68,7 @@ python fetch_data.py --ndays -4 --stoptime '2022-10-28 00:00:00' --data_source '
     2) ./contrails_stationdata_meta_RIVERS_2022-02-20T00:00:00.csv
  or
     1) ./contrails_stationdata_COASTAL_2022-02-20T00:00:00.csv
-    2) ./contrails_stationdata_meta_COASTAL_2022-02-20T00:00:00.csv
+    ) ./contrails_stationdata_meta_COASTAL_2022-02-20T00:00:00.csv
 
 # 3) NDBC. Required input files
     ../supporting_data/ndbc_buoys.csv. To provide a list of buoy ids, names and states
