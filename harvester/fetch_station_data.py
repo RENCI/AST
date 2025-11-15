@@ -208,7 +208,7 @@ class fetch_station_data(object):
                 df_normal_smooth = dx.interpolate(method='time',limit=int_limit, limit_direction= 'both') 
             df_normal_smooth.index.name='TIME'
         except Exception as ex:
-            utilities.log.error(f'Error Value: Failed interpolation {ex}: Probable empty station data')
+            utilities.log.warning(f'Warning Value: Failed interpolation {ex}: Probable empty station data')
             raise
         return df_normal_smooth
         #sys.exit(1)
@@ -915,6 +915,7 @@ class noaanos_fetch_data(fetch_station_data):
             meta['OWNER'] = 'NOAA/NOS'
             meta['STATE'] = location.metadata['state'] if location.metadata['state']!='' else np.nan
             meta['COUNTY'] = np.nan # None
+            meta['DATUM'] =  self._datum
             #
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
@@ -1414,7 +1415,7 @@ class noaa_web_fetch_data(fetch_station_data):
             utilities.log.debug('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
             indict = {'product': self._product,
                  'station': station,
-                 'datum':'MSL',
+                 'datum':self._datum, # 'MSL',
                  'time_zone': GLOBAL_TIMEZONE,
                  'units':'metric', 'format':'csv',
                  'application':'DataAPI_Sample',
@@ -1435,7 +1436,7 @@ class noaa_web_fetch_data(fetch_station_data):
         try:
             df_data = pd.concat(datalist)
         except Exception as e:
-            utilities.log.error('noaa-web failed concat: error: {}'.format(e))
+            utilities.log.warning('noaa-web failed concat: Warning: {}'.format(e))
             df_data=np.nan
         return df_data
 
@@ -1468,6 +1469,7 @@ class noaa_web_fetch_data(fetch_station_data):
             meta['OWNER'] = 'NOAA/NOS'
             meta['STATE'] = json_meta['stations'][0]['state'] if json_meta['stations'][0]['state'] !='' else np.nan
             meta['COUNTY'] = np.nan
+            meta['DATUM'] =  self._datum
             #
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]

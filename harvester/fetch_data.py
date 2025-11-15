@@ -198,7 +198,7 @@ GLOBAL_TIMEZONE='gmt' # Every source is set or presumed to return times in the z
 ## Here we now keep data common to both,lest we get plots with no metadata
 ##
 
-def process_noaa_stations(time_range, noaa_stations, interval=None, data_product='water_level', resample_mins=15 ):
+def process_noaa_stations(time_range, noaa_stations, datum='MSL', interval=None, data_product='water_level', resample_mins=15 ):
     """
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
 
@@ -219,7 +219,7 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
         if not data_product in noaa_products:
             utilities.log.error(f'NOAA: data product can only be {noaa_products}')
             #sys.exit(1)
-        noaanos = noaanos_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
+        noaanos = noaanos_fetch_data(noaa_stations, time_range, datum=datum, product=data_product, interval=interval, resample_mins=resample_mins)
         df_noaa_data = noaanos.aggregate_station_data()
         df_noaa_meta = noaanos.aggregate_station_metadata()
         df_noaa_data,df_noaa_meta = intersect_stations(df_noaa_data.copy(),df_noaa_meta.copy())
@@ -228,7 +228,7 @@ def process_noaa_stations(time_range, noaa_stations, interval=None, data_product
         utilities.log.error(f'Error: NOAA: {e}')
     return df_noaa_data, df_noaa_meta
 
-def process_noaaweb_stations(time_range, noaa_stations, interval=None, data_product='water_level', resample_mins=15 ):
+def process_noaaweb_stations(time_range, noaa_stations, datum='MSL', interval=None, data_product='water_level', resample_mins=15 ):
     """
     Helper function to take an input list of times, stations, and product and return a data set and associated metadata set
 
@@ -249,7 +249,7 @@ def process_noaaweb_stations(time_range, noaa_stations, interval=None, data_prod
         if not data_product in noaa_products:
             utilities.log.error(f'NOAA WEB: data product can only be {noaa_products}')
             #sys.exit(1)
-        noaanos = noaa_web_fetch_data(noaa_stations, time_range, product=data_product, interval=interval, resample_mins=resample_mins)
+        noaanos = noaa_web_fetch_data(noaa_stations, time_range, datum=datum, product=data_product, interval=interval, resample_mins=resample_mins)
         df_noaa_data = noaanos.aggregate_station_data()
         df_noaa_meta = noaanos.aggregate_station_metadata()
         df_noaa_data,df_noaa_meta = intersect_stations(df_noaa_data.copy(),df_noaa_meta.copy())
@@ -448,6 +448,13 @@ def main(args):
     #starttime='2021-12-08 12:00:00'
     #endtime='2021-12-10 00:00:00'
 
+    noaa_datum = args.noaa_datum.upper()
+    if noaa_datum not in ['MSL','NAVD']:
+        utilities.log.error(f'Wrong DATUM choice. (MSL or NAVD only). Got {noaa_datum}')
+        sys.exit(1)
+    utilities.log.info(f'For NOAA runs use the datum: {noaa_datum}')
+
+
     utilities.log.info(f'Selected time range is {starttime} to {endtime}, ndays is {args.ndays}')
 
     # metadata are used to augment filename
@@ -457,8 +464,8 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
-        noaa_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
-        data, meta = process_noaa_stations(time_range, noaa_stations, data_product = data_product)
+        noaa_metadata=f"_{data_product}_{noaa_datum}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        data, meta = process_noaa_stations(time_range, noaa_stations, datum=noaa_datum, data_product = data_product)
         df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
         # If choosing non-default locations BOTH variables must be specified
@@ -483,8 +490,8 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
-        noaa_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
-        data, meta = process_noaaweb_stations(time_range, noaa_stations, data_product = data_product)
+        noaa_metadata=f"_{data_product}_{noaa_datum}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        data, meta = process_noaaweb_stations(time_range, noaa_stations, datum=noaa_datum,data_product = data_product)
         df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
         # If choosing non-default locations BOTH variables must be specified
@@ -663,5 +670,7 @@ if __name__ == '__main__':
                         help='Choose a non-default data product output directory')
     parser.add_argument('--ometafile', action='store', dest='ometafile', default=None, type=str,
                         help='Choose a non-default metadata output directory')
+    parser.add_argument('--noaa_datum', action='store', dest='noaa_datum', default='MSL', type=str,
+                        help='Choose datum for NOAA only (MSL or NAVD)')
     args = parser.parse_args()
     sys.exit(main(args))

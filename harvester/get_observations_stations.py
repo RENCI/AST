@@ -42,7 +42,7 @@ class get_obs_stations(object):
 
     # Default to NOAA/NOS WL run
 
-    def __init__(self, source='NOAA',product='water_level', 
+    def __init__(self, source='NOAA',product='water_level',datum='MSL', 
                 contrails_yamlname=None,knockout_dict=None, station_list_file=None):
         """
         get_obs_stations constructor
@@ -58,6 +58,7 @@ class get_obs_stations(object):
    
         """
         self.source = source.upper()
+        self.datum = datum
 
         if self.source=='NOAA':
             selected_products = self.NOAA_PRODUCTS
@@ -233,7 +234,7 @@ class get_obs_stations(object):
             noaa_stations=self.station_list
             noaa_metadata=f"_{endtime.replace(' ','T')}" 
             try:
-                data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
+                data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, datum = self.datum,  data_product=self.product, interval=interval, resample_mins=return_sample_min)
             except Exception as ex:
                 utilities.log.error(f'NOAA error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
@@ -244,7 +245,7 @@ class get_obs_stations(object):
             noaa_stations=self.station_list
             noaa_metadata=f"_{endtime.replace(' ','T')}"
             try:
-                data, meta = fetch_data.process_noaaweb_stations(time_range, noaa_stations, data_product=self.product, interval=interval, resample_mins=return_sample_min)
+                data, meta = fetch_data.process_noaaweb_stations(time_range, noaa_stations, datum = self.datum, data_product=self.product, interval=interval, resample_mins=return_sample_min)
             except Exception as ex:
                 utilities.log.error(f'NOAA error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
@@ -417,6 +418,12 @@ def main(args):
 
     station_list = args.station_list
 
+    noaa_datum = args.noaa_datum.upper()
+    if noaa_datum not in ['MSL','NAVD']:
+        utilities.log.error(f'Wrong DATUM choice. (MSL or NAVD only). Got {noaa_datum}')
+        sys.exit(1)
+    utilities.log.info(f'For NOAA runs use the datum: {noaa_datum}')
+
     # Invoke the class
     # No longer use the obs.yml file inside the class. keep for future considerations
     if args.data_source.upper() == 'NOAA':
@@ -491,6 +498,9 @@ def main(args):
     # Apply a moving average (smooth) the data performed the required resampling to the desire rate followed by interpolating
     data_smoothed = rpl.fetch_smoothed_station_product(data_thresholded, return_sample_min=60, window=11)
 
+    # Update iometadaa to include datum for noaa data
+    iometadata = f'noaadatum_{noaa_datum}{iometadata}'
+
     # Write the data to disk in a way that mimics ADDA
     # Write selected in Pickle data 
     metapkl = f'./obs_wl_metadata%s.pkl'%iometadata
@@ -532,5 +542,7 @@ if __name__ == '__main__':
                         help='Interval request to the fetcher (h): Only used by NOAA/NOAAWEB')
     parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
                         help='Choose a non-default location/filename for a stationlist')
+    parser.add_argument('--noaa_datum', action='store', dest='noaa_datum', default='MSL', type=str,
+                        help='Choose datum for NOAA only (MSL or NAVD)')
     args = parser.parse_args()
     sys.exit(main(args))
