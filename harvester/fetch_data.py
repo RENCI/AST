@@ -448,8 +448,9 @@ def main(args):
     #starttime='2021-12-08 12:00:00'
     #endtime='2021-12-10 00:00:00'
 
+    known_datums=['STND','MHHW','MHW','MTL','MSL','MLW','MLLW','NAVD']
     noaa_datum = args.noaa_datum.upper()
-    if noaa_datum not in ['MSL','NAVD']:
+    if noaa_datum not in known_datums:
         utilities.log.error(f'Wrong DATUM choice. (MSL or NAVD only). Got {noaa_datum}')
         sys.exit(1)
     utilities.log.info(f'For NOAA runs use the datum: {noaa_datum}')
@@ -671,6 +672,6 @@ if __name__ == '__main__':
     parser.add_argument('--ometafile', action='store', dest='ometafile', default=None, type=str,
                         help='Choose a non-default metadata output directory')
     parser.add_argument('--noaa_datum', action='store', dest='noaa_datum', default='MSL', type=str,
-                        help='Choose datum for NOAA only (MSL or NAVD)')
+                        help='Choose datum for NOAA only (STND,MHHW,MHW,MTL,MSL,MLW,MLLW,NAVD)')
     args = parser.parse_args()
     sys.exit(main(args))

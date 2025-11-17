@@ -419,9 +419,6 @@ def main(args):
     station_list = args.station_list
 
     noaa_datum = args.noaa_datum.upper()
-    if noaa_datum not in ['MSL','NAVD']:
-        utilities.log.error(f'Wrong DATUM choice. (MSL or NAVD only). Got {noaa_datum}')
-        sys.exit(1)
     utilities.log.info(f'For NOAA runs use the datum: {noaa_datum}')
 
     # Invoke the class
@@ -543,6 +540,6 @@ if __name__ == '__main__':
     parser.add_argument('--station_list', action='store', dest='station_list', default=None, type=str,
                         help='Choose a non-default location/filename for a stationlist')
     parser.add_argument('--noaa_datum', action='store', dest='noaa_datum', default='MSL', type=str,
-                        help='Choose datum for NOAA only (MSL or NAVD)')
+                        help='Choose datum for NOAA only (STND,MHHW,MHW,MTL,MSL,MLW,MLLW,NAVD)')
     args = parser.parse_args()
     sys.exit(main(args))

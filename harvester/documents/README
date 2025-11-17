@@ -10,6 +10,8 @@ a) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
 b) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'water_level'
 # Specify a custom station_list
 c) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --station_list '../supporting_data/noaa_stations.csv'
+d) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --station_list '../supporting_data/noaa_stations.csv' --noaa_datum 'MSL'
+e) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --station_list '../supporting_data/noaa_stations.csv' --noaa_datum 'NAVD'
 
 # Get tidal predictions
 d) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAA' --data_product 'predictions'
@@ -21,6 +23,7 @@ e) python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_sourc
     ../supporting_data/noaa_stations.csv. To provide a list of stations ids
 
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --station_list '../supporting_data/noaa_stations.csv'
+python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --station_list '../supporting_data/noaa_stations.csv' --noaa_datum
 
 python fetch_data.py --ndays -4 --stoptime '2022-02-20 00:00:00' --data_source 'USGS' --station_list '../supporting_data/USGS_coastal_stations.csv'
 
@@ -158,8 +161,10 @@ c) python fetch_adcirc_data.py --url "http://tds.renci.org/thredds/dodsC/2022/na
 
 a) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' 
 b) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' --interval 'h'
+c) python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAA' --data_product 'water_level' --noaa_datum 'NAVD'
 
 python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAAWEB' --data_product 'water_level' --interval 'h'
+python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'NOAAWEB' --data_product 'water_level' --interval 'h' --noaa_datum 'MHHW'
 
 
 # 2) Required Contrails input files
