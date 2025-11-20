@@ -465,7 +465,8 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
-        noaa_metadata=f"_{data_product}_{noaa_datum}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        #noaa_metadata=f"_{data_product}_{noaa_datum}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        noaa_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
         data, meta = process_noaa_stations(time_range, noaa_stations, datum=noaa_datum, data_product = data_product)
         df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
@@ -491,7 +492,8 @@ def main(args):
         time_range=(starttime,endtime) # Can be directly used by NOAA 
         # Use default station list
         noaa_stations=get_noaa_stations(args.station_list) if args.station_list is not None else get_noaa_stations(fname=os.path.join(os.path.dirname(__file__),'../supporting_data','noaa_stations.csv'))
-        noaa_metadata=f"_{data_product}_{noaa_datum}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        #noaa_metadata=f"_{data_product}_{noaa_datum}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
+        noaa_metadata=f"_{data_product}_{endtime.replace(' ','T')}"  # +'_'+starttime.replace(' ','T')
         data, meta = process_noaaweb_stations(time_range, noaa_stations, datum=noaa_datum,data_product = data_product)
         df_noaa_data = format_data_frames(data, data_product) # Melt the data :s Harvester default format
         # Output
