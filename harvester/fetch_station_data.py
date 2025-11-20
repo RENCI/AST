@@ -1013,6 +1013,8 @@ class contrails_fetch_data(fetch_station_data):
 
         self._owner=owner
         self._data_unit=map_product_to_harvester_units(product)
+        self._datum = 'STAGE' if product=='river_water_level' else 'NAVD'
+
         try:
             self._product=self.products[product] # product
         except KeyError:
@@ -1023,6 +1025,8 @@ class contrails_fetch_data(fetch_station_data):
         utilities.log.debug(f'CONTRAILS Fetching product {self._product}')
         self._systemkey=config['systemkey']
         self._domain=config['domain']
+        
+        
         super().__init__(station_id_list, periods, resample_mins=resample_mins)
 
     # Customized splitting of the timerange into a list of day-centric tuples.
@@ -1231,6 +1235,7 @@ class contrails_fetch_data(fetch_station_data):
             meta['OWNER'] = self._owner # data2 always returns the value=DEPRECATED data2['owner']
             meta['STATE'] = np.nan # None # data2['state']  # DO these work ?
             meta['COUNTY'] = np.nan
+            meta['DATUM'] =  self._datum
             #
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
@@ -1531,6 +1536,7 @@ class ndbc_fetch_data(fetch_station_data):
             resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
         self._data_unit=map_product_to_harvester_units(product)
+        self._datum='UNKN'
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.info(f'NDBC Fetching product {self._product}')
@@ -1611,6 +1617,7 @@ class ndbc_fetch_data(fetch_station_data):
         meta['OWNER'] = 'NONE'
         meta['STATE'] = buoy[2]
         meta['COUNTY'] = np.nan # None
+        meta['DATUM'] =  self._datum
         df_meta=pd.DataFrame.from_dict(meta, orient='index')
         df_meta.columns = [str(buoy[0])]
         return df_meta
@@ -1666,6 +1673,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
             resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
         self._data_unit=map_product_to_harvester_units(product)
+        self._datum='UNKN'
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.debug(f'NDBC Fetching Historicalproduct {self._product}')
@@ -1777,6 +1785,7 @@ class ndbc_fetch_historic_data(fetch_station_data):
             meta['OWNER'] = 'NONE'
             meta['STATE'] = buoy[2]
             meta['COUNTY'] = np.nan # None
+            meta['DATUM'] =  self._datum
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(buoy[0])]
         except KeyError:
@@ -1845,6 +1854,7 @@ class usgs_fetch_data(fetch_station_data):
         self._owner=owner
         self._data_unit=map_product_to_harvester_units(product)
         self._station_type=station_type
+        self._datum='NAVD'
         try:
             self._product=self.products[product] # product
         except KeyError:
@@ -1963,6 +1973,7 @@ class usgs_fetch_data(fetch_station_data):
             meta['OWNER'] = df['agency_cd'].values[0]
             meta['STATE'] = df['state_cd'].values[0] if df['state_cd'].values[0] !='' else np.nan
             meta['COUNTRY'] = df['country_cd'].values[0] if df['country_cd'].values[0] !='' else np.nan
+            meta['DATUM'] =  self._datum
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
         except Exception as e:
