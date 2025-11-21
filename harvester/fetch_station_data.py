@@ -1536,7 +1536,7 @@ class ndbc_fetch_data(fetch_station_data):
             resample_mins: <int> time sampling. Specify 0 to get maximum resolution
         """
         self._data_unit=map_product_to_harvester_units(product)
-        self._datum='UNKN'
+        self._datum='HEIGHT'
         try:
             self._product=self.products[product] # self.products[product] # product
             utilities.log.info(f'NDBC Fetching product {self._product}')
