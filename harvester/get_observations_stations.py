@@ -429,7 +429,7 @@ def main(args):
             noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
         else:
             noaa_stations=station_list
-        rpl = get_obs_stations(source=args.data_source, dsatum=noaa_datum, product=args.data_product,
+        rpl = get_obs_stations(source=args.data_source, datum=noaa_datum, product=args.data_product,
                     contrails_yamlname=None,
                     knockout_dict=None, station_list_file=noaa_stations)
     elif args.data_source.upper() == 'NOAAWEB':
