@@ -227,6 +227,7 @@ class get_obs_stations(object):
         data=np.nan
         meta=np.nan
 
+        datum = self.datum
         time_range=(starttime,endtime)
         if self.source.upper()=='NOAA':
             excludedStations=list()
@@ -234,7 +235,7 @@ class get_obs_stations(object):
             noaa_stations=self.station_list
             noaa_metadata=f"_{endtime.replace(' ','T')}" 
             try:
-                data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, datum = self.datum,  data_product=self.product, interval=interval, resample_mins=return_sample_min)
+                data, meta = fetch_data.process_noaa_stations(time_range, noaa_stations, datum = datum,  data_product=self.product, interval=interval, resample_mins=return_sample_min)
             except Exception as ex:
                 utilities.log.error(f'NOAA error {template.format(type(ex).__name__, ex.args)}')
                 #sys.exit(1)
@@ -428,7 +429,7 @@ def main(args):
             noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
         else:
             noaa_stations=station_list
-        rpl = get_obs_stations(source=args.data_source, product=args.data_product,
+        rpl = get_obs_stations(source=args.data_source, dsatum=noaa_datum, product=args.data_product,
                     contrails_yamlname=None,
                     knockout_dict=None, station_list_file=noaa_stations)
     elif args.data_source.upper() == 'NOAAWEB':
@@ -436,7 +437,7 @@ def main(args):
             noaa_stations=os.path.join(os.path.dirname(__file__), '../supporting_data', 'CERA_NOAA_HSOFS_stations_V3.1.csv')
         else:
             noaa_stations=station_list
-        rpl = get_obs_stations(source=args.data_source, product=args.data_product,
+        rpl = get_obs_stations(source=args.data_source, datum=noaa_datum, product=args.data_product,
                     contrails_yamlname=None,
                     knockout_dict=None, station_list_file=noaa_stations)
     elif args.data_source.upper() == 'CONTRAILS':
@@ -494,9 +495,6 @@ def main(args):
 
     # Apply a moving average (smooth) the data performed the required resampling to the desire rate followed by interpolating
     data_smoothed = rpl.fetch_smoothed_station_product(data_thresholded, return_sample_min=60, window=11)
-
-    # Update iometadaa to include datum for noaa data
-    iometadata = f'noaadatum_{noaa_datum}{iometadata}'
 
     # Write the data to disk in a way that mimics ADDA
     # Write selected in Pickle data 
