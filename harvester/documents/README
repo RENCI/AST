@@ -189,8 +189,10 @@ python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime
 
 python get_observations_stations.py --starttime '2022-01-01 00:00:00' --stoptime '2022-01-03 12:00:00' --data_source 'CONTRAILS' --data_product 'river_water_level' --station_list ../supporting_data/contrails_stations_rivers_largelist.csv
 
-
-
+python get_observations_stations.py --starttime '2022-02-16 00:00:00' --stoptime '2022-02-20 00:00:00' --data_source 'NOAAWEB' --data_product 'water_level' --noaa_datum 'NAVD'
+python get_observations_stations.py --starttime '2022-02-16 00:00:00' --stoptime '2022-02-20 00:00:00'  --data_source 'CONTRAILS' --data_product 'coastal_water_level' --noaa_datum 'NAVD'
+python get_observations_stations.py --starttime '2022-02-16 00:00:00' --stoptime '2022-02-20 00:00:00'  --data_source 'CONTRAILS' --data_product 'river_stream_elevation' --noaa_datum 'NAVD'
+python get_observations_stations.py --starttime '2022-02-16 00:00:00' --stoptime '2022-02-20 00:00:00'  --data_source 'CONTRAILS' --data_product 'river_water_level' --noaa_datum 'NAVD'
 
 # Output datafiles, Note any redundancies (eg pkl vs json) are inplace to mimic behavior of the original codes that are to be replaced 
 # NOAA/Contrails output files are the same. Viz., 
