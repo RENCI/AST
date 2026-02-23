@@ -102,7 +102,7 @@ class utilities:
             utilities.log.error('Called load_config but didnt specify yaml name: ABORT')
             sys.exit(1)
         if not os.path.exists(yaml_file):
-            raise IOError("Failed to load yaml config file {}".format(yaml_file))
+            raise IOError("Failed to load yaml config file {},{}".format(yaml_file,oslistdir()))
         with open(yaml_file, 'r') as stream:
             config = yaml.safe_load(stream)
             print('Opened yaml file {}'.format(yaml_file,))
