@@ -28,6 +28,7 @@ import xarray as xr
 import datetime as dt
 from utilities.utilities import utilities
 import math
+import time
 
 #Contrails
 import urllib
@@ -1416,6 +1417,7 @@ class noaa_web_fetch_data(fetch_station_data):
         datalist=list()
         periods = self.return_list_of_daily_timeranges(time_range)
         for tstart,tend in periods:
+            time.sleep(1)
             #print(f' {tstart}, {tend} {station}')
             utilities.log.debug('Iterate: start time is {}, end time is {}, station is {}'.format(tstart,tend,station))
             indict = {'product': self._product,
@@ -1460,6 +1462,7 @@ class noaa_web_fetch_data(fetch_station_data):
         domain='https://api.tidesandcurrents.noaa.gov/mdapi/prod/webapi/stations' # A fixed url for getting metadata
 
         meta=dict() 
+        time.sleep(1)
         try:
             response = requests.get(f'{domain}/{station}.json')
             metares=response.text
