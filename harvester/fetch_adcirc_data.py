@@ -224,6 +224,20 @@ def process_adcirc_stations(urls, adcirc_stations, gridname, ensemble, sitename,
         # Add insitu found nodes for metadata
         station_nodes = adcirc.available_stations_tuple
         df_adcirc_meta=combine_metadata_with_station_tuples(df_adcirc_meta, station_nodes, fort63_style)
+        requested_stations={str(station[0]) for station in station_nodes}
+        data_stations={str(station) for station in df_adcirc_data.columns}
+        metadata_stations={str(station) for station in df_adcirc_meta.index}
+        missing_data=sorted(requested_stations-data_stations)
+        missing_metadata=sorted(requested_stations-metadata_stations)
+        df_adcirc_data.attrs['requested_stations']=sorted(requested_stations)
+        df_adcirc_data.attrs['station_exclusions']=dict(adcirc.data_exclusions)
+        df_adcirc_meta.attrs['requested_stations']=sorted(requested_stations)
+        df_adcirc_meta.attrs['station_exclusions']=dict(adcirc.metadata_exclusions)
+        utilities.log.info(
+            f'ADCIRC station sets: requested={len(requested_stations)}, '
+            f'data={len(data_stations)}, metadata={len(metadata_stations)}, '
+            f'missing_data={missing_data}, missing_metadata={missing_metadata}'
+        )
     except Exception as e:
         utilities.log.error(f'Failed fetching ADCIRC: {e}')
         raise
