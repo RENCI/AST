@@ -111,9 +111,9 @@ def first_available_netCDF4(urls):
     """
     for url in urls:
         try:
-            nc = nc4.Dataset(url)
-            gridx = nc.variables['x']
-            break
+            with nc4.Dataset(url) as nc:
+                nc.variables['x']
+            return url
         except OSError: # FileNotFoundError: # OSError:
             # Skip and go on to the next in the list
             utilities.log.debug('first_true: skip a url look up. Try next iteration')
@@ -121,7 +121,7 @@ def first_available_netCDF4(urls):
             utilities.log.debug(f'first_available_netCDF4: something wrong looking for url: {e}')
             raise
             ##sys.exit(1)
-    return url
+    raise OSError('No readable netCDF4 URL was found')
 
 #
 # A supplementary function. THe Harvesting codes are designed to only fetch station level data. But, for more generalized ADCIRC procesing we also need the
@@ -145,10 +145,10 @@ def extract_adcirc_grid_coords(urls_63)->pd.DataFrame:
     else:
         url=first_available_netCDF4(urls_63) # Assumes all urls are for the same grid
     utilities.log.info(f"Loading fort.63.log {url}")
-    nc = nc4.Dataset(url)
-    gridx = nc.variables['x']
-    gridy = nc.variables['y']
-    adc_coords = {'LON':gridx[:].tolist(),'LAT':gridy[:].tolist()}
+    with nc4.Dataset(url) as nc:
+        gridx = nc.variables['x'][:].tolist()
+        gridy = nc.variables['y'][:].tolist()
+    adc_coords = {'LON':gridx,'LAT':gridy}
     return adc_coords 
 
 class get_adcirc_stations(object):
@@ -304,6 +304,7 @@ class get_adcirc_stations(object):
                 utilities.log.debug('Removing knockouts from acquired ADCIRC data')
         except Exception as e:
             utilities.log.error('TDS: Broad failure {}'.format(e))
+            raise
         return data, meta
 
 ## Several scenarios may be used for this example main. For now we choose the ADDA style execution

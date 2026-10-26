@@ -18,4 +18,16 @@ This repo consists of two groups of code: harvester and processing.
     harvester abstracts the acquisition of data_product time series from multiple data sources. Test examples may be found in ./harvester/documents/README.
     processing includes the computation of residual pairs and interpolation onto user supplied grids
 
+## ADCIRC station-read resilience
+
+ADCIRC station reads retry the complete NetCDF open-and-read operation and
+close each dataset handle after use. The retry policy is configurable with:
+
+- `AST_IO_RETRY_ATTEMPTS` (default `3`)
+- `AST_IO_RETRY_PAUSE` (default `5` seconds)
+- `AST_IO_RETRY_MAX_PAUSE` (default `30` seconds)
+
+The pause doubles after each failed attempt and is capped by the maximum.
+Station logs include total, finite, masked, and missing measurement counts.
+
 

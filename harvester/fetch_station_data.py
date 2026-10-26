@@ -19,8 +19,6 @@
 # excluded stations with insufficient data.
 #
 
-import traceback
-
 import os,sys
 import numpy as np
 import pandas as pd
@@ -175,6 +173,8 @@ class fetch_station_data(object):
         self._stations=stations
         self._periods=periods
         self._resampling_mins=resample_mins
+        self.data_exclusions={}
+        self.metadata_exclusions={}
 
     def interpolate_and_resample(self, dx, n_pad=0, sample_mins=15, int_limit=3)->pd.DataFrame:
         """
@@ -235,7 +235,7 @@ class fetch_station_data(object):
         use_new_interpolation=True  # False # This will go away after validation
 
         aggregateData = list()
-        excludedStations=list()
+        self.data_exclusions={}
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
 
         for station in self._stations:
@@ -255,7 +255,7 @@ class fetch_station_data(object):
                         aggregateData.append(df_int)
                 except Exception as e:
                     utilities.log.warning(f'Potentially Non Fatal Interpolation procedure status for station {station} {e}')
-                    pass
+                    raise
                 #tm.sleep(2) # sleep 2 secs
                 # On input dx==nan, the old method bombs preventing a nan form entering aggregateData
             #except RuntimeError as ex: # This is primarily here to trap DAP Failures for TDS/running on k8s
@@ -263,15 +263,16 @@ class fetch_station_data(object):
             #    utilities.log.warning(f'RuntimeError: Skipping all station for this time period/url. {station}, msg {message}')
             #    break
             except Exception as ex:
-                excludedStations.append(station)
+                station_id=station[0] if isinstance(station, (tuple, list)) else str(station)
                 message = template.format(type(ex).__name__, ex.args)
-                traceback.print_exc()
-                utilities.log.warning(f'Possibly the station simply had no data; Skip {station}, msg {message}')
+                self.data_exclusions[str(station_id)]=message
+                utilities.log.warning(f'Station excluded: station={station_id}, reason={message}')
         if len(aggregateData)==0:
-            utilities.log.warning('No site data was found for the given site_id list. Perhaps the server is down or file doesnt exist')
-            ##return np.nan
-            #sys.exit(1) # Keep processing the remaining list
-        utilities.log.debug('{} Stations were excluded'.format(len(excludedStations)))
+            raise RuntimeError(
+                'No site data was found for the requested station list; '
+                f'exclusions={self.data_exclusions}'
+            )
+        utilities.log.info('{} Stations were excluded: {}'.format(len(self.data_exclusions), self.data_exclusions))
         utilities.log.debug('{} Stations included'.format(len(aggregateData)))
         try:
             df_data = pd.concat(aggregateData, axis=1)
@@ -286,9 +287,8 @@ class fetch_station_data(object):
             df_data = replace_and_fill(df_data)
             df_data = df_data.sort_index()
         except Exception as e:
-            utilities.log.warning(f'Station list aggregation: error: {e}')
-            pass
-            #df_data=np.nan
+            utilities.log.error(f'Station list aggregation failed: {e}')
+            raise
         #df_data = df_data.sort_index()
         return df_data
 
@@ -302,7 +302,7 @@ class fetch_station_data(object):
             Aggregated meadata: A dataframe (stations x metacolumns) for all input stations
         """
         aggregateMetaData = list()
-        excludedStations = list()
+        self.metadata_exclusions={}
         template = "A metadata exception of type {0} occurred. Arguments:\n{1!r}"
         for station in self._stations:
             try:
@@ -311,13 +311,19 @@ class fetch_station_data(object):
                 #tm.sleep(2) # sleep 2 secs
                 utilities.log.debug('Iterate: Kept station is {}'.format(station))
             except Exception as ex:
-                excludedStations.append(station)
+                station_id=station[0] if isinstance(station, (tuple, list)) else str(station)
                 message = template.format(type(ex).__name__, ex.args)
-                utilities.log.warning(f'Error Value: Metadata: {station}, msg {message}')
+                self.metadata_exclusions[str(station_id)]=message
+                utilities.log.warning(f'Metadata station excluded: station={station_id}, reason={message}')
         if len(aggregateMetaData)==0:
-            utilities.log.warning('Metadata: No site data was found for the given site_id list. Perhaps the server is down Exit')
-            #sys.exit(1) # Process remaining list
-        utilities.log.info(f'{len(excludedStations)} Metadata Stations were excluded')
+            raise RuntimeError(
+                'No metadata was found for the requested station list; '
+                f'exclusions={self.metadata_exclusions}'
+            )
+        utilities.log.info(
+            f'{len(self.metadata_exclusions)} Metadata Stations were excluded: '
+            f'{self.metadata_exclusions}'
+        )
         df_meta = pd.concat(aggregateMetaData, axis=1).T
         #df_meta.dropna(how='all', axis=1, inplace=True)
         df_meta = replace_and_fill(df_meta)
@@ -371,9 +377,10 @@ class adcirc_fetch_data(fetch_station_data):
         new_periods=list()
         for url in in_periods:
             try:
-                nc = nc4.Dataset(url)
+                with nc4.Dataset(url):
+                    pass
                 new_periods.append(url)
-            except OSError as e:
+            except OSError:
                 utilities.log.warning('URL not found: Remove url {}'.format(url))
         return new_periods
 
@@ -556,10 +563,10 @@ class adcirc_fetch_data(fetch_station_data):
         for url61 in periods:
             utilities.log.debug('Fetch stations: {} '.format(url61))
             try:
-                ds = xr.open_dataset(url61)
-                ds = ds.transpose()
-                ds.attrs = []
-                sn = ds['station_name'].values
+                with xr.open_dataset(url61) as raw_ds:
+                    ds = raw_ds.transpose()
+                    ds.attrs = []
+                    sn = ds['station_name'].values
                 snn = []
                 for i in range(len(sn)): # This gets the stationids IN THE FILE not necc what we requested.
                     ts = str(sn[i].strip().decode("utf-8"))
@@ -590,9 +597,8 @@ class adcirc_fetch_data(fetch_station_data):
         return full_idx
 
 ##
-## Added in a retry clause here. In June/2023, we've observed that occasionally, a nowcast will fail to read even when 
-## subsequent manual checking indicates aexistance of a valid file. We've tentatively assigned this either to a FS timing issue
-## or a file locking issue. So, if we get a read failure here, we wait and try again one-time. Then fail on a failed 2nd try
+## Retry the complete dataset open and station read. Transient OPeNDAP failures can
+## invalidate either operation, so reusing the original dataset handle is unsafe.
 ##
     def fetch_single_product(self, station_tuple, periods) -> pd.DataFrame:
         """
@@ -612,67 +618,93 @@ class adcirc_fetch_data(fetch_station_data):
         datalist=list()
         typeCast_status=list() # Check each period to see if this was a nowcast or forecast type fetch. If mixed then abort
 
-        WAITTIME=os.getenv('AST_IO_RETRY_PAUSE') if os.getenv('AST_IO_RETRY_PAUSE') is not None else '30'
-        try:
-            WAITTIME=int(WAITTIME)
-        except ValueError as e:
-            utilities.log.debug(f' Fail to convert AST_IO_RETRY_PAUSE to seconds: Was {WAITTIME}. Will use default {e}')
-            WAITTIME=30
+        def retry_setting(name, default, minimum):
+            value=os.getenv(name, str(default))
+            try:
+                return max(minimum, int(value))
+            except ValueError:
+                utilities.log.warning(f'Invalid {name}={value}; using {default}')
+                return default
+
+        attempts=retry_setting('AST_IO_RETRY_ATTEMPTS', 3, 1)
+        initial_pause=retry_setting('AST_IO_RETRY_PAUSE', 5, 0)
+        max_pause=retry_setting('AST_IO_RETRY_MAX_PAUSE', 30, 0)
+        read_failures=[]
 
         for url in periods: # If a period is SHORT no data may be found which is acceptible 
-            waitsec=0 # Start off assuming no wait required
-            try:
-                nc = nc4.Dataset(url)
-            except Exception as e: # Catch all errors as we are not sure of the complete set of possibles
-                utilities.log.critical(f'Failed try to open a netCDF object: This should never happen so abort. Stationid {station}. error {e}') 
-                sys.exit(1)
+            got_data=False
+            last_error=None
+            for attempt in range(1, attempts+1):
+                try:
+                    with nc4.Dataset(url) as nc:
+                        if self._variable_name not in nc.variables:
+                            raise KeyError(f'{self._variable_name} not found in netCDF')
+                        dimensions=nc[self._variable_name].dimensions
+                        if not dimensions:
+                            raise ValueError(f'{self._variable_name} has no dimensions')
+                        if dimensions[0] == 'node':
+                            utilities.log.debug('Reading transposed netCDF station data')
+                        elif dimensions[0] != 'time':
+                            raise ValueError(
+                                f'Unexpected leading dimension for {self._variable_name}: {dimensions}'
+                            )
 
-            # We have not seen dap failures occur when querying for global data info so don't worry about it here 
-            data_transposed = nc[self._variable_name].dimensions[0] == 'node'
-            if data_transposed:
-                utilities.log.warning('Expecting netCDF data in transposed form')
-            if self._variable_name not in nc.variables.keys():
-                utilities.log.warning(f'{self._variable_name} not found in netCDF for {url}')
-                # okay to have a missing one  do not exit 
-                # sys.exit(1)
-            else:
-                for itry in range(1): # Try a maximum of 2 times
-                    got_data=False
-                    time_var = nc.variables['time']
-                    t = nc4.num2date(time_var[:], time_var.units)
-                    data = np.empty([len(t), 0])
-                    try:
-                        if nc[self._variable_name].dimensions[0] == 'time':
-                            data = nc[self._variable_name][:,node] 
-                            got_data=True
-                            break
-                        elif nc[self._variable_name].dimensions[0] == 'node':
-                            data = nc[self._variable_name][node] 
-                            got_data=True
-                            break
+                        time_var = nc.variables['time']
+                        t = nc4.num2date(time_var[:], time_var.units)
+                        if dimensions[0] == 'time':
+                            raw_data = nc[self._variable_name][:,node]
                         else:
-                            utilities.log.error(f'Unexpected leading variable name {ds.variables[v].dims}')
-                            #sys.exit(1)
-                    except Exception as e:
-                         waitsec+=WAITTIME
-                         utilities.log.warning(f'{itry} attempt to fetch URL data failed. Wait {waitsec}s and try again. {e}')
-                if got_data:
-                    np.place(data, data < -1000, np.nan)
-                    dx = pd.DataFrame(data, columns=[str(node)], index=t)
-                    dx.columns=[station]
-                    dx.index.name='TIME'
-                    typeCast_status.append(self.type_ADCIRC_cast(url, dx))
-                    dx.index = pd.to_datetime(dx.index.astype(str)) # New pandas can only do this to strings now
-                    datalist.append(dx)
-                else:
-                    pass
-                    #raise # Let the aggregate caller choose to ignore this missing station and all associated urls
-                    #sys.exit()
-        try:
-            df_data = pd.concat(datalist)
-        except Exception as e:
-            print(f'ADCIRC concat error: {e}')
-            raise # These get trapped/ignored later
+                            raw_data = nc[self._variable_name][node]
+
+                    masked_count=int(np.count_nonzero(ma.getmaskarray(raw_data)))
+                    data=np.asarray(ma.filled(raw_data, np.nan), dtype=float).reshape(-1)
+                    data[data < -1000]=np.nan
+                    total_count=int(data.size)
+                    finite_count=int(np.count_nonzero(np.isfinite(data)))
+                    missing_count=total_count-finite_count
+                    utilities.log.info(
+                        f'ADCIRC station read: station={station}, attempt={attempt}, '
+                        f'total={total_count}, finite={finite_count}, masked={masked_count}, '
+                        f'missing={missing_count}, url={url}'
+                    )
+                    if len(t) != total_count:
+                        raise ValueError(
+                            f'Time/data length mismatch for station {station}: '
+                            f'time={len(t)}, data={total_count}'
+                        )
+                    got_data=True
+                    break
+                except Exception as e:
+                    last_error=e
+                    if attempt == attempts:
+                        utilities.log.error(
+                            f'ADCIRC station read exhausted retries: station={station}, '
+                            f'attempts={attempts}, url={url}, error={type(e).__name__}: {e}'
+                        )
+                        break
+                    waitsec=min(initial_pause * (2 ** (attempt-1)), max_pause)
+                    utilities.log.warning(
+                        f'ADCIRC station read failed: station={station}, attempt={attempt}/{attempts}, '
+                        f'wait={waitsec}s, url={url}, error={type(e).__name__}: {e}'
+                    )
+                    if waitsec:
+                        time.sleep(waitsec)
+
+            if got_data:
+                dx = pd.DataFrame(data, columns=[station], index=t)
+                dx.index.name='TIME'
+                typeCast_status.append(self.type_ADCIRC_cast(url, dx))
+                dx.index = pd.to_datetime(dx.index.astype(str))
+                datalist.append(dx)
+            else:
+                read_failures.append(
+                    f'{url}: {type(last_error).__name__}: {last_error}'
+                )
+        if not datalist:
+            raise RuntimeError(
+                f'ADCIRC station {station} produced no data after retries: {read_failures}'
+            )
+        df_data = pd.concat(datalist)
         # Check if ALL entries in typeCast_status are the same. If not fail hard.
         if len(set(typeCast_status)) != 1:
             utilities.log.error('Some mix up with typeCast_status {}'.format(typeCast_status))
@@ -702,17 +734,23 @@ class adcirc_fetch_data(fetch_station_data):
         meta=dict()
         periods=self._periods
 
+        metadata_error=None
         for url in periods:
-            nc = nc4.Dataset(url)
             # we need to test access to the netCDF variables, due to infrequent issues with
             # netCDF files written with v1.8 of HDF5.
             try:
-                nodelon=nc.variables['x'][node]
-                nodelat=nc.variables['y'][node]
-                break; 
-            except IndexError as e:
+                with nc4.Dataset(url) as nc:
+                    nodelon=nc.variables['x'][node]
+                    nodelat=nc.variables['y'][node]
+                    owner=getattr(nc, 'source', 'UNKNOWN')
+                break
+            except (IndexError, KeyError, OSError) as e:
+                metadata_error=e
                 utilities.log.warning(f' Potentially non-fatal: Meta not found. Trying another URL was {url}:{e}')
-                #sys.exit()
+        else:
+            raise RuntimeError(
+                f'ADCIRC metadata unavailable for station {station}: {metadata_error}'
+            )
         try:
             lat = float(ma.getdata(nodelat))
             lon = float(ma.getdata(nodelon))
@@ -724,16 +762,16 @@ class adcirc_fetch_data(fetch_station_data):
             #meta['VERSION'] = nc.version
             meta['UNITS'] ='m'
             meta['TZ'] = GLOBAL_TIMEZONE # Can look in nc.comments
-            meta['OWNER'] = nc.source
+            meta['OWNER'] = owner
             meta['STATE'] = np.nan 
             meta['COUNTY'] = np.nan 
             meta['SITE'] = self._sitename
             meta['CAST'] = self._typeCast.upper()
             df_meta=pd.DataFrame.from_dict(meta, orient='index')
             df_meta.columns = [str(station)]
-        except IndexError as e:
+        except (IndexError, ValueError, TypeError) as e:
             utilities.log.error(f'Failed updating te ADCIRC station metadata for station {station}, {e}')
-            #sys.exit(1)
+            raise
         return df_meta
 
 #####################################################################################
